@@ -2,7 +2,6 @@
 ##############################################################################
 #    
 #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
-#    Author: Marco Pattaro (<marco.pattaro@servabit.it>)
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as
@@ -19,3 +18,4 @@
 #
 ##############################################################################
 
+import generic_pickler
