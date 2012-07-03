@@ -29,7 +29,6 @@ __version__ = '0.1'
 __all__ = ['Balance']
 
 COLUMNS = ['account', 'amount']
-EMPTY = "dict(zip(COLUMNS, [[] for i in xrange(len(COLUMNS))]))"
 
 class Balance(GenericPickler):
     """ A company balance for a single year, stored inside a DataFrame (df) with the
@@ -101,7 +100,9 @@ class Balance(GenericPickler):
             if len(self.__data) > 0:
                 data = self.__data.values()
             else:
-                data = eval(EMPTY)
+                # prepare an empty dictionary with COLUMNS elements as keys and
+                # empty lists as values
+                data = dict(zip(COLUMNS, [[] for i in xrange(len(COLUMNS))]))
             self.__df = pnd.DataFrame(data, columns=COLUMNS, index=self.__data.keys())
             self.__to_update = False
         return self.__df

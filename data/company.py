@@ -31,7 +31,6 @@ __version__ = '0.1'
 __all__ = ['Company']
 
 COLUMNS = BCOLUMNS + ['tax', 'year']
-EMPTY = "dict(zip(COLUMNS, [[] for i in xrange(len(COLUMNS))]))"
 
 class Company(GenericPickler):
     """ A Company is an aggregation of Balances.
@@ -88,7 +87,9 @@ class Company(GenericPickler):
 
         """
         if self.__to_update is True:
-            data = eval(EMPTY)
+            # prepare an empty dictionary with COLUMNS elements as keys and
+            # empty lists as values
+            data = dict(zip(COLUMNS, [[] for i in xrange(len(COLUMNS))]))
             if len(self.__data) > 0:
                 for acc in self.__data.itervalues():
                     acc_list = acc.to_list()
