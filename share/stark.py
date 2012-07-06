@@ -26,7 +26,7 @@ __VERSION__ = '0.1'
 __AUTHOR__ = 'Luigi Cirillo (<luigi.cirillo@servabit.it>)'
 
 
-from pandas import DataFrame
+import pandas
 import sys
 import cPickle
 
@@ -70,6 +70,9 @@ class StarK(object):
         self.TYPE = TYPE
         self.COD = COD
         self.FOOTNOTE = FOOTNOTE
+        self.DES = {}
+        self.TITLE = str
+        self.__path = str
         if TYPE == 'elab':
             for e in self.DF.columns:
                 self.DES[e] = {'AGGREG' : None, 'DASTR' : None, 'DESVAR' : None, 'MUNIT' : None, 'DATYP' : None, }
@@ -81,19 +84,6 @@ class StarK(object):
                 self.DES[e] = {'WUSE' : None, 'AXES' : None, 'LEG' : None}
         
         
-    COD = str
-    
-    TYPE = str
-    
-    DES = {}
-    
-    DF = pandas.DataFrame()
-    
-    TITLE = str
-    
-    FOOTNOTE = []
-    
-    __path = str
   
     def DefPathPkl(self, path):
         self.__path = path
