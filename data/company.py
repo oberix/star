@@ -199,9 +199,9 @@ if __name__ == "__main__":
     c.pop('2013')
     print c
     # pickle test
-    fd = open('/tmp/test.pickle', 'w')
-    c.save(fd)
-    fd.close()
-    fd = open('/tmp/test.pickle', 'r')
-    c1 = Company.load(fd)
-    fd.close()
+#    fd = open('/tmp/test.pickle', 'w')
+    c.save('/tmp/test.pickle')
+#    fd.close()
+#    fd = open('/tmp/test.pickle', 'r')
+    c1 = Company.load('/tmp/test.pickle')
+#    fd.close()
