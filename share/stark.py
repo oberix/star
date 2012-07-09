@@ -28,8 +28,10 @@ __AUTHOR__ = 'Luigi Cirillo (<luigi.cirillo@servabit.it>)'
 
 import pandas
 import sys
-import cPickle
-
+try:
+    import cPickle
+except ImportError:
+    import Pickle as cPickle
 
 
 # Servabit libraries
@@ -38,28 +40,7 @@ import cPickle
 
 class StarK(object):
     '''
-    StarK Class select and rename fields from Goal2df dataframe
-    dataframe and hold a description about
-    
-    @GOV: public set dataframe structure, as {
-            field name of final dataframe : 
-                                     [
-                                      field name goal2df dataframe,
-                                      field decription,
-                                      field unit measure,
-                                      field type,
-                                      set field to active with 'SI']
-            }
-            
-    @des: private, dataframe decription structure, as {
-            field name of final dataframe : 
-                                     [
-                                      field decription,
-                                      field unit measure,
-                                      field type]
-            }
-    
-    @df: dataframe
+    StarK Class 
     '''
     
     def __init__(self, DF, TYPE, COD = None, FOOTNOTE = None):
@@ -91,9 +72,9 @@ class StarK(object):
     
     def Dumpk(self, filename):
         '''
-        Serialize DfMoveLine object
+        Serialize 
         
-        @file_path_name: path/file_name.pickle
+        @filename: file_name.pickle
         '''
         f = open(self.__path + '/' + filename,'w')
         cPickle.dump(self)
@@ -102,9 +83,9 @@ class StarK(object):
     @staticmethod
     def Loadk(file_path, filename):
         '''
-        Load  DfMoveLine object from pickle file
+        Load  object from pickle file
         
-        @file_path_name: path/file_name.pickle
+        
         '''
         f = open(file_path+ '/' + filename, 'r')
         starkobj = cPickle.load(f)
