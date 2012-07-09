@@ -26,7 +26,6 @@ __VERSION__ = '0.1'
 __AUTHOR__ = 'Luigi Cirillo (<luigi.cirillo@servabit.it>)'
 
 
-import pandas
 import sys
 try:
     import cPickle
