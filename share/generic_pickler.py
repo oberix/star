@@ -42,7 +42,7 @@ def save(obj, path):
     try:
         pickle.dump(obj, f, protocol=pikle.HIGHEST_PROTOCOL)
     finally:
-        f.close()g
+        f.close()
 
 def load(path):
     """

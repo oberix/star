@@ -72,23 +72,39 @@ class StarK(object):
     
     def Dumpk(self, filename):
         '''
-        Serialize 
+        Serialize Stark object
         
-        @filename: file_name.pickle
+        Parameters
+        ----------
+        filename: string, file_name.pickle
         '''
-        f = open(self.__path + '/' + filename,'w')
-        cPickle.dump(self)
-        f.close()
+        
+        f = open(self.__path + '/' + filename,'wb')
+        try:
+            cPickle.dump(self, f, protocol=pikle.HIGHEST_PROTOCOL)
+        finally:
+            f.close()
     
     @staticmethod
     def Loadk(file_path, filename):
-        '''
-        Load  object from pickle file
+        """
+        Load Stark object from pickle file from the specified
+        file path
+    
+        Parameters
+        ----------
+        file_path : string, file path
+        filename : string, file name
+    
+        Returns
+        -------
+        unpickled : type of Stark object stored in file
+        """
+        f = open(file_path+ '/' + filename, 'rb')
+        try:
+            starkobj = cPickle.load(f)
+            return starkobj
+        finally:
+            f.close()
         
-        
-        '''
-        f = open(file_path+ '/' + filename, 'r')
-        starkobj = cPickle.load(f)
-        f.close()
-        return starkobj
         
