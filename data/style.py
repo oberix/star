@@ -22,7 +22,6 @@
 __VERSION__ = '0.1'
 __AUTHOR__ = 'Luigi Cirillo (<luigi.cirillo@servabit.it>)'
 
-import pandas
 import sys
 
 # Servabit libraries
@@ -36,15 +35,6 @@ def style(df, gov):
         if aggreg == True:
             if datyp != 'str':
                 raise TypeError("'AGGREG' is True but 'DATYP' not 'str'")
-        return True
-            
-    def check_datyp(ser, datype):
-        iter_el = iter(ser)
-        el = iter_el.next()
-        while (type(el).__name__ != datype):
-            if el == None:
-                raise TypeError("%s is not %s" %(ser.__name__, datype))
-            el == iter_el.next()
         return True
             
     def set_des_rec(rec):
@@ -62,7 +52,6 @@ def style(df, gov):
     for el in gov.iterkeys():
         rec = gov[el]
         check_aggreg(rec['AGGREG'], rec['DATYP'])
-        check_datyp(df[el], rec['DATYP'])
         des[rec['name']] = set_des_rec(rec)
         ren[el] = rec['name']
     df = df.rename(ren)

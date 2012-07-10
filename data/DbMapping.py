@@ -24,7 +24,7 @@ __AUTHOR__ = 'Luigi Cirillo (<luigi.cirillo@servabit.it>)'
 
 
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship, backref
+from sqlalchemy.orm import relationship,
 from sqlalchemy.dialects import postgresql
 from datetime import datetime
 from decimal import Decimal
@@ -39,7 +39,6 @@ import logging
 
 # Servabit libraries
 sys.path.append('../')
-from share import config
 
 
 Base = declarative_base()
@@ -428,7 +427,7 @@ Initialize:
 def log_istance():
     global conf_goal, logger
     log_istance =  'DBMapping'
-    logging.basicconf_goal(level = conf_goal.options.get('log_level'))
+    logging.basicConfig(level = conf_goal.options.get('log_level'))
     logger = logging.getLogger('DBMapping')
     
 

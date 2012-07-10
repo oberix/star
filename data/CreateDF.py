@@ -25,6 +25,7 @@ __AUTHOR__ = 'Luigi Cirillo (<luigi.cirillo@servabit.it>)'
 import DbMapping
 import pandas
 import sys
+import os
 
 
 # Servabit libraries
