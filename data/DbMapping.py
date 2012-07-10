@@ -24,7 +24,7 @@ __AUTHOR__ = 'Luigi Cirillo (<luigi.cirillo@servabit.it>)'
 
 
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship,
+from sqlalchemy.orm import relationship
 from sqlalchemy.dialects import postgresql
 from datetime import datetime
 from decimal import Decimal
@@ -439,12 +439,12 @@ def open_session():
     global conf_goal, logger
     logger.debug('Opening session')
     Session = sessionmaker(bind = create_engine( \
-        conf_goal.db_options.get('dbtype') + '+' + \
-        conf_goal.db_options.get('driver') + '://' + \
-        conf_goal.db_options.get('user') + ':' + \
-        conf_goal.db_options.get('pwd') + '@' + \
-        conf_goal.db_options.get('host') + '/' + \
-        conf_goal.db_options.get('dbname')))
+        conf_goal.options.get('dbtype') + '+' + \
+        conf_goal.options.get('driver') + '://' + \
+        conf_goal.options.get('user') + ':' + \
+        conf_goal.options.get('pwd') + '@' + \
+        conf_goal.options.get('host') + '/' + \
+        conf_goal.options.get('dbname')))
     return Session()
 
 def close_session(session,):

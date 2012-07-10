@@ -23,6 +23,7 @@ __VERSION__ = '0.1'
 __AUTHOR__ = 'Luigi Cirillo (<luigi.cirillo@servabit.it>)'
 
 import sys
+import pandas
 
 # Servabit libraries
 sys.path.append('../')
@@ -46,16 +47,26 @@ def style(df, gov):
         rec_des['DATYP'] = rec['DATYP']
         return rec_des
     
+    def check_columns(df, col):
+        df_col = df.columns.tolist()
+        if (df_col.sort() != col.sort()):
+            raise KeyError("Column in gov not in df")
+        return True
+            
     
     ren = {}
-    des = {}    
+    des = {}
+    col = []    
     for el in gov.iterkeys():
         rec = gov[el]
         check_aggreg(rec['AGGREG'], rec['DATYP'])
-        des[rec['name']] = set_des_rec(rec)
-        ren[el] = rec['name']
-    df = df.rename(ren)
-    goal2stark = stark.Stark(df, 'elab', COD = 'goal2stark', )
+        des[rec['NAME']] = set_des_rec(rec)
+        ren[el] = rec['NAME']
+        col.append(el)
+    check_columns(df, col)
+    df = pandas.DataFrame(df, columns = col)
+    df = df.rename(columns = ren)
+    goal2stark = stark.StarK(df, 'elab', COD = 'goal2stark', )
     goal2stark.DES = des
     return goal2stark
     
