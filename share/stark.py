@@ -42,7 +42,7 @@ class StarK(object):
     StarK Class 
     '''
     
-    def __init__(self, DF, TYPE, COD = None, FOOTNOTE = None):
+    def __init__(self, DF, TYPE, COD = None, TITLE = None, FOOTNOTE = None):
         '''
         Initialize:
         '''

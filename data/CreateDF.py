@@ -24,6 +24,7 @@ __AUTHOR__ = 'Luigi Cirillo (<luigi.cirillo@servabit.it>)'
 
 import DbMapping
 import pandas
+import sys
 
 
 # Servabit libraries
@@ -32,11 +33,12 @@ from share import config
 
 
 def CreateDF(conf_path, def_dbmap, comp_id):
-    conf = config.Config(conf_path)
+    filename = os.path.join(conf_path, 'DbConfig.cfg')
+    conf = config.Config(filename=filename)
     conf.parse()
     DbMapping.conf_goal = conf 
     data = def_dbmap(comp_id)
-    df = panda.DataFrame(data)
+    df = pandas.DataFrame(data)
     return df
     
     
