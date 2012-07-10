@@ -77,10 +77,11 @@ class StarK(object):
         ----------
         filename: string, file_name.pickle
         '''
-        
+        #import ipdb; ipdb.set_trace()
+        print(self.__path)
         f = open(self.__path + '/' + filename,'wb')
         try:
-            cPickle.dump(self, f, protocol=pikle.HIGHEST_PROTOCOL)
+            cPickle.dump(self, f, protocol=cPickle.HIGHEST_PROTOCOL)
         finally:
             f.close()
     

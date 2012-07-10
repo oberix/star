@@ -455,7 +455,7 @@ def close_session(session,):
     logger.debug('Closing session')
     session.close_all()
 
-def get_account_move_line(id_comp):
+def get_account_move_line(name_comp):
     '''
     id_comp : id company on database
     return a dataframe with move lines of the company
@@ -464,7 +464,7 @@ def get_account_move_line(id_comp):
     log_istance()
     session = open_session()
     comp = session.query(ResCompany).filter_by( \
-            id = id_comp \
+            name = name_comp \
             ).first()
     logger.info('Extracting account_move_line for %s' % (comp.name))
     data = {'accountMoveLine_id' : [], 'accountMove_name' : [], \
@@ -477,7 +477,7 @@ def get_account_move_line(id_comp):
             'accountAccount_code' : []}
     for aml in session.query(\
             AccountMoveLine\
-            ).filter_by(company_id = id_comp).all():
+            ).filter_by(company_id = comp.id).all():
         data['accountMoveLine_id'].append(aml.id)
         
         if (aml.move != None):
@@ -540,7 +540,7 @@ def get_account_move_line(id_comp):
     close_session(session)
     return data
 
-def get_account_move(id_comp):
+def get_account_move(name_comp):
     '''
     id_comp : id company on database
     return a dataframe with move of the company
@@ -549,7 +549,7 @@ def get_account_move(id_comp):
     log_istance()
     session = open_session()
     comp = session.query(ResCompany).filter_by( \
-            id = id_comp \
+            name = name_comp \
             ).first()
     logger.info('Extracting account_move for %s' % (comp.name))
     data = {'accountMove_id' : [], 'accountMove_name' : [], \
@@ -558,7 +558,7 @@ def get_account_move(id_comp):
             'resCompany_name' : [], 'resPartner_name' : [] ,\
             'accountMove_toCheck' : [], 'accountMove_state' : []}
     for am in session.query(AccountMove).filter_by( \
-                company_id = id_comp \
+                company_id = comp.id \
                 ).all():
         data['accountMove_id'].append(am.id)
         data['accountMove_name'].append(am.name)
@@ -590,7 +590,7 @@ def get_account_move(id_comp):
     close_session(session)
     return data
 
-def get_account(self, id_comp):
+def get_account(name_comp):
     '''
     id_comp : id company on database
     return a dataframe with accounts of the company
@@ -599,7 +599,7 @@ def get_account(self, id_comp):
     log_istance()
     session = open_session()
     comp = session.query(ResCompany).filter_by( \
-            id = id_comp \
+            name = name_comp \
             ).first()
     logger.info('Extracting account for %s' % (comp.name))
     data = {'accountAccount_id' : [], 'accountAccount_name' : [], \
@@ -608,7 +608,7 @@ def get_account(self, id_comp):
         'accountAccount_parentName' : [], 'accountAccount_parentCode' : []}
     for acc in session.query( \
                 AccountAccount \
-                ).filter_by(company_id = id_comp).all():
+                ).filter_by(company_id = comp.id).all():
         data['accountAccount_id'].append(acc.id)
         data['accountAccount_name'].append(acc.name)
         data['accountAccount_code'].append(acc.code)
@@ -624,7 +624,7 @@ def get_account(self, id_comp):
     close_session(session)
     return data
 
-def get_partner(id_comp):
+def get_partner(name_comp):
     '''
     id_comp : id company on database
     return a dataframe with move partners of the company
@@ -633,12 +633,13 @@ def get_partner(id_comp):
     log_istance()
     session = open_session()
     comp = session.query(ResCompany).filter_by( \
-            id = id_comp \
+            name = name_comp \
             ).first()
     logger.info('Extracting partner for %s' % (comp.name))
     data = {'resPartner_id' : [], 'resPartner_name' : [], \
             'resPartner_tax' : [], 'resPartner_vat' : [], \
             'resCompany_name' : []}
+    id_comp = comp.name
     for par in session.query(ResPartner).filter_by( \
             company_id = id_comp \
             ).all():
