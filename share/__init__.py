@@ -20,4 +20,5 @@
 
 import generic_pickler
 import config
+import stark
 
