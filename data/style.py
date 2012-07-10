@@ -32,10 +32,10 @@ from share import stark
 
 def style(df, gov):
     
-    def check_aggreg(aggreg, datyp):
+    def check_aggreg(aggreg, datyp, el):
         if aggreg == True:
             if datyp != 'str':
-                raise TypeError("'AGGREG' is True but 'DATYP' not 'str'")
+                raise TypeError("%s : 'AGGREG' is True but 'DATYP' not 'str'" %el)
         return True
             
     def set_des_rec(rec):
@@ -49,8 +49,15 @@ def style(df, gov):
     
     def check_columns(df, col):
         df_col = df.columns.tolist()
-        if (df_col.sort() != col.sort()):
-            raise KeyError("Column in gov not in df")
+#        import ipdb; ipdb.set_trace()
+        for item in col:
+            iter_df = iter(df_col)
+            item_df = iter_df.next()
+            while (item != item_df):
+                try:
+                    item_df = iter_df.next()
+                except StopIteration:
+                    raise KeyError("Columns in gov not in df")
         return True
             
     
@@ -59,7 +66,7 @@ def style(df, gov):
     col = []    
     for el in gov.iterkeys():
         rec = gov[el]
-        check_aggreg(rec['AGGREG'], rec['DATYP'])
+        check_aggreg(rec['AGGREG'], rec['DATYP'], el)
         des[rec['NAME']] = set_des_rec(rec)
         ren[el] = rec['NAME']
         col.append(el)

@@ -145,12 +145,15 @@ func_dict = {
 #func_run = difflib.get_close_matches(
 #comp_run = difflib.get_close_matches(
 path = "../config/"
+#read csv
 reader = csv.reader(open('goal2stark.csv', 'rb'), dialect='excel')
 id_file = 0
 for row in reader:
     func = row[0]
     comp = row[1]
+    # func_dict[func][0] point to function
     df = data.CreateDF.CreateDF(path, func_dict[func][0], comp)
+    # func_dict[func][1] gov dict
     stk_elab = data.style.style(df, func_dict[func][1])
     stk_elab.DefPathPkl('/tmp/')
     stk_elab.Dumpk('stkelab_%i.pickle' %(id_file))
