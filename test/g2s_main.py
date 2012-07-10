@@ -7,8 +7,6 @@ import data
 import csv
 
 path_cvs = 'goal2stark.csv'
-func_ls = ['get_account_move_line', 'get_account_move', 'get_account', 'get_partner',]
-comp_ls = ['Rete Servabit','Servabit','Studiabo','Vicem','Aderit']
 
 gv_ml = {
       'accountAccount_code' : 

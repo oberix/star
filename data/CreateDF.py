@@ -33,12 +33,20 @@ sys.path.append('../')
 from share import config
 
 
-def CreateDF(conf_path, def_dbmap, comp_id):
+def CreateDF(conf_path, def_dbmap, comp_name):
+    '''
+    Create dataframe from DbMapping functions
+    @param conf_path: path of configuaration file
+    @def_dbmap : point to function of DbMapping
+    @param comp_name: company name
+    
+    return DataFrame 
+    '''
     filename = os.path.join(conf_path, 'DbConfig.cfg')
     conf = config.Config(filename=filename)
     conf.parse()
     DbMapping.conf_goal = conf 
-    data = def_dbmap(comp_id)
+    data = def_dbmap(comp_name)
     df = pandas.DataFrame(data)
     return df
     

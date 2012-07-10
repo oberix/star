@@ -31,6 +31,22 @@ from share import stark
 
 
 def style(df, gov):
+    '''
+    Create a StarK object of type elab from df and gov
+    @param df: DataFrame
+    @param gov: dict as {
+        field name of initial dataframe:
+            {
+             'NAME' : field name of final dataframe,
+             'AGGREG' : Boolean indicating the aggregation
+             'DASTR' : dictionary with other informations about column,
+             'DESVAR' : description,
+             'MUNIT' : unit measure,
+             'DATYP' : column type,
+             }
+           }
+    return: StarK object  
+    '''
     
     def check_aggreg(aggreg, datyp, el):
         if aggreg == True:
@@ -49,7 +65,6 @@ def style(df, gov):
     
     def check_columns(df, col):
         df_col = df.columns.tolist()
-#        import ipdb; ipdb.set_trace()
         for item in col:
             iter_df = iter(df_col)
             item_df = iter_df.next()

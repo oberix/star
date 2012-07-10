@@ -434,7 +434,7 @@ def log_istance():
     
 def open_session():
     '''
-    open a database session from informations holded by conf_goal2d
+    open a SQLAlchemy session from informations holded by conf_goal2d
     '''
     global conf_goal, logger
     logger.debug('Opening session')
@@ -449,7 +449,7 @@ def open_session():
 
 def close_session(session,):
     '''
-    Close database session
+    Close SQLAlchemy session
     '''
     global logger
     logger.debug('Closing session')
@@ -457,7 +457,7 @@ def close_session(session,):
 
 def get_account_move_line(name_comp):
     '''
-    id_comp : id company on database
+    name_comp : name company on database
     return a dataframe with move lines of the company
     '''
     global conf_goal, logger
@@ -542,7 +542,7 @@ def get_account_move_line(name_comp):
 
 def get_account_move(name_comp):
     '''
-    id_comp : id company on database
+    name_comp : name company on database
     return a dataframe with move of the company
     '''
     global conf_goal, logger
@@ -592,7 +592,7 @@ def get_account_move(name_comp):
 
 def get_account(name_comp):
     '''
-    id_comp : id company on database
+    name_comp : name company on database
     return a dataframe with accounts of the company
     '''
     global conf_goal, logger
@@ -626,7 +626,7 @@ def get_account(name_comp):
 
 def get_partner(name_comp):
     '''
-    id_comp : id company on database
+    name_comp : name company on database
     return a dataframe with move partners of the company
     '''
     global conf_goal, logger
