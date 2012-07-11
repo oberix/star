@@ -56,15 +56,7 @@ class IrSequence(Base):
     #one2many
     journals = relationship("AccountJournal")
     
-    @staticmethod
-    def getVatSequencesNames(cls,session,company_id):
-        sequences=session.query(cls).filter(cls.code=='RIVA',cls.company_id==company_id).all()
-        names=[]
-        for s in sequences:
-            names.append(s.name)
-        return names
-
-
+    
 class ResCompany(Base):
     __tablename__ = 'res_company'
     
@@ -75,35 +67,7 @@ class ResCompany(Base):
     partner = relationship("ResPartner",  primaryjoin="ResCompany.partner_id==ResPartner.id", uselist=False)
     ateco_2007_vat_activity = Column(String(300))
     
-    @staticmethod
-    def getCompanyTaxCode(cls,session,company_id):
-        if not company_id:
-            return False
-        company=session.query(cls).filter(cls.id==company_id).first()
-        if not company:
-            return False
-        return company.partner.tax
-    
-    #method called from reports
-    @staticmethod
-    def getCompanyHeaderTex(cls,session,company_id):
-        if not company_id:
-            return False
-        company=session.query(cls).filter(cls.id==company_id).first()
-        if not company:
-            return False
-        header=company.name
-        if company.partner.addresses[0].street:
-            header+='\\\\'+company.partner.addresses[0].street
-        if company.partner.addresses[0].zip:
-            header+='\\\\'+company.partner.addresses[0].zip
-        if company.partner.addresses[0].city:
-            header+=' '+company.partner.addresses[0].city
-        if company.partner.vat:
-            header+='\\\\P. IVA '+company.partner.vat
-        return header
-
-    
+        
 class ResPartner(Base):
     __tablename__ = 'res_partner'
     
@@ -144,21 +108,7 @@ class AccountFiscalyear(Base):
     
     #one2many
     periods = relationship("AccountPeriod")
-    
-    
-    @staticmethod
-    def findYearBefore(cls,session,fiscalyear_id):
-        '''
-        Return the year before current.
-        '''
-        if not fiscalyear_id:
-            return False
-            
-        current_year=session.query(cls).filter(cls.id==fiscalyear_id).first()
-        previous_year_date_start=current_year.date_start.replace(year=current_year.date_start.year-1)
-        previous_year=session.query(cls).filter(cls.date_start==previous_year_date_start,cls.company_id==current_year.company_id).first()
-        return previous_year
-    
+        
     
 class AccountPeriod(Base):
     __tablename__ = 'account_period'
@@ -173,25 +123,7 @@ class AccountPeriod(Base):
     fiscalyear_id = Column(Integer, ForeignKey('account_fiscalyear.id'), nullable=False)
     fiscalyear = relationship("AccountFiscalyear")
     
-    @staticmethod
-    def getNormalPeriods(cls,session,date,company_id):
-        return session.query(cls).filter(cls.date_start<=date,cls.date_stop>=date,cls.company_id==company_id,cls.special==False).all()
-        
-    '''
-    returns period_ids of periods preceding the period passed as argument until x year (ex. 1 trim. 2012 (x=1) -> [1 trim. 2011, 2 trim 2011, 3 trim 2011, 4 trim 2011])
-    '''
-    @staticmethod
-    def getPreviousPeriodIdsUntilXyears(cls, session, period_id, x, company_id):
-        period=session.query(cls).filter(cls.id==period_id).first()
-        search_period_datestart=period.date_start.replace(year=period.date_start.year-x)
-        
-        previous_period_ids=[]
-        previous_periods=session.query(AccountPeriod).filter(AccountPeriod.date_start>=search_period_datestart,AccountPeriod.date_stop<period.date_stop,AccountPeriod.company_id==company_id,cls.special==False).all()
-        for p in previous_periods:
-            previous_period_ids.append(p.id)
-        return previous_period_ids
-
-
+    
 class AccountAccountType(Base):
     __tablename__ = 'account_account_type'
     
@@ -214,62 +146,7 @@ class AccountAccount(Base):
     company = relationship("ResCompany")
     parent = relationship("AccountAccount", remote_side=[id])
     
-    @staticmethod
-    def computeBalance(cls, account, debit=Decimal('0.00'), credit=Decimal('0.00')):
-        '''
-        this function calculates the balance (starting from debit and credit amounts) according to the internal type of the account
-        @param account: it's an instance of AccountAccount
-        @param debit: it's a float (or int or Decimal)
-        @param credit: it's a float (or int or Decimal)
-        returns a Decimal
-        '''
-        result=None
-        if account.account_type.code in ['ammor','income','nasset','otherdebs','payable']:
-            result=Decimal(credit)-Decimal(debit)
-        elif account.account_type.code in ['asset','expense','otherass','receivable']:
-            result=Decimal(debit)-Decimal(credit)
-        return result
-
-    @staticmethod
-    def computeAmount(cls, session, account, totals, dateStart, dateEnd,  onlyValidatedMoveLines=True):
-        '''
-        @param totals: is a list of strings. (considered values: 'debit', 'credit', 'balance')
-        @param account: it's an instance of AccountAccount
-        returns amounts of 'debit' and/or 'credit' and/or 'balance' of the account passed as parameter from dateStart to dateEnd (including both)
-        '''
-        moveLines=[]
-        if onlyValidatedMoveLines:
-            moveLines=session.query(AccountMoveLine).join(AccountMove).filter(\
-                                AccountMoveLine.account_id==account.id,\
-                                AccountMoveLine.date>=dateStart,\
-                                AccountMoveLine.date<=dateEnd,\
-                                AccountMove.state=='posted',\
-                                ).all()
-        else:
-            moveLines=session.query(AccountMoveLine).filter(\
-                                    AccountMoveLine.account_id==account.id,\
-                                    AccountMoveLine.date>=dateStart,\
-                                    AccountMoveLine.date<=dateEnd,\
-                                    ).all()
-                                    
-        debitTotal=Decimal(0)
-        creditTotal=Decimal(0)
-        for line in moveLines:
-            if line.debit:
-                debitTotal+=line.debit
-            if line.credit:
-                creditTotal+=line.credit
-        results={}
-        if totals.count('debit')>0:
-            results['debit']=debitTotal
-        if totals.count('credit')>0:
-            results['credit']=creditTotal
-        if totals.count('balance')>0:
-            results['balance']=cls.computeBalance(cls, account, debitTotal, creditTotal)
-            
-        return results
-
-
+    
 class AccountJournal(Base):
     __tablename__ = 'account_journal'
     
@@ -362,13 +239,7 @@ class AccountMove(Base):
     company = relationship("ResCompany")
     period = relationship("AccountPeriod")
     journal = relationship("AccountJournal")
-    
-    def _get_date_document(self):
-        res=False
-        if self.invoice:
-            res=self.invoice.date_document           
-        return res
-    
+           
 class AccountMoveLine(Base):
     __tablename__ = 'account_move_line'
     
