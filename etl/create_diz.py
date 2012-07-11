@@ -1,0 +1,56 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+##############################################################################
+#    
+#    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Affero General Public License as
+#    published by the Free Software Foundation, either version 3 of the
+#    License, or (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Affero General Public License for more details.
+#
+#    You should have received a copy of the GNU Affero General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
+#
+##############################################################################
+
+__VERSION__ = '0.1'
+__AUTHOR__ = 'Luigi Cirillo (<luigi.cirillo@servabit.it>)'
+
+'''
+Created on 11/lug/2012
+'''
+
+import Dbmap2
+
+
+def create_diz(cl_dmap2, diz_path):
+    
+    def tuple2attr(obj, tpl):
+        el = tpl
+        while(el[1] != None):
+            obj = getattr(obj, el[0])
+            el = el[1]
+        obj = getattr(obj, el[0])
+        return obj
+    
+    def get_obj(session, cl_dbmap2):
+        objs = session.query(\
+                      cl_dbmap2\
+                      ).all()
+        return objs
+    
+    session = Dbmap2.open_session()
+    out_diz = {}    
+    objs = get_obj(session, cl_dbmap2)
+    for obj in objs:
+        for key in diz_path.iterkeys():
+            out_diz[key] = tuple2attr(obj, diz_path[key])
+    Dbmap2.close_session(session)
+    return out_diz
+            

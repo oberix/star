@@ -39,10 +39,15 @@ import logging
 
 # Servabit libraries
 sys.path.append('../')
+from share import config
 
 
 Base = declarative_base()
+conf_goal = None
+filepath = '../config/DbConfig.cfg'
+conf = config.Config(filename=filename)
 logger = None
+
 
 class IrSequence(Base):
     __tablename__ = 'ir_sequence'
@@ -285,3 +290,27 @@ class AccountMoveReconcile(Base):
     
     lines = relationship("AccountMoveLine", primaryjoin="AccountMoveReconcile.id==AccountMoveLine.reconcile_id")
     partial_lines = relationship("AccountMoveLine", primaryjoin="AccountMoveReconcile.id==AccountMoveLine.reconcile_partial_id")
+
+
+def open_session():
+    '''
+    open a SQLAlchemy session from informations holded by conf_goal2d
+    '''
+    global conf_goal, logger
+    logger.debug('Opening session')
+    Session = sessionmaker(bind = create_engine( \
+        conf_goal.options.get('dbtype') + '+' + \
+        conf_goal.options.get('driver') + '://' + \
+        conf_goal.options.get('user') + ':' + \
+        conf_goal.options.get('pwd') + '@' + \
+        conf_goal.options.get('host') + '/' + \
+        conf_goal.options.get('dbname')))
+    return Session()
+
+def close_session(session,):
+    '''
+    Close SQLAlchemy session
+    '''
+    global logger
+    logger.debug('Closing session')
+    session.close_all()
