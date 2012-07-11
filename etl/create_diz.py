@@ -26,10 +26,13 @@ __AUTHOR__ = 'Luigi Cirillo (<luigi.cirillo@servabit.it>)'
 Created on 11/lug/2012
 '''
 
-import Dbmap2
+import DBmap2
 
 
-def create_diz(cl_dmap2, diz_path):
+def create_dict(cl_dmap2, diz_path):
+    '''
+    Create 
+    '''
     
     def tuple2attr(obj, tpl):
         el = tpl
@@ -45,12 +48,17 @@ def create_diz(cl_dmap2, diz_path):
                       ).all()
         return objs
     
-    session = Dbmap2.open_session()
+    session = DBmap2.open_session()
     out_diz = {}    
-    objs = get_obj(session, cl_dbmap2)
+    objs = get_obj(session, cl_dmap2)
+    for key in diz_path.iterkeys():
+        out_diz[key] = []
     for obj in objs:
         for key in diz_path.iterkeys():
-            out_diz[key] = tuple2attr(obj, diz_path[key])
-    Dbmap2.close_session(session)
+            try:
+                out_diz[key].append(tuple2attr(obj, diz_path[key]))
+            except AttributeError:
+                out_diz[key].append(None)
+    DBmap2.close_session(session)
     return out_diz
             

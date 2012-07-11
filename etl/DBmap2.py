@@ -43,10 +43,12 @@ from share import config
 
 
 Base = declarative_base()
-conf_goal = None
-filepath = '../config/DbConfig.cfg'
-conf = config.Config(filename=filename)
-logger = None
+filepath = '/home/lcirillo/sviluppo/svn/star/trunk/config/DbConfig.cfg'
+conf = config.Config(filepath)
+conf.parse()
+log_istance =  'DBMapping'
+logging.basicConfig(level = conf.options.get('log_level'))
+logger = logging.getLogger('DBMapping')
 
 
 class IrSequence(Base):
@@ -296,15 +298,16 @@ def open_session():
     '''
     open a SQLAlchemy session from informations holded by conf_goal2d
     '''
-    global conf_goal, logger
+    global conf, logger
     logger.debug('Opening session')
+    #import ipdb; ipdb.set_trace()
     Session = sessionmaker(bind = create_engine( \
-        conf_goal.options.get('dbtype') + '+' + \
-        conf_goal.options.get('driver') + '://' + \
-        conf_goal.options.get('user') + ':' + \
-        conf_goal.options.get('pwd') + '@' + \
-        conf_goal.options.get('host') + '/' + \
-        conf_goal.options.get('dbname')))
+        conf.options.get('dbtype') + '+' + \
+        conf.options.get('driver') + '://' + \
+        conf.options.get('user') + ':' + \
+        conf.options.get('pwd') + '@' + \
+        conf.options.get('host') + '/' + \
+        conf.options.get('dbname')))
     return Session()
 
 def close_session(session,):
