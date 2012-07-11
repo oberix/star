@@ -42,7 +42,6 @@ sys.path.append('../')
 
 
 Base = declarative_base()
-conf_goal = None
 logger = None
 
 class IrSequence(Base):
