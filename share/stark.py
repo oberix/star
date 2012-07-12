@@ -55,7 +55,7 @@ class StarK(object):
         self.__path = str
         if TYPE == 'elab':
             for e in self.DF.columns:
-                self.DES[e] = {'AGGREG' : None, 'DASTR' : None, 'DESVAR' : None, 'MUNIT' : None, 'DATYP' : None, }
+                self.DES[e] = {'VARTYPE' : None, 'DASTR' : None, 'DESVAR' : None, 'MUNIT' : None, 'DATYP' : None, }
         if TYPE == 'tab':
             for e in self.DF.columns:
                 self.DES[e] = {'ORD' : None, 'H1' : None, 'H2' : None, 'H3' : None, 'POS' : None, }
