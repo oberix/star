@@ -26,12 +26,19 @@ __AUTHOR__ = 'Luigi Cirillo (<luigi.cirillo@servabit.it>)'
 Created on 11/lug/2012
 '''
 
-import DBmap2
+import DBmap3 as DBmap2
+#import DBmap2
 
-
-def create_dict(cl_dmap2, diz_path):
+def create_dict(cl_dmap2, dict_path):
     '''
-    Create 
+    Create dictionary with database datas from:
+    @param cl_dmap2: DBmap2 class
+    @param dict_path: dictionary structured as:
+                    { 'NAMEVAR' :
+                        ('name attribute cl_dmap2', (...., None))
+    return dictionary {
+                        'NAMEVAR' : [data, data, data, .....]
+                        }
     '''
     
     def tuple2attr(obj, tpl):
@@ -49,16 +56,16 @@ def create_dict(cl_dmap2, diz_path):
         return objs
     
     session = DBmap2.open_session()
-    out_diz = {}    
+    out_dict = {}    
     objs = get_obj(session, cl_dmap2)
-    for key in diz_path.iterkeys():
-        out_diz[key] = []
+    for key in dict_path.iterkeys():
+        out_dict[key] = []
     for obj in objs:
-        for key in diz_path.iterkeys():
+        for key in dict_path.iterkeys():
             try:
-                out_diz[key].append(tuple2attr(obj, diz_path[key]))
+                out_dict[key].append(tuple2attr(obj, dict_path[key]))
             except AttributeError:
-                out_diz[key].append(None)
+                out_dict[key].append(None)
     DBmap2.close_session(session)
-    return out_diz
+    return out_dict
             

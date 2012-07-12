@@ -3,7 +3,7 @@ import difflib
 
 # Servabit libraries
 sys.path.append('../')
-import data
+import etl
 import csv
 
 path_cvs = 'goal2stark.csv'
@@ -135,9 +135,9 @@ gv_acc = {
             }
 
 func_dict = {
-             'get_account_move_line' : [data.DbMapping.get_account_move_line, gv_ml],
+             'get_account_move_line' : [etl.DbMapping.get_account_move_line, gv_ml],
              #'get_account_move' : data.DbMapping.get_account_move,
-             'get_account' : [data.DbMapping.get_account, gv_acc]
+             'get_account' : [etl.DbMapping.get_account, gv_acc]
              #'get_partner' : data.DbMapping.get_partner,
              }
 #func_run = difflib.get_close_matches(
@@ -150,9 +150,9 @@ for row in reader:
     func = row[0]
     comp = row[1]
     # func_dict[func][0] point to function
-    df = data.CreateDF.CreateDF(path, func_dict[func][0], comp)
+    df = etl.CreateDF.CreateDF(path, func_dict[func][0], comp)
     # func_dict[func][1] gov dict
-    stk_elab = data.style.style(df, func_dict[func][1])
+    stk_elab = etl.style.style(df, func_dict[func][1])
     stk_elab.DefPathPkl('/tmp/')
     stk_elab.Dumpk('stkelab_%i.pickle' %(id_file))
     id_file = id_file + 1
