@@ -64,15 +64,15 @@ def style(df, gov):
         return rec_des
     
     def check_columns(df, col):
+        '''
+        confronto df e col
+        '''
         df_col = df.columns.tolist()
         for item in col:
-            iter_df = iter(df_col)
-            item_df = iter_df.next()
-            while (item != item_df):
-                try:
-                    item_df = iter_df.next()
-                except StopIteration:
-                    raise KeyError("Columns in gov not in df")
+            try:
+                df_col.index(item)
+            except ValueError:
+                raise ValueError("Columns in gov not in df")
         return True
             
     
