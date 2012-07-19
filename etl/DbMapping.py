@@ -32,7 +32,7 @@ from decimal import Decimal
 import sys
 import os
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import create_engine, Column, String, Integer, Sequence, ForeignKey, Date, Boolean
+from sqlalchemy import create_engine, Column, String, Integer, Sequence, ForeignKey, Date, Boolean, Numeric
 import logging
 
 
@@ -265,9 +265,9 @@ class AccountMoveLine(Base):
     
     date = Column(Date, nullable=False)
     date_maturity = Column(Date)
-    debit = Column(postgresql.NUMERIC)
-    credit = Column(postgresql.NUMERIC)
-    tax_amount = Column(postgresql.NUMERIC)
+    debit = Column(Numeric)
+    credit = Column(Numeric)
+    tax_amount = Column(Numeric)
     
     #many2one
     move = relationship("AccountMove")

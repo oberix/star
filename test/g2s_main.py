@@ -12,7 +12,7 @@ gv_ml = {
       'accountAccount_code' : 
         {
          'NAME' : 'CODA',
-         'AGGREG' : True,
+         'VARTYPE' : True,
          'DASTR' : '',
          'DESVAR' : 'codice identificativo del conto',
          'MUNIT' : '',
@@ -22,7 +22,7 @@ gv_ml = {
       'accountAccount_name' : 
         {
          'NAME' : 'NOMA',
-         'AGGREG' : False,
+         'VARTYPE' : False,
          'DASTR' : '',
          'DESVAR' : 'nome descrittivo del conto',
          'MUNIT' : '',
@@ -32,7 +32,7 @@ gv_ml = {
       'accountMoveLine_date' : 
         {
          'NAME' : 'DATE',
-         'AGGREG' : False,
+         'VARTYPE' : False,
          'DASTR' : '',
          'DESVAR' : 'data di registrazione',
          'MUNIT' : '',
@@ -42,7 +42,7 @@ gv_ml = {
       'accountMoveLine_state' : 
         {
          'NAME' : 'STATE',
-         'AGGREG' : True,
+         'VARTYPE' : True,
          'DASTR' : '',
          'DESVAR' : 'stato della moveline in termini di validazione',
          'MUNIT' : '',
@@ -52,7 +52,7 @@ gv_ml = {
       'accountMoveLine_debit' : 
         {
          'NAME' : 'DARE',
-         'AGGREG' : False,
+         'VARTYPE' : False,
          'DASTR' : '',
          'DESVAR' : 'colonna DARE della partita doppia',
          'MUNIT' : 'euro',
@@ -62,7 +62,7 @@ gv_ml = {
       'accountMoveLine_credit' : 
         {
          'NAME' : 'AVERE',
-         'AGGREG' : False,
+         'VARTYPE' : False,
          'DASTR' : '',
          'DESVAR' : 'colonna AVERE della partita doppia',
          'MUNIT' : 'euro',
@@ -75,7 +75,7 @@ gv_acc = {
           'accountAccountType_name' : 
             {
              'NAME' : 'LEVA',
-             'AGGREG' : True,
+             'VARTYPE' : True,
              'DASTR' : '',
              'DESVAR' : 'livello nella struttura dei conti. Contiene una stringa per la descrizione del livello',
              'MUNIT' : '',
@@ -85,7 +85,7 @@ gv_acc = {
           'accountAccount_code' : 
             {
              'NAME' : 'CODA',
-             'AGGREG' : False,
+             'VARTYPE' : False,
              'DASTR' : '',
              'DESVAR' : 'codice del conto, strutturato in tre livelli',
              'MUNIT' : '',
@@ -95,7 +95,7 @@ gv_acc = {
           'accountAccount_name' : 
             {
              'NAME' : 'NOMA',
-             'AGGREG' : False,
+             'VARTYPE' : False,
              'DASTR' : '',
              'DESVAR' : 'nome descrittivo del conto',
              'MUNIT' : '',
@@ -105,7 +105,7 @@ gv_acc = {
           'accountAccount_type' : 
             {
              'NAME' : 'TIPA',
-             'AGGREG' : True,
+             'VARTYPE' : True,
              'DASTR' : '',
              'DESVAR' : 'tipologia del conto',
              'MUNIT' : '',
@@ -115,7 +115,7 @@ gv_acc = {
           'accountAccount_parentName' : 
             {
              'NAME' : 'GENA',
-             'AGGREG' : False,
+             'VARTYPE' : False,
              'DASTR' : '',
              'DESVAR' : 'nome descrittivo del conto genitore',
              'MUNIT' : '',
@@ -125,7 +125,7 @@ gv_acc = {
           'accountAccount_parentCode' : 
             {
              'NAME' : 'CODG',
-             'AGGREG' : False,
+             'VARTYPE' : False,
              'DASTR' : '',
              'DESVAR' : 'codice del conto genitore',
              'MUNIT' : '',
