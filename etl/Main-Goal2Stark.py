@@ -1,0 +1,37 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+##############################################################################
+#    
+#    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Affero General Public License as
+#    published by the Free Software Foundation, either version 3 of the
+#    License, or (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Affero General Public License for more details.
+#
+#    You should have received a copy of the GNU Affero General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
+#
+##############################################################################
+
+__VERSION__ = '0.1'
+__AUTHOR__ = 'Luigi Cirillo (<luigi.cirillo@servabit.it>)'
+
+import sys
+# Servabit libraries
+PathPr="/home/contabilita/Star-0.0/ETL/Goal2Stark/"
+sys.path.append(PathPr)   
+sys.path=list(set(sys.path)) 
+import DizPath
+
+DizPath.CreateDWComp('Servabit')
+DizPath.CreateDWComp('Aderit')
+DizPath.CreateDWComp('Vicem')
+DizPath.CreateDWComp('Studiabo')
+
+

@@ -42,16 +42,14 @@ class StarK(object):
     StarK Class 
     '''
     
-    def __init__(self, DF, TYPE, COD = None, TITLE = None, FOOTNOTE = None):
+    def __init__(self, DF, TYPE, COD = None):
         '''
         Initialize:
         '''
         self.DF = DF
         self.TYPE = TYPE
         self.COD = COD
-        self.FOOTNOTE = FOOTNOTE
         self.DES = {}
-        self.TITLE = str
         self.__path = str
         if TYPE == 'elab':
             for e in self.DF.columns:

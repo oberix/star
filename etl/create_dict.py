@@ -26,7 +26,7 @@ __AUTHOR__ = 'Luigi Cirillo (<luigi.cirillo@servabit.it>)'
 Created on 11/lug/2012
 '''
 
-import DBmap3 as DBmap2
+import DBmap2
 #import DBmap2
 
 def create_dict(cl_dmap2, dict_path):
