@@ -24,7 +24,7 @@ __AUTHOR__ = 'Luigi Cirillo (<luigi.cirillo@servabit.it>)'
 
 import sys
 # Servabit libraries
-PathPr="/home/contabilita/Star-0.0/ETL/Goal2Stark/"
+PathPr="/home/contabilita/star_branch/etl/"
 sys.path.append(PathPr)   
 sys.path=list(set(sys.path)) 
 import DizPath

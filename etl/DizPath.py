@@ -31,7 +31,7 @@ except ImportError:
     import Pickle as cPickle
 
 # Servabit libraries
-PathPr="/home/contabilita/Star-0.0/ETL/Goal2Stark/"
+PathPr="/home/contabilita/star_branch/etl/"
 sys.path.append(PathPr)   
 sys.path=list(set(sys.path)) 
 import DBmap2
@@ -86,8 +86,8 @@ def CreateDWComp(Company):
     ACC.DES['PAC_CON']['DESVAR']=unicode('Codice menorico del conto padre','utf-8')
     path='/home/contabilita/Goal-PKL/'+Company
     ACC.DefPathPkl(path)
-    ins_blob(Company, 'STK', path+'/ACC.pickle', ACC)
-    #ACC.Dumpk('ACC.pickle')
+    #ins_blob(Company, 'STK', path+'/ACC.pickle', ACC)
+    ACC.Dumpk('ACC.pickle')
 
     ############################################################################################
     #  importazione dei dati della classe Account Move Line
@@ -95,22 +95,29 @@ def CreateDWComp(Company):
     ############################################################################################
     MVLD = {
              'ID0_MVL' : ('id', None), 
-             'NAM_MOV' : ('move', ('name', None)), 
+             'NAM_MOV' : ('move', ('name', None)),
+             'REF_MOV' : ('move', ('ref', None)), 
+             'CHK_MOV' : ('move', ('to_check', None)),
+             'STA_MOV'  : ('move', ('state', None)),
+             'DAT_DOC' : ('move', ('invoice', ('date_document', None))),
              'NAM_MVL' : ('name', None),
              'COD_CON' : ('account', ('code', None)),
              'NAM_IMP'  : ('company', ('name', None)),
              'REF_MVL'  : ('ref', None),
              'DAT_MVL'  : ('date', None),
              'NAM_PRD'  : ('period', ('name', None)),
+             'NAM_FY'  : ('period', ('fiscalyear', ('name', None))),
              'NAM_PAR'  : ('partner', ('name', None)),
              'NAM_CON'  : ('account', ('name', None)),
              'NAM_JRN'  : ('journal', ('name', None)),
+             'TYP_JRN' : ('journal', ('type', None)), 
              'DBT_MVL'  : ('debit', None),
              'CRT_MVL'  : ('credit', None),
-             'STA_MVL'  : ('state', None),
              'NAM_REC'  : ('reconcile', ('name', None)),
-             'TAX_COD'  : ('tax_code_id', None), #aggiunto da Nicola il 13/7/2012
-             'TAX_AMO'  : ('tax_amount', None), #aggiunto da Nicola il 23/7/2012
+             'TAX_COD'  : ('tax_code_id', None), 
+             'TAX_AMO'  : ('tax_amount', None), 
+             'NAM_SEQ'  : ('journal', ('sequence', ('name', None))), 
+             'COD_SEQ'  : ('journal', ('sequence', ('code', None))), 
              }
     #assegno a MOVL la classe AccountMoveLine
     MVL = DBmap2.AccountMoveLine
@@ -127,52 +134,54 @@ def CreateDWComp(Company):
     MVL.DES['NAM_MVL']['DESVAR']=unicode('Nome descrittivo della move line','utf-8')
     MVL.DES['COD_CON']['DESVAR']=unicode('Codice mnemonico identificativo del conto','utf-8')
     MVL.DES['DAT_MVL']['DESVAR']=unicode('data di registrazione','utf-8')
-    MVL.DES['STA_MVL']['DESVAR']=unicode('stato della moveline in termini di validazione','utf-8')
+    MVL.DES['STA_MOV']['DESVAR']=unicode('stato della move in termini di validazione','utf-8')
     MVL.DES['DBT_MVL']['DESVAR']=unicode('colonna DARE della partita doppia','utf-8')
     MVL.DES['CRT_MVL']['DESVAR']=unicode('colonna AVERE della partita doppia','utf-8')
-    MVL.DES['TAX_COD']['DESVAR']=unicode("E' l'identificativo relativo al tax_code",'utf-8') #aggiunto da Nicola il 13/7/2012
+    MVL.DES['TAX_COD']['DESVAR']=unicode("identificativo relativo al tax_code",'utf-8')
+    MVL.DES['TAX_AMO']['DESVAR']=unicode("ammontare di tassa o imponibile",'utf-8')
+    MVL.DES['DAT_DOC']['DESVAR']=unicode("la data della fattura",'utf-8')
     path='/home/contabilita/Goal-PKL/'+Company
     MVL.DefPathPkl(path)
-    ins_blob(Company, 'STK', path+'/MVL.pickle', MVL)
-    #MVL.Dumpk('MVL.pickle')
+    #ins_blob(Company, 'STK', path+'/MVL.pickle', MVL)
+    MVL.Dumpk('MVL.pickle')
 
 
 ############################################################################################
     #  importazione dei dati della classe Account Move 
     #  contenente le informazioni sulle line di scrittura contabile
     ############################################################################################
-    MOVD = {
-             'ID0_MOL' : ('id', None), 
-             'NAM_MOV' : ('name', None), 
-             'REF_MOV' : ('ref', None),
-             'DAT_MOV' : ('date', None),
-             'NAM_PRD'  : ('period', ('name', None)),
-             'NAM_JRN'  : ('journal', ('name', None)),
-             'TYPE_JRN'  : ('journal', ('type', None)), #aggiunto da Nicola il 23/7/2012
-             'NAM_IMP'  : ('company', ('name', None)),
-             'NAM_PAR'  : ('partner', ('name', None)),
-             'CHK_MOV'  : ('to_check', None),
-             'STA_MOV'  : ('state', None),
-             'DATE_DOC' : ('invoice', ('date_document', None)), #aggiunto da Nicola il 13/7/2012
-             }
-    #assegno a MOVL la classe AccountMoveLine
-    MOV = DBmap2.AccountMove
-    #costruisco il dizionario con le variabili selezionata
-    DIZ_MOV = create_dict.create_dict(MOV, MOVD)
-    DF=pandas.DataFrame(DIZ_MOV)
-    #Seleziono i dati per l'impresa Servabit
-    DF=DF[DF['NAM_IMP']==Company]
-    del DF['NAM_IMP']
-    #del DF['TYP_CON']
-    MOV=stark.StarK(DF,TYPE='elab',COD='MOV')
-    #effettuo il primo abbellimento di Stark
-    MOV.DES['ID0_MOL']['DESVAR']=unicode('ID identificativo della move','utf-8')
-    MOV.DES['NAM_MOV']['DESVAR']=unicode('Nome descrittivo della move','utf-8')
-    MOV.DES['NAM_PAR']['DESVAR']=unicode('Partner associato alla move','utf-8')
-    MOV.DES['DATE_DOC']['DESVAR']=unicode("E' la data della fattura (se la move è associata ad una fattura)",'utf-8')
-    path='/home/contabilita/Goal-PKL/'+Company
-    MOV.DefPathPkl(path)
-    ins_blob(Company, 'STK', path+'/MOV.pickle', MOV)
+    #MOVD = {
+             #'ID0_MOL' : ('id', None), 
+             #'NAM_MOV' : ('name', None), 
+             #'REF_MOV' : ('ref', None),
+             #'DAT_MOV' : ('date', None),
+             #'NAM_PRD'  : ('period', ('name', None)),
+             #'NAM_JRN'  : ('journal', ('name', None)),
+             #'TYPE_JRN'  : ('journal', ('type', None)), #aggiunto da Nicola il 23/7/2012
+             #'NAM_IMP'  : ('company', ('name', None)),
+             #'NAM_PAR'  : ('partner', ('name', None)),
+             #'CHK_MOV'  : ('to_check', None),
+             #'STA_MOV'  : ('state', None),
+             #'DATE_DOC' : ('invoice', ('date_document', None)), #aggiunto da Nicola il 13/7/2012
+             #}
+    ##assegno a MOVL la classe AccountMoveLine
+    #MOV = DBmap2.AccountMove
+    ##costruisco il dizionario con le variabili selezionata
+    #DIZ_MOV = create_dict.create_dict(MOV, MOVD)
+    #DF=pandas.DataFrame(DIZ_MOV)
+    ##Seleziono i dati per l'impresa Servabit
+    #DF=DF[DF['NAM_IMP']==Company]
+    #del DF['NAM_IMP']
+    ##del DF['TYP_CON']
+    #MOV=stark.StarK(DF,TYPE='elab',COD='MOV')
+    ##effettuo il primo abbellimento di Stark
+    #MOV.DES['ID0_MOL']['DESVAR']=unicode('ID identificativo della move','utf-8')
+    #MOV.DES['NAM_MOV']['DESVAR']=unicode('Nome descrittivo della move','utf-8')
+    #MOV.DES['NAM_PAR']['DESVAR']=unicode('Partner associato alla move','utf-8')
+    #MOV.DES['DATE_DOC']['DESVAR']=unicode("E' la data della fattura (se la move è associata ad una fattura)",'utf-8')
+    #path='/home/contabilita/Goal-PKL/'+Company
+    #MOV.DefPathPkl(path)
+    ##ins_blob(Company, 'STK', path+'/MOV.pickle', MOV)
     #MOV.Dumpk('MOV.pickle')
 
 ############################################################################################
@@ -203,8 +212,8 @@ def CreateDWComp(Company):
     PAR.DES['IVA_PAR']['DESVAR']=unicode('Partita IVA del partner','utf-8')
     path='/home/contabilita/Goal-PKL/'+Company
     PAR.DefPathPkl(path)
-    ins_blob(Company, 'STK', path+'/PAR.pickle', PAR)
-    #PAR.Dumpk('PAR.pickle')
+    #ins_blob(Company, 'STK', path+'/PAR.pickle', PAR)
+    PAR.Dumpk('PAR.pickle')
     
     
     ############################################################################################
@@ -231,12 +240,12 @@ def CreateDWComp(Company):
     #del DF['TYP_CON']
     TAX=stark.StarK(DF,TYPE='elab',COD='TAX')
     #effettuo il primo abbellimento di Stark
-    TAX.DES['NAM_TAX']['DESVAR']=unicode("E' il nome della tassa",'utf-8')
-    TAX.DES['TAX_CODE']['DESVAR']=unicode("E' l'identificativo del tax_code di tassa",'utf-8')
-    TAX.DES['BASE_CODE']['DESVAR']=unicode("E' l'identificativo del tax_code di imponibile",'utf-8')
-    TAX.DES['REF_TAX_CODE']['DESVAR']=unicode("E' l'identificativo del tax_code di tassa (per le note di credito)",'utf-8')
-    TAX.DES['REF_BASE_CODE']['DESVAR']=unicode("E' l'identificativo del tax_code di imponibile (per le note di credito)",'utf-8')
+    TAX.DES['NAM_TAX']['DESVAR']=unicode("nome della tassa",'utf-8')
+    TAX.DES['TAX_CODE']['DESVAR']=unicode("identificativo del tax_code di tassa",'utf-8')
+    TAX.DES['BASE_CODE']['DESVAR']=unicode("identificativo del tax_code di imponibile",'utf-8')
+    TAX.DES['REF_TAX_CODE']['DESVAR']=unicode("identificativo del tax_code di tassa (per le note di credito)",'utf-8')
+    TAX.DES['REF_BASE_CODE']['DESVAR']=unicode("identificativo del tax_code di imponibile (per le note di credito)",'utf-8')
     path='/home/contabilita/Goal-PKL/'+Company
     TAX.DefPathPkl(path)
-    ins_blob(Company, 'STK', path+'/TAX.pickle', TAX)
-    #TAX.Dumpk('TAX.pickle')
+    #ins_blob(Company, 'STK', path+'/TAX.pickle', TAX)
+    TAX.Dumpk('TAX.pickle')
