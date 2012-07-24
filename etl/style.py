@@ -48,15 +48,15 @@ def style(df, gov):
     return: StarK object  
     '''
     
-    def check_aggreg(aggreg, datyp, el):
-        if aggreg == True:
+    def check_vartype(vartype, datyp, el):
+        if vartype == True:
             if datyp != 'str':
-                raise TypeError("%s : 'AGGREG' is True but 'DATYP' not 'str'" %el)
+                raise TypeError("%s : 'VARTYPE' is True but 'DATYP' not 'str'" %el)
         return True
             
     def set_des_rec(rec):
         rec_des = {}
-        rec_des['AGGREG'] = rec['AGGREG']
+        rec_des['VARTYPE'] = rec['VARTYPE']
         rec_des['DASTR'] = rec['DASTR']
         rec_des['DESVAR'] = rec['DESVAR']
         rec_des['MUNIT'] = rec['MUNIT']
@@ -64,15 +64,15 @@ def style(df, gov):
         return rec_des
     
     def check_columns(df, col):
+        '''
+        confronto df e col
+        '''
         df_col = df.columns.tolist()
         for item in col:
-            iter_df = iter(df_col)
-            item_df = iter_df.next()
-            while (item != item_df):
-                try:
-                    item_df = iter_df.next()
-                except StopIteration:
-                    raise KeyError("Columns in gov not in df")
+            try:
+                df_col.index(item)
+            except ValueError:
+                raise ValueError("Columns in gov not in df")
         return True
             
     
@@ -81,14 +81,15 @@ def style(df, gov):
     col = []    
     for el in gov.iterkeys():
         rec = gov[el]
-        check_aggreg(rec['AGGREG'], rec['DATYP'], el)
+        #import ipdb; ipdb.set_trace()
+        check_vartype(rec['VARTYPE'], rec['DATYP'], el)
         des[rec['NAME']] = set_des_rec(rec)
         ren[el] = rec['NAME']
         col.append(el)
     check_columns(df, col)
     df = pandas.DataFrame(df, columns = col)
     df = df.rename(columns = ren)
-    goal2stark = stark.StarK(df, 'elab', COD = 'goal2stark', )
+    goal2stark = stark.StarK(df, 'elab' )
     goal2stark.DES = des
     return goal2stark
     
