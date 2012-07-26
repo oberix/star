@@ -36,7 +36,7 @@ from sqlalchemy import create_engine, Column, String, Integer, Sequence, Foreign
 import logging
 
 # Servabit libraries
-PathPr="/home/contabilita/Star-0.0/"
+PathPr="/home/contabilita/star_branch/"
 sys.path.append(PathPr)   
 sys.path=list(set(sys.path)) 
 import config
@@ -45,7 +45,7 @@ import config
 #genero una classe di nome Base da usare con SQLAlchemy
 Base = declarative_base()
 #definisco ikl file di configurazione
-filepath = '/home/contabilita/Star-0.0/ETL/Goal2Stark/goal2stark.cfg'
+filepath = '/home/contabilita/star_branch/etl/goal2stark.cfg'
 #istanzio un oggeto conf sulla base del file di configurazione
 conf = config.Config(filepath)
 #effettuo la lettura dei dati del file di configurazione
@@ -68,6 +68,7 @@ class IrSequence(Base):
     
     #one2many
     journals = relationship("AccountJournal")
+    company = relationship("ResCompany")
     
     
 class ResCompany(Base):
@@ -142,6 +143,7 @@ class AccountFiscalyear(Base):
     
     #one2many
     periods = relationship("AccountPeriod")
+    company = relationship("ResCompany")
         
     
 class AccountPeriod(Base):
@@ -164,6 +166,7 @@ class AccountPeriod(Base):
     
     fiscalyear_id = Column(Integer, ForeignKey('account_fiscalyear.id'), nullable=False)
     fiscalyear = relationship("AccountFiscalyear")
+    company = relationship("ResCompany")
     
     
 class AccountAccountType(Base):
@@ -281,6 +284,7 @@ class AccountVoucher(Base):
 
     partner = relationship("ResPartner",  uselist=False)
     move = relationship("AccountMove",  uselist=False)
+    company = relationship("ResCompany")
 
 
 
@@ -319,6 +323,7 @@ class AccountInvoice(Base):
     
     move = relationship("AccountMove",  uselist=False)
     partner = relationship("ResPartner",  uselist=False)
+    company = relationship("ResCompany")
 
     
 class AccountMove(Base):

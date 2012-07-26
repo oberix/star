@@ -17,424 +17,294 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
 #
 ##############################################################################
+import os
 import sys
+import pandas
+from stark import StarK
 from decimal import Decimal
+
 
 '''
 funzione per il calcolo dei registri iva
 '''
-def getVatRegisterLines(companyName, sequenceNames, onlyValidatedMoves, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode, periodName=None, fiscalyearName=None):
-    lines=[]
+def getVatRegister(picklesPath, companyName, sequenceName, onlyValidatedMoves, periodName=None, fiscalyearName=None):
+    if not periodName and not fiscalyearName:
+        raise RuntimeError("Errore: i parametri periodName e fiscalyearName non devono essere entrambi nulli")
     
-    if type(periodIds) is int:
-        periodIds=[periodIds]
+    companyPathPkl = os.path.join(picklesPath,companyName)
     
-    #get journal ids
-    sequences=session.query(IrSequence).filter(IrSequence.name.in_(sequenceNames),IrSequence.company_id==companyId).all()
-    if not sequences:
-        raise RuntimeError('there are not '+str(sequenceNames)+' sequences for company with id='+str(companyId))
-    journalIds=[]
-    for seq in sequences:
-        for journal in seq.journals:
-            journalIds.append(journal.id)
+    starkTax=StarK.Loadk(companyPathPkl,"TAX.pickle")
+    starkMoveLine=StarK.Loadk(companyPathPkl,"MVL.pickle")
+    df0 = starkMoveLine.DF
+    del df0["ID0_MVL"]
+    del df0["CHK_MOV"]
+    del df0["NAM_REC"]
+    del df0["CRT_MVL"]
+    del df0["DBT_MVL"]
+    del df0["NAM_CON"]
+    del df0["NAM_JRN"]
+    del df0["NAM_MVL"]
+    del df0["REF_MVL"]
     
-    #get moves
-    moves=[]
+    
+    df1 = df0.ix[df0['NAM_SEQ']==sequenceName].ix[df0['TAX_COD'].notnull()]
+    if periodName:
+        df1 = df1.ix[df1['NAM_PRD']==periodName]
+    if fiscalyearName:
+        df1 = df1.ix[df1['NAM_FY']==fiscalyearName]
     if onlyValidatedMoves:
-        moves=session.query(AccountMove).filter(
-                                    AccountMove.company_id==companyId,
-                                    AccountMove.journal_id.in_(journalIds),
-                                    AccountMove.state=='posted',
-                                    AccountMove.period_id.in_(periodIds)
-                                    ).\
-                                    order_by(AccountMove.date,AccountMove.id).all()
-    else:
-        moves=session.query(AccountMove).filter(
-                                    AccountMove.company_id==companyId,
-                                    AccountMove.journal_id.in_(journalIds),
-                                    AccountMove.period_id.in_(periodIds)
-                                    ).\
-                                    order_by(AccountMove.date,AccountMove.id).all()
-    
-    #for each move
-    processedMoves=[]
-    for move in moves:
-        isTaxMove=False
-        
-        for ml in move.move_lines:
-            if ml.tax_code_id:
-                isTaxMove=True
-                isTaxAmountMl=False
-                isRefundTax=(ml.journal.type=='sale_refund' or ml.journal.type=='purchase_refund')
-                tax=False                    
-                if not isRefundTax:
-                    tax=session.query(AccountTax).filter(AccountTax.tax_code_id==ml.tax_code_id).first()
-                else:
-                    tax=session.query(AccountTax).filter(AccountTax.ref_tax_code_id==ml.tax_code_id).first()
-                if tax:
-                    #verify if the vat is immediate or deferred and if is not deductible
-                    #immediate_vat=True
-                    #not_deductible_tax=True
-                    #if ml.account_id.code==deferredVatCreditAccountCode or ml.account_id.code==deferredVatDebitAccountCode:
-                        #immediate_vat=False
-                        #not_deductible_tax=False
-                    #if ml.account_id.code==immediateVatCreditAccountCode or ml.account_id.code==immediateVatDebitAccountCode:
-                        #not_deductible_tax=False
-                    
-                    baseCodeId=False
-                    if not isRefundTax:
-                        baseCodeId=tax.base_code_id
-                    else:
-                        baseCodeId=tax.ref_base_code_id
-                        
-                    taxable_amount=Decimal('0.00')
-                    for ml2 in move.move_lines:
-                        if ml2.tax_code_id==baseCodeId:
-                            taxable_amount+=ml2.tax_amount
-                            
-                    #create report line data
-                    reportLineData={}                        
-                    #if the move has not already been processed
-                    if(processedMoves.count(move.id)==0):
-                        processedMoves.append(move.id)
-                    
-                        moveNameSplits=move.name.split("/")
-                        reportLineData['protocol_number']=moveNameSplits[len(moveNameSplits)-1]
-                        reportLineData['partner_name']=move.partner.name
-                        reportLineData['reference']=move.ref
-                        
-                        document_date=move._get_date_document().strftime("%d-%m-%Y")
-                        reportLineData['document_date']=document_date
-                        
-                        date_registration=move.date.strftime("%d-%m-%Y")
-                        reportLineData['date_registration']=date_registration         
-                    else:
-                        reportLineData['protocol_number']=""
-                        reportLineData['partner_name']=""
-                        reportLineData['reference']=""
-                        reportLineData['document_date']=""
-                        reportLineData['date_registration']=""
-                        
-                    reportLineData['tax_name']=ml.name
-                    reportLineData['taxable_amount']=taxable_amount
-                    reportLineData['tax_amount']=ml.tax_amount
-                    #reportLineData['immediate_vat']=immediate_vat
-                    #reportLineData['not_deductible_tax']=not_deductible_tax
-                    reportLineData['account_code']=ml.account.code
-                    reportLineData['tax_code_id']=tax.tax_code_id
-                    lines.append(reportLineData)
-    
-        if not isTaxMove:
-            reportLineData={}
-            processedMoves.append(move.id)
-            
-            moveNameSplits=move.name.split("/")
-            reportLineData['protocol_number']=moveNameSplits[len(moveNameSplits)-1]
-            if move.partner:
-                reportLineData['partner_name']=move.partner.name
-            else:
-                reportLineData['partner_name']='N.D.'
-            reportLineData['reference']=move.ref
-            
-            document_date=move._get_date_document()
-            if document_date:
-                document_date=document_date.strftime("%d-%m-%Y")
-            reportLineData['document_date']=document_date
-            
-            date_registration=move.date.strftime("%d-%m-%Y")
-            reportLineData['date_registration']=date_registration
-            
-            reportLineData['tax_name']='N.D.'
-            reportLineData['taxable_amount']='N.D.'
-            reportLineData['tax_amount']='N.D.'
-            lines.append(reportLineData)
-    
-    return lines
+        df1 = df1.ix[df0['STA_MOV']=='posted']
+    df1 = df1.reset_index(drop=True)
+    for i in range(len(df1)):
+        row = df1[i:i+1]
+        moveName = row['NAM_MOV'][i]
+        moveNameSplits = moveName.split("/")
+        df1[i:i+1]['NAM_MOV'] = moveNameSplits[len(moveNameSplits)-1]
+    df1 = df1.sort(['DAT_MVL','NAM_MOV'])
+    del df1['STA_MOV']
+    del df1['NAM_FY']
+    del df1['NAM_SEQ']
+    del df1['NAM_PRD']
+    del df1["COD_SEQ"]
+    #merge con tasse a seconda del journal type
+    df2 = df1[df1['TYP_JRN'].isin(['sale', 'purchase'])]
+    df3 = pandas.merge(df2,starkTax.DF,how='left',left_on='TAX_COD',right_on='TAX_CODE')
 
-#calculate amounts aggregating by tax_code_id (field id of tax.code object) and code of the account
-def _getPeriodsAmounts(vat_register_lines):
-    amounts={}
-    for line in vat_register_lines:
-        tax_code_id=line.get('tax_code_id',False)
-        account_code=line.get('account_code',False)
-        if tax_code_id and account_code:
-            previous_vals=amounts.get((tax_code_id,account_code),False)
-            if previous_vals:
-                taxable_amount=previous_vals['taxable_amount']
-                tax_amount=previous_vals['tax_amount']
-                taxable_amount+=line['taxable_amount']
-                tax_amount+=line['tax_amount']
-                previous_vals['taxable_amount']=taxable_amount
-                previous_vals['tax_amount']=tax_amount
-                amounts[(tax_code_id,account_code)]=previous_vals
-            else:
-                amounts[(tax_code_id,account_code)]={
-                    'tax_name' : line['tax_name'],
-                    'taxable_amount' : line['taxable_amount'],
-                    'tax_amount' : line['tax_amount'],
-                    'account_code' : line['account_code'],
-                    }
-    return amounts
+    df4 = df1[df1['TYP_JRN'].isin(['sale_refund', 'purchase_refund'])]
+    df5 = pandas.merge(df4,starkTax.DF,how='left',left_on='TAX_COD',right_on='REF_TAX_CODE')
+
+    #concatenazione dei due df precedenti
+    df6 = pandas.concat([df3,df5])
+    df6 = df6.reset_index(drop=True)
+    df6['ST_TAX'] = 'TAX'
+    df6['ST_TAX'].ix[df6['NAM_TAX'].isnull()] = 'BASE'
+    df6 = df6.reset_index()
+
+    #aggregazione delle righe per tax_code uguale nella stessa move
+    df6['BASE_CODE'].ix[df6['BASE_CODE'].isnull()] = "-1"
+    df6['NAM_TAX'].ix[df6['NAM_TAX'].isnull()] = "NULL"
+    df6['REF_BASE_CODE'].ix[df6['REF_BASE_CODE'].isnull()] = "-1"
+    df6['REF_TAX_CODE'].ix[df6['REF_TAX_CODE'].isnull()] = "-1"
+    df6['TAX_CODE'].ix[df6['TAX_CODE'].isnull()] = "-1"
+    del df6["index"]
+    groupbyCols = list(df6.columns)
+    groupbyCols.remove('TAX_AMO')
+    df7 = df6.groupby(groupbyCols).sum()[['TAX_AMO']].reset_index()
+    df7['TAX_AMO']=df7['TAX_AMO'].map(float)
+    df7['BASE_CODE']=df7['BASE_CODE'].map(int)
+    df7['REF_BASE_CODE']=df7['REF_BASE_CODE'].map(int)
+    df7['REF_TAX_CODE']=df7['REF_TAX_CODE'].map(int)
+    df7['TAX_CODE']=df7['TAX_CODE'].map(int)
+
+    #aggiunta colonne BASE e TAX con importi di imponibile e imposta a seconda delle righe
+    df8 = pandas.pivot_table(df7,values='TAX_AMO', cols=['ST_TAX'], rows=['NAM_MOV','NAM_TAX','TAX_COD','BASE_CODE','REF_BASE_CODE','TYP_JRN','COD_CON'])
+    df8 = df8.reset_index()
+
+    df9 = df8.ix[df8['NAM_TAX']!='NULL']
+    df9 = df9.reset_index(drop=True)
+    for i in range(len(df9)):
+        row = df9[i:i+1]
+        moveName = row['NAM_MOV'][i]
+        baseCode = row['BASE_CODE'][i]
+        refBaseCode = row['REF_BASE_CODE'][i]
+        journalType = row['TYP_JRN'][i]
+        df10 = None
+        if journalType in ['sale','purchase']:
+            df10 = df8.ix[df8['NAM_MOV']==moveName].ix[df8['TAX_COD']==baseCode]
+        else:
+            df10 = df8.ix[df8['NAM_MOV']==moveName].ix[df8['TAX_COD']==refBaseCode]
+        df10 = df10.reset_index(drop=True)
+        df9[i:i+1]['BASE'] = df10[0:1]['BASE'][0]
+        
+    del df9['TAX_COD']
+    del df9['BASE_CODE']
+    del df9['REF_BASE_CODE']
+    del df9['TYP_JRN']
+
+    del df7['TAX_COD']
+    del df7['TYP_JRN']
+    del df7['BASE_CODE']
+    del df7['REF_BASE_CODE']
+    del df7['REF_TAX_CODE']
+    del df7['ST_TAX']
+    del df7['TAX_AMO']
+    del df7['TAX_CODE']
+    del df7['NAM_TAX']
+    df7 = df7.drop_duplicates()
+    
+    df10 = pandas.merge(df7,df9,on=["NAM_MOV","COD_CON"])
+    df10 = df10.sort(['DAT_MVL','NAM_MOV'])
+    df10 = df10.reset_index(drop=True)
+    previousMoveName = ""
+    for i in range(len(df10)):
+        row = df10[i:i+1]
+        moveName = row['NAM_MOV'][i]
+        if moveName==previousMoveName:
+            df10[i:i+1]['DAT_DOC'] = ''
+            df10[i:i+1]['DAT_MVL'] = ''
+            df10[i:i+1]['NAM_MOV'] = ''
+            df10[i:i+1]['NAM_PAR'] = ''
+            df10[i:i+1]['REF_MOV'] = ''
+        previousMoveName = moveName
+    vatRegister = df10[['DAT_MVL','NAM_MOV','DAT_DOC','REF_MOV','NAM_PAR','NAM_TAX','BASE','TAX','COD_CON']]
+    return vatRegister
+
 
 '''
 funzione per il calcolo dei riepiloghi iva
 '''
-def getVatSummaryResults(session, vat_register_lines, period_ids, company_id, sequence_names, onlyValidatedMoves, immediate_vat_credit_account_code, immediate_vat_debit_account_code, deferred_vat_credit_account_code, deferred_vat_debit_account_code):
-    result={}
+def getVatSummary(periodName, picklesPath, companyName, sequenceName, onlyValidatedMoves, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode):
+    df1 = getVatRegister(picklesPath, companyName, sequenceName, onlyValidatedMoves, periodName=periodName)
+    del df1['DAT_MVL']
+    del df1['NAM_MOV']
+    del df1['DAT_DOC']
+    del df1['REF_MOV']
+    del df1['NAM_PAR']
     
-    if type(sequence_names)==str or type(sequence_names)==unicode:
-        sequence_names=[sequence_names]
-    if not vat_register_lines:
-        vat_register_lines=getVatRegisterLines(session,period_ids,company_id,sequence_names,onlyValidatedMoves,immediate_vat_credit_account_code,immediate_vat_debit_account_code,deferred_vat_credit_account_code,deferred_vat_debit_account_code)
+    df1['DETRAIB'] = True
+    df1['DETRAIB'].ix[(df1['COD_CON']!=immediateVatCreditAccountCode) &
+                            (df1['COD_CON']!=immediateVatDebitAccountCode) &
+                            (df1['COD_CON']!=deferredVatCreditAccountCode) &
+                            (df1['COD_CON']!=deferredVatDebitAccountCode)
+                            ] = False
+    df1['IMMED'] = True
+    df1['IMMED'].ix[(df1['COD_CON']==deferredVatCreditAccountCode) |
+                    (df1['COD_CON']==deferredVatDebitAccountCode)
+                    ] = False
+    df1['CREDIT'] = True
+    df1['CREDIT'].ix[(df1['COD_CON']==immediateVatDebitAccountCode) |
+                    (df1['COD_CON']==deferredVatDebitAccountCode)
+                    ] = False
+    del df1['COD_CON']
+    groupbyCols = list(df1.columns)
+    groupbyCols.remove('BASE')
+    groupbyCols.remove('TAX')
+    df1 = df1.groupby(groupbyCols).sum()[['BASE','TAX']].reset_index()
     
-    #calculate amounts in the period
-    amounts_in_the_period=_getPeriodsAmounts(vat_register_lines)
-    
-    immediate_taxes_summary_lines=[]
-    deferred_taxes_summary_lines=[]
-    not_deductible_taxes_summary_lines=[]
-    
-    immediate_period_credit_taxable_amount=Decimal('0.00')
-    immediate_period_credit_tax_amount=Decimal('0.00')
-    immediate_period_debit_taxable_amount=Decimal('0.00')
-    immediate_period_debit_tax_amount=Decimal('0.00')
-    deferred_period_credit_taxable_amount=Decimal('0.00')
-    deferred_period_credit_tax_amount=Decimal('0.00')
-    deferred_period_debit_taxable_amount=Decimal('0.00')
-    deferred_period_debit_tax_amount=Decimal('0.00')
-    not_deductible_period_credit_taxable_amount=Decimal('0.00')
-    not_deductible_period_credit_tax_amount=Decimal('0.00')
-    
-    for el in amounts_in_the_period:
-        report_line={
-            'tax': '',
-            'credit_taxable_amount': '',
-            'credit_tax_amount' : '',
-            'debit_taxable_amount': '',
-            'debit_tax_amount': '',
-            }
-        
-        period_amounts=amounts_in_the_period[el]
-        if period_amounts['account_code']==immediate_vat_credit_account_code:
-            report_line['tax']=period_amounts['tax_name']
-            report_line['credit_taxable_amount']=period_amounts['taxable_amount']
-            report_line['credit_tax_amount']=period_amounts['tax_amount']
-            immediate_period_credit_taxable_amount+=period_amounts['taxable_amount']
-            immediate_period_credit_tax_amount+=period_amounts['tax_amount']
-            immediate_taxes_summary_lines.append(report_line)
-        elif period_amounts['account_code']==immediate_vat_debit_account_code:
-            report_line['tax']=period_amounts['tax_name']
-            report_line['debit_taxable_amount']=period_amounts['taxable_amount']
-            report_line['debit_tax_amount']=period_amounts['tax_amount']
-            immediate_period_debit_taxable_amount+=period_amounts['taxable_amount']
-            immediate_period_debit_tax_amount+=period_amounts['tax_amount']
-            immediate_taxes_summary_lines.append(report_line)
-        elif period_amounts['account_code']==deferred_vat_credit_account_code:
-            report_line['tax']=period_amounts['tax_name']
-            report_line['credit_taxable_amount']=period_amounts['taxable_amount']
-            report_line['credit_tax_amount']=period_amounts['tax_amount']
-            deferred_period_credit_taxable_amount+=period_amounts['taxable_amount']
-            deferred_period_credit_tax_amount+=period_amounts['tax_amount']
-            deferred_taxes_summary_lines.append(report_line)
-        elif period_amounts['account_code']==deferred_vat_debit_account_code:
-            report_line['tax']=period_amounts['tax_name']
-            report_line['debit_taxable_amount']=period_amounts['taxable_amount']
-            report_line['debit_tax_amount']=period_amounts['tax_amount']
-            deferred_period_debit_taxable_amount+=period_amounts['taxable_amount']
-            deferred_period_debit_tax_amount+=period_amounts['tax_amount']
-            deferred_taxes_summary_lines.append(report_line)
-        #otherwise it's a undeductible amounts object
+    def addTotalRow(df1,detraib=None,immed=None,credit=None):
+        df2 = df1
+        if detraib is not None:
+            df2 = df2.ix[(df2['DETRAIB']==detraib)]
         else:
-            report_line['tax']=period_amounts['tax_name']
-            report_line['credit_taxable_amount']=period_amounts['taxable_amount']
-            report_line['credit_tax_amount']=period_amounts['tax_amount']
-            not_deductible_period_credit_taxable_amount+=period_amounts['taxable_amount']
-            not_deductible_period_credit_tax_amount+=period_amounts['tax_amount']
-            not_deductible_taxes_summary_lines.append(report_line)
+            df2 = df2.ix[(df2['NAM_TAX']!='Totale')]
+            df2['DETRAIB'] = 'Null'
+        if immed is not None:
+            df2 = df2.ix[(df2['IMMED']==immed)]
+        else:
+            df2 = df2.ix[(df2['NAM_TAX']!='Totale')]
+            df2['IMMED'] = "Null"
+        if credit is not None:
+            df2 = df2.ix[(df2['CREDIT']==credit)]
+        else:
+            df2 = df2.ix[(df2['NAM_TAX']!='Totale')]
+            df2['CREDIT'] = "Null"
+        del df2['NAM_TAX']
+        groupbyCols = list(df2.columns)
+        groupbyCols.remove('BASE')
+        groupbyCols.remove('TAX')
+        df2 = df2.groupby(groupbyCols).sum()[['BASE','TAX']].reset_index()
+        df2['NAM_TAX'] = "Totale"
+        df1 = pandas.concat([df1,df2])
+        df1 = df1.reset_index(drop=True)
+        return df1
     
-    result['immediate_lines']=immediate_taxes_summary_lines
-    result['deferred_lines']=deferred_taxes_summary_lines
-    result['undeductible_lines']=not_deductible_taxes_summary_lines
+    #aggiunta totale iva immediata a credito
+    df1 = addTotalRow(df1,detraib=True,immed=True,credit=True)
+    #aggiunta totale iva immediata a debito
+    df1 = addTotalRow(df1,detraib=True,immed=True,credit=False)
+    #aggiunta totale iva differita a credito
+    df1 = addTotalRow(df1,detraib=True,immed=False,credit=True)
+    #aggiunta totale iva differita a debito
+    df1 = addTotalRow(df1,detraib=True,immed=False,credit=False)
+    #aggiunta totale iva detraibile a credito
+    df1 = addTotalRow(df1,detraib=True,credit=True)
+    #aggiunta totale iva detraibile a debito
+    df1 = addTotalRow(df1,detraib=True,credit=False)
+    #aggiunta totale iva indetraibile a credito
+    df1 = addTotalRow(df1,detraib=False,immed=True,credit=True)
+    #aggiunta totale iva indetraibile a debito
+    df1 = addTotalRow(df1,detraib=False,immed=True,credit=False)
+    #aggiunta totale iva detraibile + indetraibile a credito
+    df1 = addTotalRow(df1,credit=True)
+    #aggiunta totale iva detraibile + indetraibile a debito
+    df1 = addTotalRow(df1,credit=False)
     
-    if len(not_deductible_taxes_summary_lines)+len(deferred_taxes_summary_lines)+len(immediate_taxes_summary_lines)>0:
-        result['immediate_total']={
-            'credit_taxable_amount':immediate_period_credit_taxable_amount,
-            'credit_tax_amount' : immediate_period_credit_tax_amount,
-            'debit_taxable_amount': immediate_period_debit_taxable_amount,
-            'debit_tax_amount': immediate_period_debit_tax_amount,
-        }
-    
-        result['deferred_total']={
-            'credit_taxable_amount':deferred_period_credit_taxable_amount,
-            'credit_tax_amount' : deferred_period_credit_tax_amount,
-            'debit_taxable_amount': deferred_period_debit_taxable_amount,
-            'debit_tax_amount': deferred_period_debit_tax_amount,
-        }
-        
-        result['deductible_total']={
-            'credit_taxable_amount': immediate_period_credit_taxable_amount+deferred_period_credit_taxable_amount,
-            'credit_tax_amount' : immediate_period_credit_tax_amount+deferred_period_credit_tax_amount,
-            'debit_taxable_amount': immediate_period_debit_taxable_amount+deferred_period_debit_taxable_amount,
-            'debit_tax_amount': immediate_period_debit_tax_amount+deferred_period_debit_tax_amount,
-        }
-        
-        result['undeductible_total']={
-            'credit_taxable_amount':not_deductible_period_credit_taxable_amount,
-            'credit_tax_amount' : not_deductible_period_credit_tax_amount,
-        }
-        
-        result['deductible_plus_undeductible_total']={
-            'credit_taxable_amount': immediate_period_credit_taxable_amount+deferred_period_credit_taxable_amount+not_deductible_period_credit_taxable_amount,
-            'credit_tax_amount' : immediate_period_credit_tax_amount+deferred_period_credit_tax_amount+not_deductible_period_credit_tax_amount,
-            'debit_taxable_amount': immediate_period_debit_taxable_amount+deferred_period_debit_taxable_amount,
-            'debit_tax_amount': immediate_period_debit_tax_amount+deferred_period_debit_tax_amount,
-        }
-    
-    return result
-
-def _getVatSequenceIds(session,company_id):
-    sequences=session.query(IrSequence).filter(IrSequence.code=='RIVA',IrSequence.company_id==company_id).all()
-    sequencesIds=[]
-    for s in sequences:
-        sequencesIds.append(s.id)
-    if len(sequencesIds)==0:
-        raise RuntimeError('there are not vat sequences for company with id='+str(company_id)+". Please configure vat sequences.")
-    return sequencesIds
-    
-def _getVatSequenceNames(session,company_id):
-    sequences=session.query(IrSequence).filter(IrSequence.code=='RIVA',IrSequence.company_id==company_id).all()
-    sequenceNames=[]
-    for s in sequences:
-        sequenceNames.append(s.name)
-    if len(sequenceNames)==0:
-        raise RuntimeError('there are not vat sequences for company with id='+str(company_id)+". Please configure vat sequences.")
-    return sequenceNames
+    return df1
 
 '''
-method called for getting deferred vat payed or to pay in periods passed as argument.
-if get_payments flag is True, you're looking for deferred vat moves in search_period_ids, that have been payed in payment_period_ids
-if get_payments flag is False, you're looking for deferred vat moves in search_period_ids, that have not been payed in payment_period_ids
+funzione che restituisce l'iva differita o da pagare per il periodo (o l'anno fiscale) passati come parametro
+se searchPayments è True, si stanno cercando le fatture che sono state pagate nel periodo (o anno fiscale)
+se searchPayments è False, si stanno cercando le fatture che non sono state ancora pagate entro il periodo (o anno fiscale)
 '''
-def getDeferredVatDetailLines(session, company_id, get_payments, payment_period_ids, search_period_ids, onlyValidatedMoves, deferred_credit_account_code, deferred_debit_account_code):
+def getDeferredVatDetail(picklesPath, companyName, onlyValidatedMoves, deferredVatCreditAccountCode, deferredVatDebitAccountCode, searchPayments=False, periodName=None, fiscalyearName=None):
+    if not periodName and not fiscalyearName:
+        raise RuntimeError("Errore: i parametri periodName e fiscalyearName non devono essere entrambi nulli")
     
-    vat_sequence_ids=_getVatSequenceIds(session,company_id)
-    vat_journals=session.query(AccountJournal).filter(AccountJournal.sequence_id.in_(vat_sequence_ids)).all()
-    vat_journal_ids=[]
-    for j in vat_journals:
-        vat_journal_ids.append(j.id)
+    companyPathPkl = os.path.join(picklesPath,companyName)
     
-    debit_deferred_move_line_ids=[]
-    credit_deferred_move_line_ids=[]
-    
-    deferred_move_lines=[]
+    starkTax=StarK.Loadk(companyPathPkl,"TAX.pickle")
+    starkMoveLine=StarK.Loadk(companyPathPkl,"MVL.pickle")
+    starkPeriod=StarK.Loadk(companyPathPkl,"PERIOD.pickle")
+    df0 = starkMoveLine.DF
+    df1 = df0.ix[(df0['COD_CON']==deferredVatCreditAccountCode) | (df0['COD_CON']==deferredVatDebitAccountCode)]
     if onlyValidatedMoves:
-        deferred_move_lines=session.query(AccountMoveLine).filter(
-                                                AccountMoveLine.move.has(state='posted'),
-                                                AccountMoveLine.company_id==company_id,
-                                                AccountMoveLine.account.has(code=deferred_debit_account_code),
-                                                AccountMoveLine.period_id.in_(search_period_ids),
-                                                AccountMoveLine.journal_id.in_(vat_journal_ids),
-                                                ).order_by(AccountMoveLine.date).all()
-        deferred_move_lines.extend(session.query(AccountMoveLine).filter(
-                                        AccountMoveLine.move.has(state='posted'),
-                                        AccountMoveLine.company_id==company_id,
-                                        AccountMoveLine.account.has(code=deferred_credit_account_code),
-                                        AccountMoveLine.period_id.in_(search_period_ids),
-                                        AccountMoveLine.journal_id.in_(vat_journal_ids),
-                                        ).order_by(AccountMoveLine.date).all()
-                                    )
+        df1 = df1.ix[df0['STA_MOV']=='posted']
+
+    df1['TAX_COD'].ix[df1['TAX_COD'].isnull()] = 'NULL'
+    df1 = pandas.merge(df1,starkTax.DF,how='left',left_on='TAX_COD',right_on='TAX_CODE')
+    for i in range(len(df1)):
+        row = df1[i:i+1]
+        moveName = row['NAM_MOV'][i]
+        moveNameSplits = moveName.split("/")
+        df1[i:i+1]['NAM_MOV'] = moveNameSplits[len(moveNameSplits)-1]
+    del df1["ID0_MVL"]
+    del df1["CHK_MOV"]
+    del df1["TAX_AMO"]
+    del df1["TYP_JRN"]
+    del df1["NAM_CON"]
+    del df1["NAM_JRN"]
+    del df1["NAM_MVL"]
+    del df1["REF_MVL"]
+    del df1["REF_MOV"]
+    del df1["TAX_COD"]
+    del df1["TAX_CODE"]
+    del df1["BASE_CODE"]
+    del df1["REF_TAX_CODE"]
+    del df1["REF_BASE_CODE"]
+    
+    df2 = None
+    if searchPayments:
+        df2 = df1.ix[df1['NAM_REC'].notnull()]
+        dfWithPayments = None
+        if periodName:
+            dfWithPayments = df2.ix[df0['NAM_PRD']==periodName]
+        else:
+            dfWithPayments = df2.ix[df0['NAM_FY']==fiscalyearName]
+        dfWithPayments = dfWithPayments.ix[
+            ((dfWithPayments['COD_CON']==deferredVatCreditAccountCode) & (dfWithPayments['CRT_MVL']>0)) | 
+            ((dfWithPayments['COD_CON']==deferredVatDebitAccountCode) & (dfWithPayments['DBT_MVL']>0))
+            ]
+        dfWithoutPayments = df2.ix[
+            ((df2['COD_CON']==deferredVatCreditAccountCode) & (df2['DBT_MVL']>0)) |
+            ((df2['COD_CON']==deferredVatDebitAccountCode) & (df2['CRT_MVL']>0))
+            ]
+        dfWithPayments = dfWithPayments[['NAM_REC','DAT_MVL']]
+        dfWithPayments = dfWithPayments.rename(columns={'DAT_MVL' : 'DAT_PAY'})
+        dfWithoutPayments['AMO'] = dfWithoutPayments['DBT_MVL']
+        dfWithoutPayments['AMO'].ix[dfWithoutPayments['AMO']==0] = dfWithoutPayments['CRT_MVL']
+        dfWithoutPayments = dfWithoutPayments[['DAT_MVL','NAM_PAR','AMO','NAM_TAX','NAM_MOV','NAM_SEQ','NAM_REC']]
+        df2 = pandas.merge(dfWithPayments,dfWithoutPayments,on='NAM_REC')
+        del df2['NAM_REC']
+    #else: si stanno cercando le fatture con esigibilità differita non ancora pagate
     else:
-        deferred_move_lines=session.query(AccountMoveLine).filter(
-                                                AccountMoveLine.company_id==company_id,
-                                                AccountMoveLine.account.has(code=deferred_debit_account_code),
-                                                AccountMoveLine.period_id.in_(search_period_ids),
-                                                AccountMoveLine.journal_id.in_(vat_journal_ids),
-                                                ).order_by(AccountMoveLine.date).all()
-        deferred_move_lines.extend(session.query(AccountMoveLine).filter(
-                                        AccountMoveLine.company_id==company_id,
-                                        AccountMoveLine.account.has(code=deferred_credit_account_code),
-                                        AccountMoveLine.period_id.in_(search_period_ids),
-                                        AccountMoveLine.journal_id.in_(vat_journal_ids),
-                                        ).order_by(AccountMoveLine.date).all()
-                                    )
-                                
-    filtered_move_lines=[]
-    #filter move_lines according to reconcile_id and that belongs to validated moves
-    for line in deferred_move_lines:
-        #print "line name=%s date=%s debit=%s credit=%s tax_amount=%s" % (line.name,line.date,line.debit,line.credit,line.tax_amount)
+        df2 = df1.ix[df1['NAM_REC'].isnull()]
+        xxxxxx
         
-        has_been_payed=line.reconcile or line.reconcile_partial
-        has_been_payed_in_periods=False
-        reconcileAmount=None
-        totallyPayed=False
-        if has_been_payed:
-            reconcileAmount = Decimal(0)
-            reconcileLines = []
-            if line.reconcile:
-                reconcileLines.extend(line.reconcile.lines)
-            if line.reconcile_partial:
-                reconcileLines.extend(line.reconcile_partial.partial_lines)
-            for rec_line in reconcileLines:
-                if rec_line.id != line.id:
-                    lineAmount = rec_line.credit > 0 and rec_line.credit or rec_line.debit
-                    reconcileAmount += lineAmount
-                    payment_period = AccountPeriod.getNormalPeriods(AccountPeriod,session,rec_line.date,company_id)[0]
-                    #payment_period_id=period_obj.find(cr,uid,rec_line.date,{})[0]
-                    has_been_payed_in_periods = (payment_period_ids.count(payment_period.id)>0)
-                    line.payment_date = rec_line.date
-            totallyPayed = (reconcileAmount==line.tax_amount)
-        if get_payments and has_been_payed_in_periods:
-            line.deferred_amount = reconcileAmount
-            line.reconcile_percentage = line.deferred_amount / line.tax_amount
-            filtered_move_lines.append(line)
-        elif not get_payments and not has_been_payed_in_periods:
-            line.deferred_amount = line.tax_amount
-            filtered_move_lines.append(line)
-        elif not get_payments and has_been_payed_in_periods and not totallyPayed:
-            line.deferred_amount = line.tax_amount - reconcileAmount
-            line.reconcile_percentage = line.deferred_amount / line.tax_amount
-            filtered_move_lines.append(line)
-    
-    #build report lines
-    report_lines=[]
-    for line in filtered_move_lines:
-        #compute taxable_amount
-        taxable_amount=Decimal('0.00')
-        base_code_id=False
-        tax=False
-        if line.journal.type=='sale_refund' or line.journal.type=='purchase_refund':
-            tax=session.query(AccountTax).filter(AccountTax.ref_tax_code_id==line.tax_code_id,AccountTax.company_id==company_id).first()
-            base_code_id=tax.ref_base_code_id
-        else:
-            tax=session.query(AccountTax).filter(AccountTax.tax_code_id==line.tax_code_id,AccountTax.company_id==company_id).first()
-            base_code_id=tax.base_code_id
-                    
-        if base_code_id:
-            for m_l in line.move.move_lines:
-                if m_l.tax_code_id==base_code_id:
-                    taxable_amount+=m_l.tax_amount
+        print starkPeriod.DF
+        dfWithoutPayments = dfWithoutPayments.ix[dfWithoutPayments['NAM_REC'].isnull()]
+        print dfWithoutPayments
         
-        #taxable_amount *= line.reconcile_percentage
-        taxable_amount = taxable_amount.quantize(Decimal('.01'))
-        
-        report_line={}
-        if get_payments:
-            report_line['payment_date']=line.payment_date.strftime("%d-%m-%Y")
-        report_line['vat_register']=line.journal.sequence.name
-        report_line['protocol_number']=line.move.name
-        report_line['date_registration']=line.date.strftime("%d-%m-%Y")
-        if line.partner:
-            report_line['partner']=line.partner.name
-        else:
-            report_line['partner']='N.D.'
-        report_line['tax_name']=line.name
-        report_line['tax_code_id']=line.tax_code_id
-        report_line['account_code']=line.account.code
-        report_line['taxable_amount']=taxable_amount
-        report_line['tax_amount']=line.deferred_amount
-        report_lines.append(report_line)
-    
-    return report_lines
+    return df2
     
 
 def getDeferredVatSummaryLines(session, company_id, sequence_names, payment_period_ids, search_period_ids, onlyValidatedMoves, deferred_credit_account_code, deferred_debit_account_code):

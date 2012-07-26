@@ -29,7 +29,7 @@ Created on 11/lug/2012
 import DBmap2
 #import DBmap2
 
-def create_dict(cl_dmap2, dict_path):
+def create_dict(cl_dmap2, dict_path, company_name):
     '''
     Create dictionary with database datas from:
     @param cl_dmap2: DBmap2 class
@@ -49,15 +49,17 @@ def create_dict(cl_dmap2, dict_path):
         obj = getattr(obj, el[0])
         return obj
     
-    def get_obj(session, cl_dbmap2):
-        objs = session.query(\
-                      cl_dbmap2\
-                      ).all()
+    def get_obj(session, cl_dbmap2, company_name):
+        objs = None
+        if cl_dbmap2.company:
+            objs = session.query(cl_dbmap2).filter(cl_dbmap2.company.has(name=company_name)).all()
+        else:
+            objs = session.query(cl_dbmap2).all()
         return objs
     
     session = DBmap2.open_session()
     out_dict = {}    
-    objs = get_obj(session, cl_dmap2)
+    objs = get_obj(session, cl_dmap2, company_name)
     for key in dict_path.iterkeys():
         out_dict[key] = []
     for obj in objs:

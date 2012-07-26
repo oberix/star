@@ -70,10 +70,10 @@ def CreateDWComp(Company):
     #assegno a ACC la classe AccountAccount
     ACC = DBmap2.AccountAccount
     #costruisco il dizionario con le variabili selezionata
-    DIZ_ACC = create_dict.create_dict(ACC, ACCD)
+    DIZ_ACC = create_dict.create_dict(ACC, ACCD, Company)
     DF=pandas.DataFrame(DIZ_ACC)
     #Seleziono i dati per l'impresa Servabit
-    DF=DF[DF['NAM_IMP']==Company]
+    #DF=DF[DF['NAM_IMP']==Company]
     del DF['NAM_IMP']
     del DF['TYP_CON']
     ACC=stark.StarK(DF,TYPE='elab',COD='ACC')
@@ -122,10 +122,10 @@ def CreateDWComp(Company):
     #assegno a MOVL la classe AccountMoveLine
     MVL = DBmap2.AccountMoveLine
     #costruisco il dizionario con le variabili selezionata
-    DIZ_MVL = create_dict.create_dict(MVL, MVLD)
+    DIZ_MVL = create_dict.create_dict(MVL, MVLD, Company)
     DF=pandas.DataFrame(DIZ_MVL)
     #Seleziono i dati per l'impresa Servabit
-    DF=DF[DF['NAM_IMP']==Company]
+    #DF=DF[DF['NAM_IMP']==Company]
     del DF['NAM_IMP']
     #del DF['TYP_CON']
     MVL=stark.StarK(DF,TYPE='elab',COD='MVL')
@@ -167,10 +167,10 @@ def CreateDWComp(Company):
     ##assegno a MOVL la classe AccountMoveLine
     #MOV = DBmap2.AccountMove
     ##costruisco il dizionario con le variabili selezionata
-    #DIZ_MOV = create_dict.create_dict(MOV, MOVD)
+    #DIZ_MOV = create_dict.create_dict(MOV, MOVD, Company)
     #DF=pandas.DataFrame(DIZ_MOV)
     ##Seleziono i dati per l'impresa Servabit
-    #DF=DF[DF['NAM_IMP']==Company]
+    ##DF=DF[DF['NAM_IMP']==Company]
     #del DF['NAM_IMP']
     ##del DF['TYP_CON']
     #MOV=stark.StarK(DF,TYPE='elab',COD='MOV')
@@ -198,10 +198,10 @@ def CreateDWComp(Company):
     #assegno a MOVL la classe AccountMoveLine
     PAR = DBmap2.ResPartner
     #costruisco il dizionario con le variabili selezionata
-    DIZ_PAR = create_dict.create_dict(PAR, PARD)
+    DIZ_PAR = create_dict.create_dict(PAR, PARD, Company)
     DF=pandas.DataFrame(DIZ_PAR)
     #Seleziono i dati per l'impresa Servabit
-    DF=DF[DF['NAM_IMP']==Company]
+    #DF=DF[DF['NAM_IMP']==Company]
     del DF['NAM_IMP']
     #del DF['TYP_CON']
     PAR=stark.StarK(DF,TYPE='elab',COD='PAR')
@@ -232,10 +232,10 @@ def CreateDWComp(Company):
     #assegno a MOVL la classe AccountMoveLine
     TAX = DBmap2.AccountTax
     #costruisco il dizionario con le variabili selezionata
-    DIZ_TAX = create_dict.create_dict(TAX, TAX_D)
+    DIZ_TAX = create_dict.create_dict(TAX, TAX_D, Company)
     DF=pandas.DataFrame(DIZ_TAX)
     #Seleziono i dati per l'impresa Servabit
-    DF=DF[DF['NAM_IMP']==Company]
+    #DF=DF[DF['NAM_IMP']==Company]
     del DF['NAM_IMP']
     #del DF['TYP_CON']
     TAX=stark.StarK(DF,TYPE='elab',COD='TAX')
@@ -249,3 +249,33 @@ def CreateDWComp(Company):
     TAX.DefPathPkl(path)
     #ins_blob(Company, 'STK', path+'/TAX.pickle', TAX)
     TAX.Dumpk('TAX.pickle')
+    
+    ############################################################################################
+    #  importazione dei dati della classe AccountPeriod
+    #  contenente le informazioni sui periodi
+    ############################################################################################
+    PERIOD_D = {
+             'NAM_PRD' : ('name', None),
+             'DAT_STR' : ('date_start', None),
+             'DAT_STOP' : ('date_stop', None),
+             'NAM_FY' : ('fiscalyear', ('name', None)),
+             'NAM_IMP'  : ('company', ('name', None)),
+             }
+    #assegno a MOVL la classe AccountMoveLine
+    PERIOD = DBmap2.AccountPeriod
+    #costruisco il dizionario con le variabili selezionata
+    DIZ_PRD = create_dict.create_dict(PERIOD, PERIOD_D, Company)
+    DF=pandas.DataFrame(DIZ_PRD)
+    #Seleziono i dati per l'impresa Servabit
+    #DF=DF[DF['NAM_IMP']==Company]
+    del DF['NAM_IMP']
+    #del DF['TYP_CON']
+    PERIOD=stark.StarK(DF,TYPE='elab',COD='PERIOD')
+    #effettuo il primo abbellimento di Stark
+    PERIOD.DES['DAT_STR']['DESVAR']=unicode("data di inizio del periodo",'utf-8')
+    PERIOD.DES['DAT_STOP']['DESVAR']=unicode("data di fine del periodo",'utf-8')
+    PERIOD.DES['NAM_FY']['DESVAR']=unicode("nome dell'anno fiscale relativo al periodo",'utf-8')
+    path='/home/contabilita/Goal-PKL/'+Company
+    PERIOD.DefPathPkl(path)
+    #ins_blob(Company, 'STK', path+'/PERIOD.pickle', PERIOD)
+    PERIOD.Dumpk('PERIOD.pickle')
