@@ -71,9 +71,9 @@ class Config(object):
             }
         self._parser = self._init_parser()
 
-    def __repr__(self):
-        """ Print options dictionary instead of object. """
-        return "db_options = %s"%(repr(self.db_options))
+    # def __repr__(self):
+    #     """ Print options dictionary instead of object. """
+    #     return "db_options = %s"%(repr(self.db_options))
 
     # non-public methods
 
@@ -84,7 +84,7 @@ class Config(object):
         """
         if os.path.isabs(path):
             return path
-        return os.path.abspath(path)
+        return os.path.abspath(os.path.join(CONFIG_PATH, path))
 
     def _init_parser(self):
         """ Create an option parser and add options to it.

@@ -1,18 +1,34 @@
 # -*- coding: utf-8 -*-
+##############################################################################
+#    
+#    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
+#    Author: Marco Pattaro (<marco.pattaro@servabit.it>)
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Affero General Public License as
+#    published by the Free Software Foundation, either version 3 of the
+#    License, or (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Affero General Public License for more details.
+#
+#    You should have received a copy of the GNU Affero General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
+#
+##############################################################################
 
 import pandas
-#import sys
-#import os 
+import sys
+import os 
 import codecs
 from copy import copy
-
-#sys.path.append(os.path.abspath(os.path.dirname(__file__)))
-#import widgets
-#import template
+import re
 
 __author__ = "Marco Pattaro <marco.pattaro@servabit.it>"
 __version__ = "0.1"
-__all__ = ['LongTable']
+__all__ = ['LongTable', 'unique_list', 'escape_latex']
 
 OPEN_TEX_TAB = """\\begin{longtabu} to \\linewidth"""
 CLOSE_TEX_TAB = """\\end{longtabu}"""
@@ -28,7 +44,9 @@ FORMATS = {
 }
 
 def unique_list(list_):
-    """ Remove all duplicate elements from a list inplace, keeping the order.
+    """ Remove all duplicate elements from a list inplace, keeping the order
+    (unlike set()).
+
     @ param: list
     """
     unique = set(list_)
@@ -36,6 +54,21 @@ def unique_list(list_):
         enum = list_.count(elem)
         for i in xrange(enum - 1):
             list_.remove(elem)
+
+def escape_latex(str_in):
+    patterns = [("€", "\\officialeuro"), 
+                ("%", "\\%"), 
+                ("&", "\\&"),
+                ("\$(?!\w+)", "\\$"),
+                (">(?!\{)", "\\textgreater"),
+                ("<(?!\{)", "\\textless"),
+                ("\n", "\\\\ ")]
+    for p, subs in patterns:
+        pattern = re.compile(p)
+        m = pattern.search(str_in)
+        if m:
+            str_in = ''.join([str_in[:m.start()], subs, str_in[m.end():]])
+    return str_in
 
 class LongTable(object):
     """ Constitute a table that chan span over multiple pages """ 
@@ -52,9 +85,9 @@ class LongTable(object):
         @ param style:
 
         """
-#        super(LongTableBox, self).__init__(self, data, **kwargs)
         self._data = data
         self._ncols = len(data.LM.keys())
+
         # transpose LM
         self._align = []
         self._heading1 = []
@@ -76,6 +109,14 @@ class LongTable(object):
     # changes in the future).
 
     def _make_heading(self, level):
+        """ Create a single line of latex table header.
+        The main purpose of this method is to evaluate how to group different
+        columns in a single span and define the correct '\multicolumns' for a
+        LaTeX longtabe.
+
+        @ param level: a list of columns labels
+        @ return: str
+        """
         out = str()
         out_list = list()
         title_list = copy(level)
@@ -84,7 +125,7 @@ class LongTable(object):
             colspan = level.count(title)
             # factor to multiply to \linewidth to get the column width
             colfact = float(colspan) / float(len(self._align))
-            if title is None or title.startswith('@'):
+            if title is None or title.startswith('@v'):
                 # remove meta
                 title = str()
             out_list.append("""\multicolumn{%s}{|@{}p{%.2f\\linewidth}@{}}{\centering %s}""" % \
@@ -105,7 +146,11 @@ class LongTable(object):
         '''
         # table preamble
         out = OPEN_TEX_TAB + """ {|"""
-        colspc = 1.0/len(self._align)
+        try:
+            colspc = 1.0/len(self._align)
+        except ZeroDivisionError:
+            # empy LM case
+            colspc = 1.0
         for col in self._align:
             out += """X[%.2f,%s]|""" % (colspc, col)
         out += """} \\firsthline\n"""
@@ -121,6 +166,7 @@ class LongTable(object):
         @ return: str
 
         '''
+        # TODO: implement
         raise NotImplementedError
 
     def _make_tex_data(self):
@@ -142,32 +188,40 @@ class LongTable(object):
             # string
             end = -1
         except KeyError:
+            self._keys.remove('_FR_')
             records = self._data.DF[self._keys].to_records()
             end = None
-            
+
         for record in records:
             rowstart = str()
             if end is not None:
                 rowstart = FORMATS.get(record[end], str())
             # remove first element because it's the DF index and eventually
             # last value if it contains _FR_ values
-            record = map(lambda x : str(x), list(record)[1:end])
+#            record = map(lambda x : escape_latex(str(x).encode('utf-8')), list(record)[1:end])
+            new_record = list()
+            for elem in list(record)[1:end]:
+                if elem is None or elem == 'None':
+                    new_record.append(str())
+                else:
+                    new_record.append(escape_latex(str(elem).encode('utf-8')))
+            record = new_record
             out += rowstart + """ & """.join(record) + " \\\ \\tabucline- \n"
-        return out
+        return out.encode('utf-8')
        
     # Public
 
     def to_latex(self):
-        """ Return a string that constitute valid LaTeX code for a table.
+        """ Return a string that contains valid LaTeX code for a table.
         
         @ return: str
 
         """
         out = [
             self._make_tex_header(),
-#            self._make_tex_footer(),
+#            self._make_tex_footer(), # TODO: define
             self._make_tex_data(),
-        ]
+            ]
         out.append(CLOSE_TEX_TAB)
         out = str().join(out)
         return unicode(out, 'utf-8')
@@ -176,43 +230,56 @@ class LongTable(object):
 if __name__ == '__main__':
     """ Just a test """
 
-    class Transport:
+    BASEPATH = os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                        os.path.pardir))
+    sys.path.append(BASEPATH)
+    from share.generic_pickler import GenericPickler
+
+    class Transport(GenericPickler):
         ''' A dummy transport ''' 
         def __init__(self):
             self.DF = None
             self.LM = None
 
     data = Transport()
-    data.LM = {
-        'Paese': [0, 'l', '@v0', 'Esportatore', '@v4'],
-        'X': [1, 'c', 'Esportazioni', '@v2', 'Valori'],
-        'Q': [2, 'c', 'Esportazioni', '@v2', 'Quantità'],
-        'PX': [3, 'c','Esportazioni', '@v2', 'Prezzi'],
-        'PKD': [4, 'r', '@v1', '@v3', '\$/Kg'],
-        'PKE': [5, 'r', '@v1', '@v3', '\officialeuro/Kg'],
+
+    data.LM ={
+        'DAT_MOV': [2, 'l', '@v0', '@v1', 'Data'],
+        'ID0_MOL': [3, 'l', '@v0', '@v1', 'ID0\_MOL'],
+#         'NAM_JRN': [4, 'l', '@v0', '@v1', 'NAM\_JRN'],
+         'NAM_MOV': [5, 'l', '@v0', '@v1', 'Move name'],
+         'NAM_PAR': [6, 'l', '@v0', '@v2', 'Partner name'], 
+         'NAM_PRD': [7, 'l', '@v0', '@v2', 'NAM\_PRD'], 
+#         'REF_MOV': [8, 'l', '@v0', '@v2', 'REF\_MOV'], 
         }
-    mydict = {
-        'Paese': [1,2,3,4,5,6],
-        'X': [1,2,3,4,5,6],
-        'Q': [1,2,3,4,5,6],
-        'PX': [1,2,3,4,5,6],
-        'PKD': [1,2,3,4,5,6],
-        'PKE': [1,2,3,4,5,6], 
-        '_OR_': [5,2,1,4,0,3],
-        '_FR_': ['@bi', '@g', '@b', '@p', '@l', '@i']
-        }
-    data.DF = pandas.DataFrame(mydict)
+
+    data.DF = pandas.load('libro_giornale/aderit_ml.pkl')
+
+    data.save('libro_giornale/table.pkl')
 
     tab = LongTable(data)
     print "tab OK"
     txt = tab.to_latex()
     print "text OK"
     try:
-        fd = codecs.open('/home/mpattaro/Desktop/test/pollo.tex', mode='w', encoding='utf-8')
+        fd = codecs.open('libro_giornale/table0.tex', mode='w', encoding='utf-8')
         fd.write(txt)
     finally:
         fd.close()
     print "DONE"
+
+
+
+
+
+
+
+
+
+
+
+
+
     
 
 
