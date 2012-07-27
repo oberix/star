@@ -256,8 +256,10 @@ def CreateDWComp(Company):
     ############################################################################################
     PERIOD_D = {
              'NAM_PRD' : ('name', None),
-             'DAT_STR' : ('date_start', None),
-             'DAT_STOP' : ('date_stop', None),
+             'P_DAT_STR' : ('date_start', None),
+             'P_DAT_STOP' : ('date_stop', None),
+	     'FY_DAT_STR' : ('fiscalyear', ('date_start', None)),
+             'FY_DAT_STOP' : ('fiscalyear', ('date_stop', None)),
              'NAM_FY' : ('fiscalyear', ('name', None)),
              'NAM_IMP'  : ('company', ('name', None)),
              }
@@ -272,8 +274,10 @@ def CreateDWComp(Company):
     #del DF['TYP_CON']
     PERIOD=stark.StarK(DF,TYPE='elab',COD='PERIOD')
     #effettuo il primo abbellimento di Stark
-    PERIOD.DES['DAT_STR']['DESVAR']=unicode("data di inizio del periodo",'utf-8')
-    PERIOD.DES['DAT_STOP']['DESVAR']=unicode("data di fine del periodo",'utf-8')
+    PERIOD.DES['P_DAT_STR']['DESVAR']=unicode("data di inizio del periodo",'utf-8')
+    PERIOD.DES['P_DAT_STOP']['DESVAR']=unicode("data di fine del periodo",'utf-8')
+    PERIOD.DES['FY_DAT_STR']['DESVAR']=unicode("data di inizio dell'anno fiscale",'utf-8')
+    PERIOD.DES['FY_DAT_STOP']['DESVAR']=unicode("data di fine dell'anno fiscale",'utf-8')
     PERIOD.DES['NAM_FY']['DESVAR']=unicode("nome dell'anno fiscale relativo al periodo",'utf-8')
     path='/home/contabilita/Goal-PKL/'+Company
     PERIOD.DefPathPkl(path)

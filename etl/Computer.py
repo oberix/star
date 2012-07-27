@@ -22,6 +22,7 @@ import sys
 import pandas
 from stark import StarK
 from decimal import Decimal
+import numpy
 
 
 '''
@@ -44,8 +45,7 @@ def getVatRegister(picklesPath, companyName, sequenceName, onlyValidatedMoves, p
     del df0["NAM_CON"]
     del df0["NAM_JRN"]
     del df0["NAM_MVL"]
-    del df0["REF_MVL"]
-    
+    del df0["REF_MVL"]    
     
     df1 = df0.ix[df0['NAM_SEQ']==sequenceName].ix[df0['TAX_COD'].notnull()]
     if periodName:
@@ -181,32 +181,32 @@ def getVatSummary(periodName, picklesPath, companyName, sequenceName, onlyValida
     groupbyCols.remove('TAX')
     df1 = df1.groupby(groupbyCols).sum()[['BASE','TAX']].reset_index()
     
-    def addTotalRow(df1,detraib=None,immed=None,credit=None):
-        df2 = df1
+    def addTotalRow(df,detraib=None,immed=None,credit=None):
+        tempDf = df
         if detraib is not None:
-            df2 = df2.ix[(df2['DETRAIB']==detraib)]
+            tempDf = tempDf.ix[(tempDf['DETRAIB']==detraib)]
         else:
-            df2 = df2.ix[(df2['NAM_TAX']!='Totale')]
-            df2['DETRAIB'] = 'Null'
+            tempDf = tempDf.ix[(tempDf['NAM_TAX']!='Totale')]
+            tempDf['DETRAIB'] = 'Null'
         if immed is not None:
-            df2 = df2.ix[(df2['IMMED']==immed)]
+            tempDf = tempDf.ix[(tempDf['IMMED']==immed)]
         else:
-            df2 = df2.ix[(df2['NAM_TAX']!='Totale')]
-            df2['IMMED'] = "Null"
+            tempDf = tempDf.ix[(tempDf['NAM_TAX']!='Totale')]
+            tempDf['IMMED'] = "Null"
         if credit is not None:
-            df2 = df2.ix[(df2['CREDIT']==credit)]
+            tempDf = tempDf.ix[(tempDf['CREDIT']==credit)]
         else:
-            df2 = df2.ix[(df2['NAM_TAX']!='Totale')]
-            df2['CREDIT'] = "Null"
-        del df2['NAM_TAX']
-        groupbyCols = list(df2.columns)
+            tempDf = tempDf.ix[(tempDf['NAM_TAX']!='Totale')]
+            tempDf['CREDIT'] = "Null"
+        del tempDf['NAM_TAX']
+        groupbyCols = list(tempDf.columns)
         groupbyCols.remove('BASE')
         groupbyCols.remove('TAX')
-        df2 = df2.groupby(groupbyCols).sum()[['BASE','TAX']].reset_index()
-        df2['NAM_TAX'] = "Totale"
-        df1 = pandas.concat([df1,df2])
-        df1 = df1.reset_index(drop=True)
-        return df1
+        tempDf = tempDf.groupby(groupbyCols).sum()[['BASE','TAX']].reset_index()
+        tempDf['NAM_TAX'] = "Totale"
+        df = pandas.concat([df,tempDf])
+        df = df.reset_index(drop=True)
+        return df
     
     #aggiunta totale iva immediata a credito
     df1 = addTotalRow(df1,detraib=True,immed=True,credit=True)
@@ -243,8 +243,8 @@ def getDeferredVatDetail(picklesPath, companyName, onlyValidatedMoves, deferredV
     companyPathPkl = os.path.join(picklesPath,companyName)
     
     starkTax=StarK.Loadk(companyPathPkl,"TAX.pickle")
-    starkMoveLine=StarK.Loadk(companyPathPkl,"MVL.pickle")
     starkPeriod=StarK.Loadk(companyPathPkl,"PERIOD.pickle")
+    starkMoveLine=StarK.Loadk(companyPathPkl,"MVL.pickle")
     df0 = starkMoveLine.DF
     df1 = df0.ix[(df0['COD_CON']==deferredVatCreditAccountCode) | (df0['COD_CON']==deferredVatDebitAccountCode)]
     if onlyValidatedMoves:
@@ -258,6 +258,8 @@ def getDeferredVatDetail(picklesPath, companyName, onlyValidatedMoves, deferredV
         moveNameSplits = moveName.split("/")
         df1[i:i+1]['NAM_MOV'] = moveNameSplits[len(moveNameSplits)-1]
     del df1["ID0_MVL"]
+    del df1["STA_MOV"]
+    del df1["DAT_DOC"]
     del df1["CHK_MOV"]
     del df1["TAX_AMO"]
     del df1["TYP_JRN"]
@@ -273,366 +275,118 @@ def getDeferredVatDetail(picklesPath, companyName, onlyValidatedMoves, deferredV
     del df1["REF_BASE_CODE"]
     
     df2 = None
+    
     if searchPayments:
         df2 = df1.ix[df1['NAM_REC'].notnull()]
         dfWithPayments = None
         if periodName:
-            dfWithPayments = df2.ix[df0['NAM_PRD']==periodName]
+            dfWithPayments = df2.ix[df2['NAM_PRD']==periodName]
         else:
-            dfWithPayments = df2.ix[df0['NAM_FY']==fiscalyearName]
+            dfWithPayments = df2.ix[df2['NAM_FY']==fiscalyearName]
         dfWithPayments = dfWithPayments.ix[
             ((dfWithPayments['COD_CON']==deferredVatCreditAccountCode) & (dfWithPayments['CRT_MVL']>0)) | 
             ((dfWithPayments['COD_CON']==deferredVatDebitAccountCode) & (dfWithPayments['DBT_MVL']>0))
             ]
+        dfWithPayments = dfWithPayments[['NAM_REC','DAT_MVL']]
+        dfWithPayments = dfWithPayments.rename(columns={'DAT_MVL' : 'DAT_PAY'})
+    
         dfWithoutPayments = df2.ix[
             ((df2['COD_CON']==deferredVatCreditAccountCode) & (df2['DBT_MVL']>0)) |
             ((df2['COD_CON']==deferredVatDebitAccountCode) & (df2['CRT_MVL']>0))
             ]
-        dfWithPayments = dfWithPayments[['NAM_REC','DAT_MVL']]
-        dfWithPayments = dfWithPayments.rename(columns={'DAT_MVL' : 'DAT_PAY'})
-        dfWithoutPayments['AMO'] = dfWithoutPayments['DBT_MVL']
-        dfWithoutPayments['AMO'].ix[dfWithoutPayments['AMO']==0] = dfWithoutPayments['CRT_MVL']
-        dfWithoutPayments = dfWithoutPayments[['DAT_MVL','NAM_PAR','AMO','NAM_TAX','NAM_MOV','NAM_SEQ','NAM_REC']]
+        
+        dfWithoutPayments['DBT_MVL']=dfWithoutPayments['DBT_MVL'].map(float)
+        dfWithoutPayments['CRT_MVL']=dfWithoutPayments['CRT_MVL'].map(float)
+        dfWithoutPayments['AMO'] = numpy.where(dfWithoutPayments['CRT_MVL'] > 0.0, dfWithoutPayments['CRT_MVL'], dfWithoutPayments['DBT_MVL'])
+        dfWithoutPayments['CREDIT'] = False
+        dfWithoutPayments['CREDIT'].ix[dfWithoutPayments['DBT_MVL'] > 0] = True
+        #print dfWithoutPayments
+        dfWithoutPayments = dfWithoutPayments[['DAT_MVL','NAM_PAR','AMO','NAM_TAX','NAM_MOV','NAM_SEQ','NAM_REC','CREDIT']]
         df2 = pandas.merge(dfWithPayments,dfWithoutPayments,on='NAM_REC')
         del df2['NAM_REC']
     #else: si stanno cercando le fatture con esigibilità differita non ancora pagate
     else:
-        df2 = df1.ix[df1['NAM_REC'].isnull()]
-        xxxxxx
+        dfPeriods = starkPeriod.DF
+        dateStop = None
+        if periodName:
+            df10 = dfPeriods.ix[dfPeriods['NAM_PRD']==periodName]
+            df10 = df10.reset_index()
+            dateStop = df10['P_DAT_STOP'][0]
+        else:
+            df10 = dfPeriods.ix[dfPeriods['NAM_FY']==fiscalyearName]
+            df10 = df10.reset_index()
+            dateStop = df10[0:1]['FY_DAT_STOP'][0]
+        #calcolo delle fatture ad esig. diff. non riconciliate entro il periodo d'interesse
+        df2 = df1.ix[(df1['NAM_REC'].isnull()) & (df1['COD_SEQ']=='RIVA') & (df1['DAT_MVL'] <= dateStop)]
+        df2.reset_index()
         
-        print starkPeriod.DF
-        dfWithoutPayments = dfWithoutPayments.ix[dfWithoutPayments['NAM_REC'].isnull()]
-        print dfWithoutPayments
+        #calcolo delle fatture ad esig. diff. riconciliate ma il cui pagamento è successivo al periodo d'interesse
+        df3 = df1.ix[(df1['NAM_REC'].notnull()) & (df1['COD_SEQ']=='RIVA') & (df1['DAT_MVL'] <= dateStop)]
+        dfWithPayments = df1.ix[df1['NAM_REC'].notnull() & (df1['DAT_MVL'] <= dateStop)]        
+        dfWithPayments = dfWithPayments.ix[
+            ((dfWithPayments['COD_CON']==deferredVatCreditAccountCode) & (dfWithPayments['CRT_MVL']>0)) | 
+            ((dfWithPayments['COD_CON']==deferredVatDebitAccountCode) & (dfWithPayments['DBT_MVL']>0))
+            ]
+        dfWithPayments = dfWithPayments[['NAM_REC','DAT_MVL']]
+        dfWithPayments = dfWithPayments.rename(columns={'DAT_MVL' : 'DAT_PAY'})
+        if len(dfWithPayments)>0:
+            df4 = pandas.merge(df3,dfWithPayments,on='NAM_REC',how='left')
+            df4 = df4.ix[df4['DAT_PAY'].isnull()]
+            if len(df4)>0:
+                del df4['DAT_PAY']
+                df2 = pandas.concat([df2,df4])
+                df2 = df2.reset_index(drop=True)
         
+        #ultimi ritocchi a df2
+        df2['DBT_MVL']=df2['DBT_MVL'].map(float)
+        df2['CRT_MVL']=df2['CRT_MVL'].map(float)
+        df2['AMO'] = numpy.where(df2['CRT_MVL'] > 0.0, df2['CRT_MVL'], df2['DBT_MVL'])
+        df2['CREDIT'] = False
+        df2['CREDIT'].ix[df2['DBT_MVL'] > 0] = True
+        df2 = df2[['AMO','DAT_MVL','NAM_MOV','NAM_PAR','NAM_SEQ','NAM_TAX','CREDIT']]
+    df2 = df2.sort(['NAM_SEQ','DAT_MVL','NAM_MOV'])
     return df2
     
 
-def getDeferredVatSummaryLines(session, company_id, sequence_names, payment_period_ids, search_period_ids, onlyValidatedMoves, deferred_credit_account_code, deferred_debit_account_code):
-    '''
-    the summary considers the deferred vat moves belonging to search_period_ids and that have been payed in payment_period_ids and the deferred vat moves belonging to search_period_ids and that have not been payed in search_period_ids
-    @returns : a dictionary with two keys: 'sequences' and 'totals'. 'sequences' will be a list of dictionaries (one for each sequence). 'totals' will be a dictionary with totals values
-    '''
-    results={}
+def getDeferredVatSummary(picklesPath, companyName, onlyValidatedMoves, deferredVatCreditAccountCode, deferredVatDebitAccountCode, periodName=None, fiscalyearName=None):
+    if not periodName and not fiscalyearName:
+        raise RuntimeError("Errore: i parametri periodName e fiscalyearName non devono essere entrambi nulli")
     
-    payment_lines=getDeferredVatDetailLines(session,company_id, True, payment_period_ids, search_period_ids, onlyValidatedMoves, deferred_credit_account_code,deferred_debit_account_code)
-    not_payment_lines=getDeferredVatDetailLines(session,company_id, False, search_period_ids, search_period_ids, onlyValidatedMoves, deferred_credit_account_code,deferred_debit_account_code)
+    payments = getDeferredVatDetail(picklesPath, companyName, onlyValidatedMoves, deferredVatCreditAccountCode, deferredVatDebitAccountCode, searchPayments=True, periodName=periodName)
+    notPayed = getDeferredVatDetail(picklesPath, companyName, onlyValidatedMoves, deferredVatCreditAccountCode, deferredVatDebitAccountCode, searchPayments=False, periodName=periodName)
     
-    tax_code_ids=[]
-    for line in payment_lines:
-        if tax_code_ids.count(line['tax_code_id'])==0:
-            tax_code_ids.append(line['tax_code_id'])                
-    for line in not_payment_lines:
-        if tax_code_ids.count(line['tax_code_id'])==0:
-            tax_code_ids.append(line['tax_code_id'])
+    payments = payments[['AMO','NAM_TAX','NAM_SEQ','CREDIT']]
+    notPayed = notPayed[['AMO','NAM_TAX','NAM_SEQ','CREDIT']]
+    payments['PAYM'] = True
+    notPayed['PAYM'] = False
     
-    debit_vat_now_exigible_taxable_total=Decimal('0.00')
-    debit_vat_now_exigible_tax_total=Decimal('0.00')
-    credit_vat_now_exigible_taxable_total=Decimal('0.00')
-    credit_vat_now_exigible_tax_total=Decimal('0.00')
-    debit_vat_not_exigible_taxable_total=Decimal('0.00')
-    debit_vat_not_exigible_tax_total=Decimal('0.00')
-    credit_vat_not_exigible_taxable_total=Decimal('0.00')
-    credit_vat_not_exigible_tax_total=Decimal('0.00')
+    df1 = pandas.concat([payments,notPayed])
+    df1 = df1.reset_index(drop=True)
+    df1 = df1.sort(['NAM_SEQ'])
+    df2 = df1.drop_duplicates('NAM_SEQ')
+    df2 = df2.sort(['NAM_SEQ'])
+    sequences = list(df2['NAM_SEQ'])
     
-    result_sequences=[]
-    sequences=session.query(IrSequence).filter(IrSequence.name.in_(sequence_names)).all()
-    for vat_sequence in sequences:
-        sequence_taxes=[]
+    def addTotalRow(df,searchPayments,credit,sequenceName=None):
+        tempDf = df.ix[(df['PAYM']==searchPayments) & (df['CREDIT']==credit)]
+        if sequenceName:
+            tempDf = tempDf.ix[tempDf['NAM_SEQ']==sequenceName]
+        else:
+            tempDf['NAM_SEQ'] = 'NULL'
+        del tempDf['NAM_TAX']
+        if len(tempDf)>0:
+            tempDf = tempDf.groupby('PAYM','CREDIT','NAM_SEQ').sum()[['AMO']].reset_index()
+            tempDf['NAM_TAX'] = "Totale"
+            df = pandas.concat([df,tempDf])
+            df = df.reset_index(drop=True)
+        return df
         
-        sequence_debit_vat_now_exigible_taxable_total=Decimal('0.00')
-        sequence_debit_vat_now_exigible_tax_total=Decimal('0.00')
-        sequence_credit_vat_now_exigible_taxable_total=Decimal('0.00')
-        sequence_credit_vat_now_exigible_tax_total=Decimal('0.00')
-        sequence_debit_vat_not_exigible_taxable_total=Decimal('0.00')
-        sequence_debit_vat_not_exigible_tax_total=Decimal('0.00')
-        sequence_credit_vat_not_exigible_taxable_total=Decimal('0.00')
-        sequence_credit_vat_not_exigible_tax_total=Decimal('0.00')
-        
-        for tax_code_id in tax_code_ids:
-            payments_taxable_amount=Decimal('0.00')
-            payments_tax_amount=Decimal('0.00')
-            not_payments_taxable_amount=Decimal('0.00')
-            not_payments_tax_amount=Decimal('0.00')
-            
-            tax_name=False
-            
-            for line in payment_lines:                    
-                if tax_code_id==line['tax_code_id'] and vat_sequence.name==line['vat_register']:
-                    payments_taxable_amount+=line['taxable_amount']
-                    payments_tax_amount+=line['tax_amount']
-                    if not tax_name:
-                        tax_name=line['tax_name']
-                        
-                    if line['account_code']==deferred_credit_account_code:
-                        sequence_credit_vat_now_exigible_taxable_total+=line['taxable_amount']
-                        sequence_credit_vat_now_exigible_tax_total+=line['tax_amount']
-                    else:
-                        sequence_debit_vat_now_exigible_taxable_total+=line['taxable_amount']
-                        sequence_debit_vat_now_exigible_tax_total+=line['tax_amount']
-                    
-            for line in not_payment_lines:
-                if tax_code_id==line['tax_code_id'] and vat_sequence.name==line['vat_register']:
-                    not_payments_taxable_amount+=line['taxable_amount']
-                    not_payments_tax_amount+=line['tax_amount']
-                    if not tax_name:
-                        tax_name=line['tax_name']
-                        
-                    if line['account_code']==deferred_credit_account_code:
-                        sequence_credit_vat_not_exigible_taxable_total+=line['taxable_amount']
-                        sequence_credit_vat_not_exigible_tax_total+=line['tax_amount']
-                    else:
-                        sequence_debit_vat_not_exigible_taxable_total+=line['taxable_amount']
-                        sequence_debit_vat_not_exigible_tax_total+=line['tax_amount']
-                    
-            if payments_taxable_amount!=Decimal('0.00') or not_payments_taxable_amount!=Decimal('0.00'):
-                tax_data={
-                    'tax_name': tax_name,
-                    'payments_taxable_amount': payments_taxable_amount,
-                    'payments_tax_amount': payments_tax_amount,
-                    'not_payments_taxable_amount': not_payments_taxable_amount,
-                    'not_payments_tax_amount': not_payments_tax_amount,
-                    }
-                sequence_taxes.append(tax_data)
-                
-        
-        paid_or_received_totals={
-            'debit_taxable_amount': sequence_debit_vat_now_exigible_taxable_total,
-            'debit_tax_amount': sequence_debit_vat_now_exigible_tax_total,
-            'credit_taxable_amount': sequence_credit_vat_now_exigible_taxable_total,
-            'credit_tax_amount': sequence_credit_vat_now_exigible_tax_total,
-            }
-        
-        to_pay_or_to_receive_totals={
-            'debit_taxable_amount': sequence_debit_vat_not_exigible_taxable_total,
-            'debit_tax_amount': sequence_debit_vat_not_exigible_tax_total,
-            'credit_taxable_amount': sequence_credit_vat_not_exigible_taxable_total,
-            'credit_tax_amount': sequence_credit_vat_not_exigible_tax_total,
-            }
-        
-        result_sequences.append({
-            vat_sequence.name : {
-                'taxes': sequence_taxes,
-                'paid_received_totals': paid_or_received_totals,
-                'pay_receive_totals': to_pay_or_to_receive_totals,
-                },
-            })
-        
-        debit_vat_now_exigible_taxable_total+=sequence_debit_vat_now_exigible_taxable_total
-        debit_vat_now_exigible_tax_total+=sequence_debit_vat_now_exigible_tax_total
-        credit_vat_now_exigible_taxable_total+=sequence_credit_vat_now_exigible_taxable_total
-        credit_vat_now_exigible_tax_total+=sequence_credit_vat_now_exigible_tax_total
-        debit_vat_not_exigible_taxable_total+=sequence_debit_vat_not_exigible_taxable_total
-        debit_vat_not_exigible_tax_total+=sequence_debit_vat_not_exigible_tax_total
-        credit_vat_not_exigible_taxable_total+=sequence_credit_vat_not_exigible_taxable_total
-        credit_vat_not_exigible_tax_total+=sequence_credit_vat_not_exigible_tax_total
+    for sequence in sequences:
+        addTotalRow(df2,True,True,sequence)
+        addTotalRow(df2,True,False,sequence)
+        addTotalRow(df2,False,True,sequence)
+        addTotalRow(df2,False,False,sequence)
+   
+    print df2
     
-    results['sequences']=result_sequences
-    
-    #build 'totals' value
-    to_pay_or_to_receive_totals={
-        'debit_taxable_amount': debit_vat_not_exigible_taxable_total,
-        'debit_tax_amount': debit_vat_not_exigible_tax_total,
-        'credit_taxable_amount': credit_vat_not_exigible_taxable_total,
-        'credit_tax_amount': credit_vat_not_exigible_tax_total,
-        }
-    results['pay_receive_totals']=to_pay_or_to_receive_totals
-    
-    paid_or_received_totals={
-        'debit_taxable_amount': debit_vat_now_exigible_taxable_total,
-        'debit_tax_amount': debit_vat_now_exigible_tax_total,
-        'credit_taxable_amount': credit_vat_now_exigible_taxable_total,
-        'credit_tax_amount': credit_vat_now_exigible_tax_total,
-        }    
-    results['paid_received_totals']=paid_or_received_totals
-        
-    return results
-
-
-def getLiquidationSummaryFinalLines(session, due_or_credit_vat, company_id, period_id, treasury_vat_account_code, dict_results={}, onlyValidatedMoves=True):
-    period=session.query(AccountPeriod).filter(AccountPeriod.id==period_id).first()
-    
-    vat_in_the_period={}
-    if due_or_credit_vat<=0:     
-        vat_in_the_period['credit']=-due_or_credit_vat
-    else:
-        vat_in_the_period['debit']=due_or_credit_vat
-    dict_results['vat_in_the_period']=vat_in_the_period
-    
-    treasury_vat_account=session.query(AccountAccount).filter(AccountAccount.code==treasury_vat_account_code,AccountAccount.company_id==company_id).first()
-    treasury_vat_account_totals=AccountAccount.computeAmount(AccountAccount, session, treasury_vat_account, ['debit','credit'], period.fiscalyear.date_start, period.date_stop, onlyValidatedMoves)
-    treasury_vat_account_balance=Decimal('0.00')
-    treasury_vat_account_balance+=treasury_vat_account_totals['debit']
-    treasury_vat_account_balance-=treasury_vat_account_totals['credit']
-    
-    previous_period_results={}
-    if treasury_vat_account_balance>0:
-        previous_period_results['debit']=treasury_vat_account_balance
-    else:
-        previous_period_results['credit']=-treasury_vat_account_balance
-    due_or_credit_vat+=treasury_vat_account_balance
-    dict_results['previous_period_results']=previous_period_results
-    
-    
-    due_or_credit_vat_dict={}
-    if due_or_credit_vat>=0:
-        due_or_credit_vat_dict['debit']=due_or_credit_vat
-    else:
-        due_or_credit_vat_dict['credit']=-due_or_credit_vat
-    dict_results['due_or_credit_vat']=due_or_credit_vat_dict
-    
-    if len(period.fiscalyear.periods)==4 and due_or_credit_vat>0:
-        interests=(due_or_credit_vat/Decimal(100)).quantize(Decimal('.01'))
-        
-        interests_dict={
-            'debit' : interests
-            }
-        dict_results['interests']=interests_dict
-    
-        due_or_credit_vat_with_interest={
-            'debit' : due_or_credit_vat+interests,
-            }
-        dict_results['due_or_credit_vat_with_interest']=due_or_credit_vat_with_interest
-    
-    return dict_results
-
-
-def getVatLiquidationSummaryLines(session, period_id, company_id, onlyValidatedMoves, immediate_vat_credit_account_code, immediate_vat_debit_account_code, deferred_vat_credit_account_code, deferred_vat_debit_account_code, treasury_vat_account_code):
-    results={}
-    
-    sequence_names=_getVatSequenceNames(session, company_id)
-    
-    #calculate immediate vat lines
-    credit_vat_total=Decimal('0.00')
-    debit_vat_total=Decimal('0.00')
-    immediate_vat_amounts=[]
-    for sequence_name in sequence_names:
-        vat_summary_results=getVatSummaryResults(session, False, [period_id], company_id, sequence_name, onlyValidatedMoves, immediate_vat_credit_account_code, immediate_vat_debit_account_code, deferred_vat_credit_account_code, deferred_vat_debit_account_code)
-        immediate_total=vat_summary_results.get('immediate_total',False)
-        if immediate_total:
-            immediate_vat_amounts.append({
-                'sequence_name': sequence_name,
-                'debit': immediate_total['debit_tax_amount'],
-                'credit': immediate_total['credit_tax_amount'],
-                })
-            credit_vat_total+=immediate_total['credit_tax_amount']
-            debit_vat_total+=immediate_total['debit_tax_amount']
-    results['immediate_vat_amounts']=immediate_vat_amounts
-    
-    deferred_credit_vat_total=Decimal('0.00')
-    deferred_debit_vat_total=Decimal('0.00')
-    search_period_ids=AccountPeriod.getPreviousPeriodIdsUntilXyears(AccountPeriod,session,period_id,2,company_id)
-    search_period_ids.append(period_id)
-    deferred_vat_summary_results=getDeferredVatSummaryLines(session, company_id, sequence_names, [period_id], search_period_ids, onlyValidatedMoves, deferred_vat_credit_account_code, deferred_vat_debit_account_code)
-    deferred_vat_amounts={
-        'debit': deferred_vat_summary_results['paid_received_totals']['debit_tax_amount'],
-        'credit': deferred_vat_summary_results['paid_received_totals']['credit_tax_amount'],
-        }
-    deferred_credit_vat_total+=deferred_vat_amounts['credit']
-    deferred_debit_vat_total+=deferred_vat_amounts['debit']
-    results['deferred_vat_amounts']=deferred_vat_amounts
-
-    debit_sum=debit_vat_total+deferred_debit_vat_total
-    credit_sum=credit_vat_total+deferred_credit_vat_total
-    vat_totals_amounts={
-        'debit': debit_sum,
-        'credit': credit_sum,
-        }
-    results['vat_totals_amounts']=vat_totals_amounts
-    
-    due_or_credit_vat=debit_sum-credit_sum
-    
-    final_lines=getLiquidationSummaryFinalLines(session, due_or_credit_vat, company_id, period_id, treasury_vat_account_code, dict_results=results, onlyValidatedMoves=onlyValidatedMoves)
-    
-    return results
-    
-def getControlSummaryVatLines(session, vatSummaryResults, sequence_names, company_id, fiscalyear_id, onlyValidatedMoves, immediate_vat_credit_account_code, immediate_vat_debit_account_code, deferred_vat_credit_account_code, deferred_vat_debit_account_code):
-    results={}
-    
-    immediate_vat_total_line=vatSummaryResults['immediate_total']
-    deferred_vat_total_line=vatSummaryResults['deferred_total']
-        
-    credit_vat_now_exigible_taxable_amount_from_previous_exercise=Decimal('0.00')
-    credit_vat_now_exigible_tax_amount_from_previous_exercise=Decimal('0.00')
-    debit_vat_now_exigible_taxable_amount_from_previous_exercise=Decimal('0.00')
-    debit_vat_now_exigible_tax_amount_from_previous_exercise=Decimal('0.00')
-        
-    period_ids=[]
-    fiscalyear=session.query(AccountFiscalyear).filter(AccountFiscalyear.id==fiscalyear_id).first()
-    if fiscalyear:
-        for p in fiscalyear.periods:
-            period_ids.append(p.id)
-    year_before=AccountFiscalyear.findYearBefore(AccountFiscalyear,session,fiscalyear_id)
-    credit_line=False
-    debit_line=False
-    if year_before:
-        periods_before=session.query(AccountPeriod).filter(AccountPeriod.fiscalyear_id==year_before.id).all()
-        periods_before_ids=[]
-        for p in periods_before:
-            periods_before_ids.append(p.id)
-        
-        deferred_summary_results=getDeferredVatSummaryLines(session, company_id, sequence_names, period_ids, periods_before_ids, onlyValidatedMoves, deferred_vat_credit_account_code, deferred_vat_debit_account_code)
-        for sequence in deferred_summary_results['sequences']:
-            sequence_name=sequence.keys()[0]
-            if sequence_names.count(sequence_name)>0:
-                debit_vat_now_exigible_taxable_amount_from_previous_exercise+=sequence[sequence.keys()[0]]['paid_received_totals']['debit_taxable_amount']
-                debit_vat_now_exigible_tax_amount_from_previous_exercise+=sequence[sequence.keys()[0]]['paid_received_totals']['debit_tax_amount']
-                credit_vat_now_exigible_taxable_amount_from_previous_exercise+=sequence[sequence.keys()[0]]['paid_received_totals']['credit_taxable_amount']
-                credit_vat_now_exigible_tax_amount_from_previous_exercise+=sequence[sequence.keys()[0]]['paid_received_totals']['credit_tax_amount']
-                
-    #append deferred vat now exigible from previous exercise
-    previous_exercise_deferred_vat_now_exigible_amounts={
-        'debit_taxable': debit_vat_now_exigible_taxable_amount_from_previous_exercise,
-        'debit_tax': debit_vat_now_exigible_tax_amount_from_previous_exercise,
-        'credit_taxable': credit_vat_now_exigible_taxable_amount_from_previous_exercise,
-        'credit_tax': credit_vat_now_exigible_tax_amount_from_previous_exercise,
-        }
-    results['previous_exercise_deferred_vat_now_exigible_amounts']=previous_exercise_deferred_vat_now_exigible_amounts
-    
-        
-    credit_vat_now_exigible_taxable_amount_current_exercise=Decimal('0.00')
-    credit_vat_now_exigible_tax_amount_current_exercise=Decimal('0.00')
-    debit_vat_now_exigible_taxable_amount_current_exercise=Decimal('0.00')
-    debit_vat_now_exigible_tax_amount_current_exercise=Decimal('0.00')
-        
-    deferred_summary_results=getDeferredVatSummaryLines(session, company_id, sequence_names, period_ids, period_ids, onlyValidatedMoves, deferred_vat_credit_account_code, deferred_vat_debit_account_code)
-    for sequence in deferred_summary_results['sequences']:
-        sequence_name=sequence.keys()[0]
-        if sequence_names.count(sequence_name)>0:
-            debit_vat_now_exigible_taxable_amount_current_exercise+=sequence[sequence.keys()[0]]['paid_received_totals']['debit_taxable_amount']
-            debit_vat_now_exigible_tax_amount_current_exercise+=sequence[sequence.keys()[0]]['paid_received_totals']['debit_tax_amount']
-            credit_vat_now_exigible_taxable_amount_current_exercise+=sequence[sequence.keys()[0]]['paid_received_totals']['credit_taxable_amount']
-            credit_vat_now_exigible_tax_amount_current_exercise+=sequence[sequence.keys()[0]]['paid_received_totals']['credit_tax_amount']
-    
-    current_exercise_deferred_vat_now_exigible_amounts={
-        'debit_taxable': debit_vat_now_exigible_taxable_amount_current_exercise,
-        'debit_tax': debit_vat_now_exigible_tax_amount_current_exercise,
-        'credit_taxable': credit_vat_now_exigible_taxable_amount_current_exercise,
-        'credit_tax': credit_vat_now_exigible_tax_amount_current_exercise,
-        }
-    results['current_exercise_deferred_vat_now_exigible_amounts']=current_exercise_deferred_vat_now_exigible_amounts
-    
-    deferred_vat_now_exigible_total_amounts={
-        'debit_taxable': debit_vat_now_exigible_taxable_amount_current_exercise+debit_vat_now_exigible_taxable_amount_from_previous_exercise,
-        'debit_tax': debit_vat_now_exigible_tax_amount_current_exercise+debit_vat_now_exigible_tax_amount_from_previous_exercise,
-        'credit_taxable': credit_vat_now_exigible_taxable_amount_current_exercise+credit_vat_now_exigible_taxable_amount_from_previous_exercise,
-        'credit_tax': credit_vat_now_exigible_tax_amount_current_exercise+credit_vat_now_exigible_tax_amount_from_previous_exercise,
-        }
-    results['deferred_vat_now_exigible_total_amounts']=deferred_vat_now_exigible_total_amounts
-    
-    vat_now_exigible_total_amounts={
-        'debit_taxable': deferred_vat_now_exigible_total_amounts['debit_taxable']+immediate_vat_total_line['debit_taxable_amount'],
-        'debit_tax': deferred_vat_now_exigible_total_amounts['debit_tax']+immediate_vat_total_line['debit_tax_amount'],
-        'credit_taxable': deferred_vat_now_exigible_total_amounts['credit_taxable']+immediate_vat_total_line['credit_taxable_amount'],
-        'credit_tax': deferred_vat_now_exigible_total_amounts['credit_tax']+immediate_vat_total_line['credit_tax_amount'],
-        }
-    results['vat_now_exigible_total_amounts']=vat_now_exigible_total_amounts
-    
-    deferred_vat_to_require_in_next_exercise={
-        'debit_taxable': deferred_vat_total_line['debit_taxable_amount']-debit_vat_now_exigible_taxable_amount_current_exercise,
-        'debit_tax': deferred_vat_total_line['debit_tax_amount']-debit_vat_now_exigible_tax_amount_current_exercise,
-        'credit_taxable': deferred_vat_total_line['credit_taxable_amount']-credit_vat_now_exigible_taxable_amount_current_exercise,
-        'credit_tax': deferred_vat_total_line['credit_tax_amount']-credit_vat_now_exigible_tax_amount_current_exercise,
-        }
-    results['deferred_vat_to_require_in_next_exercise']=deferred_vat_to_require_in_next_exercise
-
-    return results
+    return 0

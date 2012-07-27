@@ -101,74 +101,19 @@ def main(dirname):
         #deferred vat detail
         elif reportType==4:            
             payments = Computer.getDeferredVatDetail(picklesPath, companyName, onlyValidatedMoves, deferredVatCreditAccountCode, deferredVatDebitAccountCode, searchPayments=True, periodName=periodName)
-            notPayments = Computer.getDeferredVatDetail(picklesPath, companyName, onlyValidatedMoves, deferredVatCreditAccountCode, deferredVatDebitAccountCode, searchPayments=False, periodName=periodName)
+            notPayed = Computer.getDeferredVatDetail(picklesPath, companyName, onlyValidatedMoves, deferredVatCreditAccountCode, deferredVatDebitAccountCode, searchPayments=False, periodName=periodName)
             
+            print payments
+            print notPayed
+            transportPayments = Transport(DF=payments,TIP='tab',LM=lm.lm_pagamenti_iva_differita)
+            transportNotPayed = Transport(DF=notPayed,TIP='tab',LM=lm.lm_da_pagare_iva_differita)
             pdfFileName="DettaglioIVAEsigibDifferita"+companyName+string.replace(periodName," ","")
             
-        ##deferred vat summary
-        #elif reportType==5:
-            #sequenceNames=IrSequence.getVatSequencesNames(IrSequence,dbSession,company.id)
-            #searchPeriodIds=AccountPeriod.getPreviousPeriodIdsUntilXyears(AccountPeriod,dbSession,periodIds[0],2,company.id)
-            #searchPeriodIds.append(periodIds[0])
+        #deferred vat summary
+        elif reportType==5:
+            deferredVatSummary=Computer.getDeferredVatSummary(picklesPath, companyName, onlyValidatedMoves, deferredVatCreditAccountCode, deferredVatDebitAccountCode, periodName=periodName)
             
-            #results=Computer.getDeferredVatSummaryLines(dbSession, company.id, sequenceNames, [periodIds[0]], searchPeriodIds, onlyValidatedMoves, deferredVatCreditAccountCode, deferredVatDebitAccountCode)
-            
-            ##build tex document part
-            #headerFileWrapper.appendTex(TexCodeCreator.getFancyStyleTex(0,0,640,0,0))
-            #documentFileWrapper.appendTexLine("\\raggedleft\\large\\textbf{Riepilogo IVA ad esigibilita\' differita\\\\}")
-            #documentFileWrapper.appendTexLine("\\raggedright\\footnotesize "+ResCompany.getCompanyHeaderTex(ResCompany,dbSession,company.id)+"\\\\[15pt]")
-            #documentFileWrapper.appendTexLine("Periodo: "+periodName+"\\\\[15pt]")
-            
-            ##print sequences table
-            #documentFileWrapper.appendTexLine("Riepilogo")
-            #documentFileWrapper.appendTexLine("\\begin{longtable}[l]{|p{10.7cm}|p{3.6cm}|r|r|}")
-            #documentFileWrapper.appendTexLine("\\hline")
-            #documentFileWrapper.appendTexLine("Registro IVA & & Imponibile & Imposta \\\\ \\hline")
-            #for sequence in results['sequences']:
-                #values=sequence[sequence.keys()[0]]
-                #documentFileWrapper.appendTexLine("\\multicolumn{4}{|l|}{"+sequence.keys()[0]+"} \\\\ \\hline")                
-                
-                #for tax in values['taxes']:
-                    #documentFileWrapper.appendTexLine("\\multirow{2}{*}{"+TexCodeCreator.getPrintableTexString(tax['tax_name'])+"}")
-                    #row=('Incassata o pagata',tax['payments_taxable_amount'],tax['payments_tax_amount'])
-                    #documentFileWrapper.appendTexLine("& "+TexCodeCreator.getTableRowTex(row,horizontalSeparator=False)+" \\cline{2-4}")
-                    #row=('Da incassare o pagare',tax['not_payments_taxable_amount'],tax['not_payments_tax_amount'])
-                    #documentFileWrapper.appendTexLine("& "+TexCodeCreator.getTableRowTex(row,horizontalSeparator=False)+" \\cline{1-4}")
-                    
-                #documentFileWrapper.appendTexLine("\\multirow{2}{*}{Totale IVA incassata o pagata}")
-                #row=('A debito',values['paid_received_totals']['debit_taxable_amount'],values['paid_received_totals']['debit_tax_amount'])
-                #documentFileWrapper.appendTexLine("& "+TexCodeCreator.getTableRowTex(row,horizontalSeparator=False)+" \\cline{2-4}")
-                #row=('A credito',values['paid_received_totals']['credit_taxable_amount'],values['paid_received_totals']['credit_tax_amount'])
-                #documentFileWrapper.appendTexLine("& "+TexCodeCreator.getTableRowTex(row,horizontalSeparator=False)+" \\cline{1-4}")
-                
-                #documentFileWrapper.appendTexLine("\\multirow{2}{*}{Totale IVA da incassare o pagare}")
-                #row=('A debito',values['pay_receive_totals']['debit_taxable_amount'],values['pay_receive_totals']['debit_tax_amount'])
-                #documentFileWrapper.appendTexLine("& "+TexCodeCreator.getTableRowTex(row,horizontalSeparator=False)+" \\cline{2-4}")
-                #row=('A credito',values['pay_receive_totals']['credit_taxable_amount'],values['pay_receive_totals']['credit_tax_amount'])
-                #documentFileWrapper.appendTexLine("& "+TexCodeCreator.getTableRowTex(row,horizontalSeparator=False)+" \\hline")
-            #documentFileWrapper.appendTexLine("\\end{longtable}")
-            
-            ##print synthesis table
-            #documentFileWrapper.appendTexLine("\\vspace{10 mm}")
-            #documentFileWrapper.appendTexLine("Sintesi")
-            #documentFileWrapper.appendTexLine("\\begin{longtable}[l]{|p{5cm}|p{3.5cm}|r|r|}")
-            #documentFileWrapper.appendTexLine("\\hline")
-            
-            #documentFileWrapper.appendTexLine("\\multirow{2}{*}{Totale IVA incassata o pagata}")
-            #row=('A debito',results['paid_received_totals']['debit_taxable_amount'],results['paid_received_totals']['debit_tax_amount'])
-            #documentFileWrapper.appendTexLine("& "+TexCodeCreator.getTableRowTex(row,horizontalSeparator=False)+" \\cline{2-4}")
-            #row=('A credito',results['paid_received_totals']['credit_taxable_amount'],results['paid_received_totals']['credit_tax_amount'])
-            #documentFileWrapper.appendTexLine("& "+TexCodeCreator.getTableRowTex(row,horizontalSeparator=False)+" \\hline")
-            
-            #documentFileWrapper.appendTexLine("\\multirow{2}{*}{Totale IVA da incassare o pagare}")
-            #row=('A debito',results['pay_receive_totals']['debit_taxable_amount'],results['pay_receive_totals']['debit_tax_amount'])
-            #documentFileWrapper.appendTexLine("& "+TexCodeCreator.getTableRowTex(row,horizontalSeparator=False)+" \\cline{2-4}")
-            #row=('A credito',results['pay_receive_totals']['credit_taxable_amount'],results['pay_receive_totals']['credit_tax_amount'])
-            #documentFileWrapper.appendTexLine("& "+TexCodeCreator.getTableRowTex(row,horizontalSeparator=False)+" \\hline")
-            
-            #documentFileWrapper.appendTexLine("\\end{longtable}")
-            
-            #pdfFileName="RiepilogoIVAEsigibDifferita"+company.name+string.replace(periodName," ","")
+            pdfFileName="RiepilogoIVAEsigibDifferita"+companyName+string.replace(periodName," ","")
             
         ##vat liquidation
         #elif reportType==6:
