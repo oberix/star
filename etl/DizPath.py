@@ -114,6 +114,7 @@ def CreateDWComp(Company):
              'DBT_MVL'  : ('debit', None),
              'CRT_MVL'  : ('credit', None),
              'NAM_REC'  : ('reconcile', ('name', None)),
+             'NAM_REC_P'  : ('reconcile_partial', ('name', None)),
              'TAX_COD'  : ('tax_code_id', None), 
              'TAX_AMO'  : ('tax_amount', None), 
              'NAM_SEQ'  : ('journal', ('sequence', ('name', None))), 
@@ -255,14 +256,14 @@ def CreateDWComp(Company):
     #  contenente le informazioni sui periodi
     ############################################################################################
     PERIOD_D = {
-             'NAM_PRD' : ('name', None),
-             'P_DAT_STR' : ('date_start', None),
-             'P_DAT_STOP' : ('date_stop', None),
-	     'FY_DAT_STR' : ('fiscalyear', ('date_start', None)),
-             'FY_DAT_STOP' : ('fiscalyear', ('date_stop', None)),
-             'NAM_FY' : ('fiscalyear', ('name', None)),
-             'NAM_IMP'  : ('company', ('name', None)),
-             }
+                'NAM_PRD' : ('name', None),
+                'P_DAT_STR' : ('date_start', None),
+                'P_DAT_STOP' : ('date_stop', None),
+                'FY_DAT_STR' : ('fiscalyear', ('date_start', None)),
+                'FY_DAT_STOP' : ('fiscalyear', ('date_stop', None)),
+                'NAM_FY' : ('fiscalyear', ('name', None)),
+                'NAM_IMP'  : ('company', ('name', None)),
+                }
     #assegno a MOVL la classe AccountMoveLine
     PERIOD = DBmap2.AccountPeriod
     #costruisco il dizionario con le variabili selezionata
@@ -283,3 +284,30 @@ def CreateDWComp(Company):
     PERIOD.DefPathPkl(path)
     #ins_blob(Company, 'STK', path+'/PERIOD.pickle', PERIOD)
     PERIOD.Dumpk('PERIOD.pickle')
+
+    ############################################################################################
+    #  importazione dei dati della classe IrSequence
+    #  contenente le informazioni sui periodi
+    ############################################################################################
+    #SEQ_D = {
+            #'NAM_SEQ' : ('name', None),
+            #'COD_SEQ' : ('code', None),
+            #'NAM_IMP'  : ('company', ('name', None)),
+            #}
+    ##assegno a MOVL la classe AccountMoveLine
+    #SEQUENCE = DBmap2.IrSequence
+    ##costruisco il dizionario con le variabili selezionata
+    #DIZ_SEQ = create_dict.create_dict(SEQUENCE, SEQ_D, Company)
+    #DF=pandas.DataFrame(DIZ_SEQ)
+    ##Seleziono i dati per l'impresa Servabit
+    ##DF=DF[DF['NAM_IMP']==Company]
+    #del DF['NAM_IMP']
+    ##del DF['TYP_CON']
+    #SEQUENCE=stark.StarK(DF,TYPE='elab',COD='SEQUENCE')
+    ##effettuo il primo abbellimento di Stark
+    #SEQUENCE.DES['COD_SEQ']['DESVAR']=unicode("codice della sequenza",'utf-8')
+    #SEQUENCE.DES['NAM_SEQ']['DESVAR']=unicode("nome della sequenza",'utf-8')
+    #path='/home/contabilita/Goal-PKL/'+Company
+    #SEQUENCE.DefPathPkl(path)
+    ##ins_blob(Company, 'STK', path+'/SEQUENCE.pickle', SEQUENCE)
+    #SEQUENCE.Dumpk('SEQUENCE.pickle')

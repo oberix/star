@@ -84,75 +84,38 @@ def main(dirname):
             pdfFileName = "RegistroIVA"+string.replace(sequenceName," ","")+companyName+string.replace(fiscalyearName," ","")
         #vat summary
         elif reportType==2:
-            vatSummary=Computer.getVatSummary(periodName, picklesPath, companyName, sequenceName, onlyValidatedMoves, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode)
+            vatSummary=Computer.getVatSummary(picklesPath, companyName, sequenceName, onlyValidatedMoves, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode, periodName=periodName)
             print vatSummary
             pdfFileName="RiepilogoIVA"+string.replace(sequenceName," ","")+companyName+string.replace(periodName," ","")
-            
         #vat detail
         elif reportType==3:
             vatRegister = Computer.getVatRegister(picklesPath, companyName, sequenceName, onlyValidatedMoves, periodName=periodName)
             print vatRegister
             transportRIva = Transport(DF=vatRegister,TIP='tab',LM=lm.lm_registri_iva)
-            vatSummary=Computer.getVatSummary(periodName, picklesPath, companyName, sequenceName, onlyValidatedMoves, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode)
+            vatSummary=Computer.getVatSummary(picklesPath, companyName, sequenceName, onlyValidatedMoves, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode, periodName=periodName)
             print vatSummary
-            
-            pdfFileName="DettaglioIVA"+string.replace(sequences[0]," ","")+companyName+string.replace(periodName," ","")
-            
+            pdfFileName="DettaglioIVA"+string.replace(sequenceName," ","")+companyName+string.replace(periodName," ","")
         #deferred vat detail
         elif reportType==4:            
             payments = Computer.getDeferredVatDetail(picklesPath, companyName, onlyValidatedMoves, deferredVatCreditAccountCode, deferredVatDebitAccountCode, searchPayments=True, periodName=periodName)
             notPayed = Computer.getDeferredVatDetail(picklesPath, companyName, onlyValidatedMoves, deferredVatCreditAccountCode, deferredVatDebitAccountCode, searchPayments=False, periodName=periodName)
-            
             print payments
             print notPayed
             transportPayments = Transport(DF=payments,TIP='tab',LM=lm.lm_pagamenti_iva_differita)
             transportNotPayed = Transport(DF=notPayed,TIP='tab',LM=lm.lm_da_pagare_iva_differita)
             pdfFileName="DettaglioIVAEsigibDifferita"+companyName+string.replace(periodName," ","")
-            
         #deferred vat summary
         elif reportType==5:
-            deferredVatSummary=Computer.getDeferredVatSummary(picklesPath, companyName, onlyValidatedMoves, deferredVatCreditAccountCode, deferredVatDebitAccountCode, periodName=periodName)
-            
+            deferredVatSummary = Computer.getDeferredVatSummary(picklesPath, companyName, onlyValidatedMoves, deferredVatCreditAccountCode, deferredVatDebitAccountCode, periodName=periodName)
+            print deferredVatSummary
             pdfFileName="RiepilogoIVAEsigibDifferita"+companyName+string.replace(periodName," ","")
-            
-        ##vat liquidation
-        #elif reportType==6:
-            #results=Computer.getVatLiquidationSummaryLines(dbSession, periodIds[0], company.id, onlyValidatedMoves, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode, treasuryVatAccountCode)
-            
-            ##build tex document part
-            #headerFileWrapper.appendTex(TexCodeCreator.getFancyStyleTex(0,0,640,0,0))
-            #documentFileWrapper.appendTexLine("\\raggedleft\\large\\textbf{Prospetto liquidazione IVA\\\\}")
-            #documentFileWrapper.appendTexLine("\\raggedright\\footnotesize "+ResCompany.getCompanyHeaderTex(ResCompany,dbSession,company.id)+"\\\\[15pt]")
-            #documentFileWrapper.appendTexLine("Periodo: "+periodName+"\\\\")
-            
-            #documentFileWrapper.appendTexLine("\\footnotesize")
-            #documentFileWrapper.appendTexLine("\\begin{longtable}[l]{|p{6cm}|p{7cm}|r|r|}")
-            #documentFileWrapper.appendTexLine("\\hline")
-            #documentFileWrapper.appendTexLine("\\multicolumn{2}{|c|}{} & IVA a debito & IVA a credito \\\\ \\hline")
-            ##append immediate vat lines
-            #documentFileWrapper.appendTexLine("\\multirow{"+str(len(results['immediate_vat_amounts']))+"}{*}{IVA ad esigibilita\' immediata}")
-            #for i in range(0,len(results['immediate_vat_amounts'])):
-                #immediate_amounts=results['immediate_vat_amounts'][i]
-                #row=(immediate_amounts['sequence_name'],immediate_amounts['debit'],immediate_amounts['credit'])
-                #documentFileWrapper.appendTex("& "+TexCodeCreator.getTableRowTex(row,horizontalSeparator=False))
-                #if i<len(results['immediate_vat_amounts'])-1:
-                    #documentFileWrapper.appendTexLine(" \\cline{2-4}")
-                #else:
-                    #documentFileWrapper.appendTexLine(" \\hline")
-            ##append deferred vat lines
-            #deferredVatResults=results['deferred_vat_amounts']
-            #documentFileWrapper.appendTexLine("\\multicolumn{2}{|l|}{IVA esigibile da esigibilita\' differita} & "+str(deferredVatResults.get('debit',''))+" & "+str(deferredVatResults.get('credit',''))+" \\\\ \\hline")
-            ##append total line
-            #documentFileWrapper.appendTexLine("\\multicolumn{2}{|l|}{Totale} & "+str(results['vat_totals_amounts']['debit'])+" & "+str(results['vat_totals_amounts']['credit'])+" \\\\ \\hline")
-            ##append empty line
-            #documentFileWrapper.appendTexLine("\\multicolumn{4}{|l|}{} \\\\ \\hline")
+        #vat liquidation
+        elif reportType==6:
+            liquidationSummary = Computer.getVatLiquidationSummary(picklesPath, companyName, onlyValidatedMoves, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode, treasuryVatAccountCode, periodName=periodName)
             
             #_printLiquidationSummaryFinalRows(results,documentFileWrapper)
                         
-            #documentFileWrapper.appendTexLine("\\end{longtable}")
-            
-            #pdfFileName="ProspettoLiquidazioneIVA"+company.name+string.replace(periodName," ","")
-            
+            pdfFileName="ProspettoLiquidazioneIVA"+companyName+string.replace(periodName," ","")
         ##exercise control summary
         #elif reportType==7:
             #sequenceNames=IrSequence.getVatSequencesNames(IrSequence,dbSession,company.id)
