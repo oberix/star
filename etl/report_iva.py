@@ -79,8 +79,8 @@ def main(dirname):
             pdfFileName="DettaglioIVA"+string.replace(sequenceName," ","")+companyName+string.replace(periodName," ","")
         #deferred vat detail
         elif reportType==4:            
-            payments = Computer.getDeferredVatDetail(picklesPath, companyName, onlyValidatedMoves, deferredVatCreditAccountCode, deferredVatDebitAccountCode, searchPayments=True, periodName=periodName)
-            notPayed = Computer.getDeferredVatDetail(picklesPath, companyName, onlyValidatedMoves, deferredVatCreditAccountCode, deferredVatDebitAccountCode, searchPayments=False, periodName=periodName)
+            payments = Computer.getDeferredVatDetail(picklesPath, companyName, onlyValidatedMoves, deferredVatCreditAccountCode, deferredVatDebitAccountCode, searchPayments=True, paymentsPeriodName=periodName)
+            notPayed = Computer.getDeferredVatDetail(picklesPath, companyName, onlyValidatedMoves, deferredVatCreditAccountCode, deferredVatDebitAccountCode, searchPayments=False, paymentsPeriodName=periodName)
             print payments
             print notPayed
             transportPayments = Transport(DF=payments,TIP='tab',LM=lm.lm_pagamenti_iva_differita)
@@ -88,7 +88,7 @@ def main(dirname):
             pdfFileName="DettaglioIVAEsigibDifferita"+companyName+string.replace(periodName," ","")
         #deferred vat summary
         elif reportType==5:
-            deferredVatSummary = Computer.getDeferredVatSummary(picklesPath, companyName, onlyValidatedMoves, deferredVatCreditAccountCode, deferredVatDebitAccountCode, periodName=periodName)
+            deferredVatSummary = Computer.getDeferredVatSummary(picklesPath, companyName, onlyValidatedMoves, deferredVatCreditAccountCode, deferredVatDebitAccountCode, paymentsPeriodName=periodName)
             print deferredVatSummary
             pdfFileName="RiepilogoIVAEsigibDifferita"+companyName+string.replace(periodName," ","")
         #vat liquidation
@@ -99,15 +99,9 @@ def main(dirname):
         #exercise control summary
         elif reportType==7:
             vatSummary = Computer.getVatSummary(picklesPath, companyName, onlyValidatedMoves, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode, fiscalyearName=fiscalyearName)
-            print vatSummary
-            xxxx
-            vatControlSummary = Computer.getVatControlSummary()
-            #vatSummaryResults=Computer.getVatSummaryResults(dbSession, False, periodIds, company.id, sequenceNames, onlyValidatedMoves, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode)
-            #controlSummaryResults=Computer.getControlSummaryVatLines(dbSession, vatSummaryResults, sequenceNames, company.id, fiscalyear.id, onlyValidatedMoves, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode)
-            
-            
-            
-            
+            #print vatSummary
+            vatControlSummary = Computer.getVatControlSummary(fiscalyearName, vatSummary, picklesPath, companyName, onlyValidatedMoves, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode)
+                        
             pdfFileName="ProspettoControlloEsercizio"+companyName+string.replace(fiscalyearName," ","")
             
     except:
