@@ -92,13 +92,3 @@ def style(df, gov):
     goal2stark = stark.StarK(df, 'elab' )
     goal2stark.DES = des
     return goal2stark
-    
-        
-        
-        
-        
-        
-        
-        
-        
-            

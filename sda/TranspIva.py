@@ -30,11 +30,14 @@ import getopt
     #os.path.dirname(os.path.abspath(sys.argv[0])),
     #os.path.pardir, os.path.pardir, 'lib')
 #sys.path.append(LIBRARY_PATH)
-
+PathPr="/home/contabilita/star_branch/share/" #dir che contiene il config.py
+sys.path.append(PathPr)   
+sys.path=list(set(sys.path)) 
+import config
 from config import Config
 from Transport import Transport
-import Computer
-import lm
+import SDAIva
+import CreateLMIva
 
 def main(dirname):
     config = Config()
@@ -60,47 +63,47 @@ def main(dirname):
     try:
         #vat registers
         if reportType==1:
-            vatRegister = Computer.getVatRegister(picklesPath, companyName, onlyValidatedMoves, fiscalyearName=fiscalyearName, sequenceName=sequenceName)
+            vatRegister = SDAIva.getVatRegister(picklesPath, companyName, onlyValidatedMoves, fiscalyearName=fiscalyearName, sequenceName=sequenceName)
             print vatRegister
-            transportRIva = Transport(DF=vatRegister,TIP='tab',LM=lm.lm_registri_iva)
+            transportRIva = Transport(DF=vatRegister,TIP='tab',LM=CreateLMIva.lm_registri_iva)
             pdfFileName = "RegistroIVA"+string.replace(sequenceName," ","")+companyName+string.replace(fiscalyearName," ","")
         #vat summary
         elif reportType==2:
-            vatSummary=Computer.getVatSummary(picklesPath, companyName, onlyValidatedMoves, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode, periodName=periodName, sequenceName=sequenceName)
+            vatSummary=SDAIva.getVatSummary(picklesPath, companyName, onlyValidatedMoves, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode, periodName=periodName, sequenceName=sequenceName)
             print vatSummary
             pdfFileName="RiepilogoIVA"+string.replace(sequenceName," ","")+companyName+string.replace(periodName," ","")
         #vat detail
         elif reportType==3:
-            vatRegister = Computer.getVatRegister(picklesPath, companyName, onlyValidatedMoves, periodName=periodName, sequenceName=sequenceName)
+            vatRegister = SDAIva.getVatRegister(picklesPath, companyName, onlyValidatedMoves, periodName=periodName, sequenceName=sequenceName)
             print vatRegister
-            transportRIva = Transport(DF=vatRegister,TIP='tab',LM=lm.lm_registri_iva)
-            vatSummary=Computer.getVatSummary(picklesPath, companyName, onlyValidatedMoves, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode, periodName=periodName, sequenceName=sequenceName)
+            transportRIva = Transport(DF=vatRegister,TIP='tab',LM=CreateLMIva.lm_registri_iva)
+            vatSummary=SDAIva.getVatSummary(picklesPath, companyName, onlyValidatedMoves, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode, periodName=periodName, sequenceName=sequenceName)
             print vatSummary
             pdfFileName="DettaglioIVA"+string.replace(sequenceName," ","")+companyName+string.replace(periodName," ","")
         #deferred vat detail
         elif reportType==4:            
-            payments = Computer.getDeferredVatDetail(picklesPath, companyName, onlyValidatedMoves, deferredVatCreditAccountCode, deferredVatDebitAccountCode, searchPayments=True, paymentsPeriodName=periodName)
-            notPayed = Computer.getDeferredVatDetail(picklesPath, companyName, onlyValidatedMoves, deferredVatCreditAccountCode, deferredVatDebitAccountCode, searchPayments=False, paymentsPeriodName=periodName)
+            payments = SDAIva.getDeferredVatDetail(picklesPath, companyName, onlyValidatedMoves, deferredVatCreditAccountCode, deferredVatDebitAccountCode, searchPayments=True, paymentsPeriodName=periodName)
+            notPayed = SDAIva.getDeferredVatDetail(picklesPath, companyName, onlyValidatedMoves, deferredVatCreditAccountCode, deferredVatDebitAccountCode, searchPayments=False, paymentsPeriodName=periodName)
             print payments
             print notPayed
-            transportPayments = Transport(DF=payments,TIP='tab',LM=lm.lm_pagamenti_iva_differita)
-            transportNotPayed = Transport(DF=notPayed,TIP='tab',LM=lm.lm_da_pagare_iva_differita)
+            transportPayments = Transport(DF=payments,TIP='tab',LM=CreateLMIva.lm_pagamenti_iva_differita)
+            transportNotPayed = Transport(DF=notPayed,TIP='tab',LM=CreateLMIva.lm_da_pagare_iva_differita)
             pdfFileName="DettaglioIVAEsigibDifferita"+companyName+string.replace(periodName," ","")
         #deferred vat summary
         elif reportType==5:
-            deferredVatSummary = Computer.getDeferredVatSummary(picklesPath, companyName, onlyValidatedMoves, deferredVatCreditAccountCode, deferredVatDebitAccountCode, paymentsPeriodName=periodName)
+            deferredVatSummary = SDAIva.getDeferredVatSummary(picklesPath, companyName, onlyValidatedMoves, deferredVatCreditAccountCode, deferredVatDebitAccountCode, paymentsPeriodName=periodName)
             print deferredVatSummary
             pdfFileName="RiepilogoIVAEsigibDifferita"+companyName+string.replace(periodName," ","")
         #vat liquidation
         elif reportType==6:
-            liquidationSummary = Computer.getVatLiquidationSummary(picklesPath, companyName, onlyValidatedMoves, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode, treasuryVatAccountCode, periodName=periodName)
+            liquidationSummary = SDAIva.getVatLiquidationSummary(picklesPath, companyName, onlyValidatedMoves, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode, treasuryVatAccountCode, periodName=periodName)
             print liquidationSummary
             pdfFileName="ProspettoLiquidazioneIVA"+companyName+string.replace(periodName," ","")
         #exercise control summary
         elif reportType==7:
-            vatSummary = Computer.getVatSummary(picklesPath, companyName, onlyValidatedMoves, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode, fiscalyearName=fiscalyearName)
+            vatSummary = SDAIva.getVatSummary(picklesPath, companyName, onlyValidatedMoves, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode, fiscalyearName=fiscalyearName)
             #print vatSummary
-            vatControlSummary = Computer.getVatControlSummary(fiscalyearName, vatSummary, picklesPath, companyName, onlyValidatedMoves, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode)
+            vatControlSummary = SDAIva.getVatControlSummary(fiscalyearName, vatSummary, picklesPath, companyName, onlyValidatedMoves, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode)
                         
             pdfFileName="ProspettoControlloEsercizio"+companyName+string.replace(fiscalyearName," ","")
             

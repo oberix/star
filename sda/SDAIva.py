@@ -58,11 +58,6 @@ def getVatRegister(picklesPath, companyName, onlyValidatedMoves, sequenceName=No
     if onlyValidatedMoves:
         df1 = df1.ix[df0['STA_MOV']=='posted']
     df1 = df1.reset_index(drop=True)
-    for i in range(len(df1)):
-        row = df1[i:i+1]
-        moveName = row['NAM_MOV'][i]
-        moveNameSplits = moveName.split("/")
-        df1[i:i+1]['NAM_MOV'] = moveNameSplits[len(moveNameSplits)-1]
     df1 = df1.sort(['DAT_MVL','NAM_MOV'])
     del df1['STA_MOV']
     del df1['NAM_FY']
@@ -82,7 +77,6 @@ def getVatRegister(picklesPath, companyName, onlyValidatedMoves, sequenceName=No
     df6['ST_TAX'] = 'TAX'
     df6['ST_TAX'].ix[df6['NAM_TAX'].isnull()] = 'BASE'
     df6 = df6.reset_index()
-
     #aggregazione delle righe per tax_code uguale nella stessa move
     df6['BASE_CODE'].ix[df6['BASE_CODE'].isnull()] = "-1"
     df6['NAM_TAX'].ix[df6['NAM_TAX'].isnull()] = "NULL"
@@ -92,66 +86,66 @@ def getVatRegister(picklesPath, companyName, onlyValidatedMoves, sequenceName=No
     del df6["index"]
     groupbyCols = list(df6.columns)
     groupbyCols.remove('TAX_AMO')
-    df7 = df6.groupby(groupbyCols).sum()[['TAX_AMO']].reset_index()
-    df7['TAX_AMO']=df7['TAX_AMO'].map(float)
-    df7['BASE_CODE']=df7['BASE_CODE'].map(int)
-    df7['REF_BASE_CODE']=df7['REF_BASE_CODE'].map(int)
-    df7['REF_TAX_CODE']=df7['REF_TAX_CODE'].map(int)
-    df7['TAX_CODE']=df7['TAX_CODE'].map(int)
+    if len(df6)>0:
+        df7 = df6.groupby(groupbyCols).sum()[['TAX_AMO']].reset_index()
+        df7['TAX_AMO']=df7['TAX_AMO'].map(float)
+        df7['BASE_CODE']=df7['BASE_CODE'].map(int)
+        df7['REF_BASE_CODE']=df7['REF_BASE_CODE'].map(int)
+        df7['REF_TAX_CODE']=df7['REF_TAX_CODE'].map(int)
+        df7['TAX_CODE']=df7['TAX_CODE'].map(int)
 
-    #aggiunta colonne BASE e TAX con importi di imponibile e imposta a seconda delle righe
-    df8 = pandas.pivot_table(df7,values='TAX_AMO', cols=['ST_TAX'], 
-                    rows=['NAM_MOV','NAM_TAX','TAX_COD','BASE_CODE','REF_BASE_CODE','TYP_JRN','COD_CON'])
-    df8 = df8.reset_index()
+        #aggiunta colonne BASE e TAX con importi di imponibile e imposta a seconda delle righe
+        df8 = pandas.pivot_table(df7,values='TAX_AMO', cols=['ST_TAX'], 
+                        rows=['NAM_MOV','NAM_TAX','TAX_COD','BASE_CODE','REF_BASE_CODE','TYP_JRN','COD_CON'])
+        df8 = df8.reset_index()
 
-    df9 = df8.ix[df8['NAM_TAX']!='NULL']
-    df9 = df9.reset_index(drop=True)
-    for i in range(len(df9)):
-        row = df9[i:i+1]
-        moveName = row['NAM_MOV'][i]
-        baseCode = row['BASE_CODE'][i]
-        refBaseCode = row['REF_BASE_CODE'][i]
-        journalType = row['TYP_JRN'][i]
-        df10 = None
-        if journalType in ['sale','purchase']:
-            df10 = df8.ix[df8['NAM_MOV']==moveName].ix[df8['TAX_COD']==baseCode]
-        else:
-            df10 = df8.ix[df8['NAM_MOV']==moveName].ix[df8['TAX_COD']==refBaseCode]
+        df9 = df8.ix[df8['NAM_TAX']!='NULL']
+        df9 = df9.reset_index(drop=True)
+        for i in range(len(df9)):
+            row = df9[i:i+1]
+            moveName = row['NAM_MOV'][i]
+            baseCode = row['BASE_CODE'][i]
+            refBaseCode = row['REF_BASE_CODE'][i]
+            journalType = row['TYP_JRN'][i]
+            df10 = None
+            if journalType in ['sale','purchase']:
+                df10 = df8.ix[df8['NAM_MOV']==moveName].ix[df8['TAX_COD']==baseCode]
+            else:
+                df10 = df8.ix[df8['NAM_MOV']==moveName].ix[df8['TAX_COD']==refBaseCode]
+            df10 = df10.reset_index(drop=True)
+            df9[i:i+1]['BASE'] = df10[0:1]['BASE'][0]
+        del df9['TAX_COD']
+        del df9['BASE_CODE']
+        del df9['REF_BASE_CODE']
+        del df9['TYP_JRN']
+        del df7['TAX_COD']
+        del df7['TYP_JRN']
+        del df7['BASE_CODE']
+        del df7['REF_BASE_CODE']
+        del df7['REF_TAX_CODE']
+        del df7['ST_TAX']
+        del df7['TAX_AMO']
+        del df7['TAX_CODE']
+        del df7['NAM_TAX']
+        df7 = df7.drop_duplicates()
+        df10 = pandas.merge(df7,df9,on=["NAM_MOV","COD_CON"])
+        df10 = df10.sort(['DAT_MVL','NAM_MOV'])
         df10 = df10.reset_index(drop=True)
-        df9[i:i+1]['BASE'] = df10[0:1]['BASE'][0]
-        
-    del df9['TAX_COD']
-    del df9['BASE_CODE']
-    del df9['REF_BASE_CODE']
-    del df9['TYP_JRN']
-
-    del df7['TAX_COD']
-    del df7['TYP_JRN']
-    del df7['BASE_CODE']
-    del df7['REF_BASE_CODE']
-    del df7['REF_TAX_CODE']
-    del df7['ST_TAX']
-    del df7['TAX_AMO']
-    del df7['TAX_CODE']
-    del df7['NAM_TAX']
-    df7 = df7.drop_duplicates()
-    
-    df10 = pandas.merge(df7,df9,on=["NAM_MOV","COD_CON"])
-    df10 = df10.sort(['DAT_MVL','NAM_MOV'])
-    df10 = df10.reset_index(drop=True)
-    previousMoveName = ""
-    for i in range(len(df10)):
-        row = df10[i:i+1]
-        moveName = row['NAM_MOV'][i]
-        if moveName==previousMoveName:
-            df10[i:i+1]['DAT_DOC'] = ''
-            df10[i:i+1]['DAT_MVL'] = ''
-            df10[i:i+1]['NAM_MOV'] = ''
-            df10[i:i+1]['NAM_PAR'] = ''
-            df10[i:i+1]['REF_MOV'] = ''
-        previousMoveName = moveName
-    vatRegister = df10[['DAT_MVL','NAM_MOV','DAT_DOC','REF_MOV','NAM_PAR','NAM_TAX','BASE','TAX','COD_CON']]
-    return vatRegister
+        previousMoveName = ""
+        for i in range(len(df10)):
+            row = df10[i:i+1]
+            moveName = row['NAM_MOV'][i]
+            if moveName==previousMoveName:
+                df10[i:i+1]['DAT_DOC'] = ''
+                df10[i:i+1]['DAT_MVL'] = ''
+                df10[i:i+1]['NAM_MOV'] = ''
+                df10[i:i+1]['NAM_PAR'] = ''
+                df10[i:i+1]['REF_MOV'] = ''
+            previousMoveName = moveName
+        vatRegister = df10[['DAT_MVL','NAM_MOV','DAT_DOC','REF_MOV','NAM_PAR','NAM_TAX','BASE','TAX','COD_CON']]
+        return vatRegister
+    else:
+        return pandas.DataFrame(columns=['DAT_MVL','NAM_MOV','DAT_DOC','REF_MOV','NAM_PAR','NAM_TAX','BASE','TAX','COD_CON'])
 
 
 def getVatSummary(picklesPath, companyName, onlyValidatedMoves, 
@@ -186,7 +180,6 @@ def getVatSummary(picklesPath, companyName, onlyValidatedMoves,
     groupbyCols.remove('BASE')
     groupbyCols.remove('TAX')
     df1 = df1.groupby(groupbyCols).sum()[['BASE','TAX']].reset_index()
-    
     def addTotalRow(df,detraib=None,immed=None,credit=None):
         tempDf = df
         if detraib is not None:
@@ -450,7 +443,18 @@ def _appendLineToVatLiquidationDict(liqDict, text, namSeq, dbt, crt):
     liqDict['DBT'].append(dbt)
     liqDict['CRT'].append(crt)
 
-def addLiquidationSummaryFinalResults(liquidationDict, moveLineDf, periodDf, debitVat, creditVat, companyName, onlyValidatedMoves, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode, treasuryVatAccountCode, periodName=None, fiscalyearName=None):
+def addLiquidationSummaryFinalResults(moveLineDf, periodDf, debitVat, creditVat,
+                                    companyName, onlyValidatedMoves, immediateVatCreditAccountCode, 
+                                    immediateVatDebitAccountCode, deferredVatCreditAccountCode, 
+                                    deferredVatDebitAccountCode, treasuryVatAccountCode, 
+                                    periodName=None, fiscalyearName=None, liquidationDict=None):
+    if not liquidationDict:
+        liquidationDict = {
+        'TEXT': [],
+        'NAM_SEQ': [],
+        'DBT': [],
+        'CRT': [],
+        }
     #aggiunta riga "IVA a debito o credito per il periodo"
     if debitVat >= creditVat:
         _appendLineToVatLiquidationDict(liquidationDict, "IVA a debito o credito per il periodo", "", debitVat-creditVat, 0)
@@ -487,7 +491,7 @@ def addLiquidationSummaryFinalResults(liquidationDict, moveLineDf, periodDf, deb
         _appendLineToVatLiquidationDict(liquidationDict, "Interessi (1%)", "", interests, 0)
         vatWithIntererest = debitVat -creditVat + interests
         _appendLineToVatLiquidationDict(liquidationDict, "IVA DOVUTA PER IL PERIODO CON INTERESSI", "", vatWithIntererest, 0)
-    
+    return liquidationDict
 
 def getVatLiquidationSummary(picklesPath, companyName, onlyValidatedMoves, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode, treasuryVatAccountCode, periodName=None, fiscalyearName=None):
     '''
@@ -548,7 +552,13 @@ def getVatLiquidationSummary(picklesPath, companyName, onlyValidatedMoves, immed
     debitVatTotal += deferredDebitTotal
     _appendLineToVatLiquidationDict(vatLiquidationDict,"Totale","",debitVatTotal,creditVatTotal)
     #aggiunta righe finali
-    addLiquidationSummaryFinalResults(vatLiquidationDict, starkMoveLine.DF, starkPeriod.DF, debitVatTotal, creditVatTotal, companyName, onlyValidatedMoves, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode, treasuryVatAccountCode, periodName=periodName, fiscalyearName=fiscalyearName)
+    vatLiquidationDict = addLiquidationSummaryFinalResults(
+                                        starkMoveLine.DF, starkPeriod.DF, debitVatTotal, 
+                                        creditVatTotal, companyName, onlyValidatedMoves, 
+                                        immediateVatCreditAccountCode, immediateVatDebitAccountCode, 
+                                        deferredVatCreditAccountCode, deferredVatDebitAccountCode, 
+                                        treasuryVatAccountCode, periodName=periodName, 
+                                        fiscalyearName=fiscalyearName, liquidationDict=vatLiquidationDict)
     return pandas.DataFrame(vatLiquidationDict)
     
 def getVatControlSummary(fiscalyearName, vatSummary, picklesPath, companyName, onlyValidatedMoves, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode):
@@ -577,13 +587,14 @@ def getVatControlSummary(fiscalyearName, vatSummary, picklesPath, companyName, o
     previousDeferredVatCredit = 0
     previousDeferredVatDebit = 0
     companyPathPkl = os.path.join(picklesPath,companyName)
+    dfMoveLines = StarK.Loadk(companyPathPkl,"MVL.pickle").DF
     dfPeriods = StarK.Loadk(companyPathPkl,"PERIOD.pickle").DF
-    dfPeriods = dfPeriods[['FY_DAT_STR','NAM_FY']]
-    dfPeriods = dfPeriods.drop_duplicates()
-    df0 = dfPeriods.ix[dfPeriods['NAM_FY']==fiscalyearName].reset_index()
+    dfPeriods1 = dfPeriods[['FY_DAT_STR','NAM_FY']]
+    dfPeriods1 = dfPeriods1.drop_duplicates()
+    df0 = dfPeriods1.ix[dfPeriods1['NAM_FY']==fiscalyearName].reset_index()
     fiscalyearDateStart = df0[0:1]['FY_DAT_STR'][0]
     previousFiscalyearDateStart = date(fiscalyearDateStart.year-1,fiscalyearDateStart.month,fiscalyearDateStart.day)
-    df0 = dfPeriods.ix[dfPeriods['FY_DAT_STR']==previousFiscalyearDateStart].reset_index()
+    df0 = dfPeriods1.ix[dfPeriods1['FY_DAT_STR']==previousFiscalyearDateStart].reset_index()
     if len(df0) > 0:
         previousFiscalyearName = df0[0:1]['NAM_FY'][0]
         deferredSummary = getDeferredVatSummary(picklesPath, companyName, onlyValidatedMoves, deferredVatCreditAccountCode, deferredVatDebitAccountCode,  paymentsFiscalyearName=fiscalyearName, billsFiscalyearName=previousFiscalyearName)
@@ -620,9 +631,14 @@ def getVatControlSummary(fiscalyearName, vatSummary, picklesPath, companyName, o
     debitDeferredVatNowExigible = currentDeferredVatDebit + previousDeferredVatDebit
     creditTotalVatExigible = creditDeferredVatNowExigible + immediateCreditVat
     debitTotalVatExigible = debitDeferredVatNowExigible + immediateDebitVat
-    #calcolo errato su controllo esercizio aderit 2012
-    #print creditTotalVatExigible
-    #print debitTotalVatExigible
-    #print immediateDebitVat
+    creditDeferredVatExigibleInNextExercise = deferredCreditVat - currentDeferredVatCredit
+    debitDeferredVatExigibleInNextExercise = deferredDebitVat - currentDeferredVatDebit
+    #aggiunta righe finali
+    xxx
+    print addLiquidationSummaryFinalResults(dfMoveLines, dfPeriods, debitVatTotal, 
+                                        creditVatTotal, companyName, onlyValidatedMoves, 
+                                        immediateVatCreditAccountCode, immediateVatDebitAccountCode, 
+                                        deferredVatCreditAccountCode, deferredVatDebitAccountCode, 
+                                        treasuryVatAccountCode, fiscalyearName=fiscalyearName)
     return 0
             

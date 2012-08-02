@@ -36,7 +36,7 @@ from sqlalchemy import create_engine, Column, String, Integer, Sequence, Foreign
 import logging
 
 # Servabit libraries
-PathPr="/home/contabilita/star_branch/"
+PathPr="/home/contabilita/star_branch/share/" #dir che contiene il config.py
 sys.path.append(PathPr)   
 sys.path=list(set(sys.path)) 
 import config

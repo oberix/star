@@ -31,8 +31,10 @@ except ImportError:
     import Pickle as cPickle
 
 # Servabit libraries
-PathPr="/home/contabilita/star_branch/etl/"
-sys.path.append(PathPr)   
+PathPr1="/home/contabilita/star_branch/etl/"
+PathPr2="/home/contabilita/star_branch/share/"
+sys.path.append(PathPr1) 
+sys.path.append(PathPr2)   
 sys.path=list(set(sys.path)) 
 import DBmap2
 import create_dict
