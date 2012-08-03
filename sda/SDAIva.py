@@ -561,7 +561,10 @@ def getVatLiquidationSummary(picklesPath, companyName, onlyValidatedMoves, immed
                                         fiscalyearName=fiscalyearName, liquidationDict=vatLiquidationDict)
     return pandas.DataFrame(vatLiquidationDict)
     
-def getVatControlSummary(fiscalyearName, vatSummary, picklesPath, companyName, onlyValidatedMoves, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode):
+def getVatControlSummary(fiscalyearName, vatSummary, picklesPath, companyName, 
+                        onlyValidatedMoves, immediateVatCreditAccountCode,
+                        immediateVatDebitAccountCode, deferredVatCreditAccountCode, 
+                        deferredVatDebitAccountCode, treasuryVatAccountCode):
     '''
     funzione che restituisce il df con il prospetto di controllo d'esercizio
     '''
@@ -634,11 +637,12 @@ def getVatControlSummary(fiscalyearName, vatSummary, picklesPath, companyName, o
     creditDeferredVatExigibleInNextExercise = deferredCreditVat - currentDeferredVatCredit
     debitDeferredVatExigibleInNextExercise = deferredDebitVat - currentDeferredVatDebit
     #aggiunta righe finali
-    xxx
-    print addLiquidationSummaryFinalResults(dfMoveLines, dfPeriods, debitVatTotal, 
-                                        creditVatTotal, companyName, onlyValidatedMoves, 
+    print addLiquidationSummaryFinalResults(dfMoveLines, dfPeriods, immediateDebitVat + debitDeferredVatNowExigible, 
+                                        immediateCreditVat + creditDeferredVatNowExigible, companyName, onlyValidatedMoves, 
                                         immediateVatCreditAccountCode, immediateVatDebitAccountCode, 
                                         deferredVatCreditAccountCode, deferredVatDebitAccountCode, 
                                         treasuryVatAccountCode, fiscalyearName=fiscalyearName)
+    #terminare il calcolo con la costruzione di un df appropriato
+    xxx
     return 0
             
