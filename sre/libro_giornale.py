@@ -22,8 +22,9 @@
 import sys
 import os
 
-BASEPATH = os.path.abspath(os.path.join(os.path.dirname(__file__),
-                                        os.path.pardir))
+BASEPATH = os.path.abspath(os.path.join(
+        os.path.dirname(__file__),
+        os.path.pardir))
 sys.path.append(BASEPATH)
 
 from share.config import Config
@@ -80,6 +81,7 @@ if __name__ == '__main__':
     for pkl in config.options.get('pickle_path').split(','):
         transport.append(pickler.load(pkl))
 
+    print transport
     generate(transport, config.options.get('template'),
              config.options.get('out_path'))
 

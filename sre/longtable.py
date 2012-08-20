@@ -62,16 +62,18 @@ def escape_latex(str_in):
                 ("\$(?!\w+)", "\\$"),
                 (">(?!\{)", "\\textgreater"),
                 ("<(?!\{)", "\\textless"),
-                ("\n", "\\\\ ")]
+                ("\n", "\\\\ "),
+                ("/", "/\-") # tell LaTeX that an hyphen can be inserted after a '/'
+                ]
     for p, subs in patterns:
         pattern = re.compile(p)
-        m = pattern.search(str_in)
-        if m:
-            str_in = ''.join([str_in[:m.start()], subs, str_in[m.end():]])
+        match = pattern.search(str_in)
+        if match:
+            str_in = ''.join([str_in[:match.start()], subs, str_in[match.end():]])
     return str_in
 
 class LongTable(object):
-    """ Constitute a table that chan span over multiple pages """ 
+    """ Constitute a table that can span over multiple pages """ 
 
     def __init__(self, data):#, style=widget.TABLE_STYLE_DEFAULT_OPTS):
         """
@@ -96,17 +98,13 @@ class LongTable(object):
         self._keys = data.LM.items()
         self._keys.sort(key=lambda x : x[1][0])
         self._keys = [k[0] for k in self._keys]
-        print self._keys
         for key in iter(self._keys):
             self._align.append(data.LM[key][1])
             self._heading1.append(data.LM[key][2])
             self._heading2.append(data.LM[key][3])
             self._heading3.append(data.LM[key][4])
-
             
-    # Non Public (do not rely on this methods unless you really know what you
-    # are doing, they are for internal use only and may suffer substantial
-    # changes in the future).
+    # Non Public 
 
     def _make_heading(self, level):
         """ Create a single line of latex table header.
@@ -198,17 +196,20 @@ class LongTable(object):
                 rowstart = FORMATS.get(record[end], str())
             # remove first element because it's the DF index and eventually
             # last value if it contains _FR_ values
-#            record = map(lambda x : escape_latex(str(x).encode('utf-8')), list(record)[1:end])
             new_record = list()
             for elem in list(record)[1:end]:
                 if elem is None or elem == 'None':
                     new_record.append(str())
                 else:
-                    new_record.append(escape_latex(str(elem).encode('utf-8')))
+                    try:
+                        new_record.append(escape_latex(elem.encode('utf-8')))
+                    except AttributeError:
+                        # element is not a string
+                        new_record.append(escape_latex(str(elem).encode('utf-8')))
             record = new_record
             out += rowstart + """ & """.join(record) + " \\\ \\tabucline- \n"
-        return out.encode('utf-8')
-       
+        return out
+    
     # Public
 
     def to_latex(self):
@@ -244,13 +245,13 @@ if __name__ == '__main__':
     data = Transport()
 
     data.LM ={
-        'DAT_MOV': [2, 'l', '@v0', '@v1', 'Data'],
-        'ID0_MOL': [3, 'l', '@v0', '@v1', 'ID0\_MOL'],
-#         'NAM_JRN': [4, 'l', '@v0', '@v1', 'NAM\_JRN'],
-         'NAM_MOV': [5, 'l', '@v0', '@v1', 'Move name'],
-         'NAM_PAR': [6, 'l', '@v0', '@v2', 'Partner name'], 
-         'NAM_PRD': [7, 'l', '@v0', '@v2', 'NAM\_PRD'], 
-#         'REF_MOV': [8, 'l', '@v0', '@v2', 'REF\_MOV'], 
+        'DAT_MOV': [0, 'l', '@v0', '@v1', 'Data'],
+        'ID0_MOL': [1, 'l', '@v0', '@v1', 'ID0\_MOL'],
+        'NAM_JRN': [2, 'l', '@v0', '@v1', 'NAM\_JRN'],
+        'NAM_MOV': [3, 'l', '@v0', '@v1', 'Move name'],
+        'NAM_PAR': [4, 'l', '@v0', '@v2', 'Partner name'], 
+        'NAM_PRD': [5, 'l', '@v0', '@v2', 'NAM\_PRD'], 
+        'REF_MOV': [6, 'l', '@v0', '@v2', 'REF\_MOV'], 
         }
 
     data.DF = pandas.load('libro_giornale/aderit_ml.pkl')
