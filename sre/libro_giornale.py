@@ -33,7 +33,7 @@ import codecs
 
 import share.generic_pickler as pickler
 
-def generate(transport, template, outpath):
+def generate(transport, template, outpath, vsep=True, hsep=True):
     """ Handle the production of a generate report starting from an
     appropriate Transport object.
 
@@ -45,7 +45,7 @@ def generate(transport, template, outpath):
 
     size = len(transport)
     for index in xrange(size):
-        table = LongTable(transport[index])
+        table = LongTable(transport[index], vsep=vsep, hsep=hsep)
         out = table.to_latex()
         
         table_out = os.path.join(tex_dir, "table%s.tex" % index)
@@ -73,6 +73,25 @@ if __name__ == '__main__':
             self.DF = None
             self.LM = None
 
+    # Phase 1: generate transport object and save it as a pickle (the last
+    # action is not crucial, but this is a test... the more the merryer!)
+    import pandas
+    data = Transport()
+    
+    data.LM = {
+        "DAT_MVL": [0, '|c|', '@v0', '@v1', 'Data'],
+        "NAM_PAR": [2, 'l|', '@v0', '@v1', 'Partner'],
+        "COD_CON": [4, 'l|', '@v0', '@v1', 'Codice Conto'],
+        "NAM_CON": [5, 'l|', '@v0', '@v1', 'Conto'],
+        "DBT_MVL": [6, 'r|', '@v0', '@v1', 'Dare'],
+        "CRT_MVL": [7, 'r|', '@v0', '@v1', 'Avere'],
+        }
+
+    data.DF = pandas.load('libro_giornale/aderit_ml.pkl')
+
+    data.save('libro_giornale/table.pkl')
+
+    # Phase 2: load transports(s) from pickles, generate LaTeX and compile!
     config = Config(os.path.join(BASEPATH, 'sre/libro_giornale/config.cfg'))
     config.parse()
 
@@ -83,6 +102,7 @@ if __name__ == '__main__':
 
     print transport
     generate(transport, config.options.get('template'),
-             config.options.get('out_path'))
+             config.options.get('out_path'),
+             vsep=True, hsep=True)
 
     sys.exit(0)

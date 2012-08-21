@@ -62,7 +62,8 @@ def escape_latex(str_in):
                 ("\$(?!\w+)", "\\$"),
                 (">(?!\{)", "\\textgreater"),
                 ("<(?!\{)", "\\textless"),
-                ("\n", "\\\\ "),
+                ("\n", "\\\\"),
+                ("_", "\_"),
                 ("/", "/\-") # tell LaTeX that an hyphen can be inserted after a '/'
                 ]
     for p, subs in patterns:
@@ -75,7 +76,7 @@ def escape_latex(str_in):
 class LongTable(object):
     """ Constitute a table that can span over multiple pages """ 
 
-    def __init__(self, data):#, style=widget.TABLE_STYLE_DEFAULT_OPTS):
+    def __init__(self, data, vsep=True, hsep=True):
         """
         @ param data:
         @ param label:
@@ -89,6 +90,12 @@ class LongTable(object):
         """
         self._data = data
         self._ncols = len(data.LM.keys())
+        self._vsep = str()
+        self._hsep = str()
+        if vsep:
+            self._vsep = "|"
+        if hsep:
+            self._hsep = "\\tabucline-"
 
         # transpose LM
         self._align = []
@@ -126,11 +133,14 @@ class LongTable(object):
             if title is None or title.startswith('@v'):
                 # remove meta
                 title = str()
-            out_list.append("""\multicolumn{%s}{|@{}p{%.2f\\linewidth}@{}}{\centering %s}""" % \
-                (colspan, colfact, title))
+            out_list.append("""\multicolumn{%s}{%s@{}p{%.2f\\linewidth}@{}}{\centering %s }""" % \
+                (colspan, self._vsep, colfact, title))
         out += """ & """.join(out_list)
         # end row
-        out += """ \\vline \\\ \n """
+        if self._vsep:
+            out += """ \\vline \\\ \n"""
+        else:
+            out += """ \\\ \n"""
         if level is self._heading3:
             # end heading
             out += """ \\tabucline- \endhead \n"""
@@ -143,14 +153,21 @@ class LongTable(object):
 
         '''
         # table preamble
-        out = OPEN_TEX_TAB + """ {|"""
+        out = OPEN_TEX_TAB + """ {"""
         try:
             colspc = 1.0/len(self._align)
         except ZeroDivisionError:
             # empy LM case
             colspc = 1.0
         for col in self._align:
-            out += """X[%.2f,%s]|""" % (colspc, col)
+            format = list(col)
+            if len(format) < 3:
+                if format[0] != '|':
+                    format.insert(0, '')
+                if format[-1] != '|':
+                    format.append('')
+            print format
+            out += """%sX[%.2f,%s]%s""" % (format[0], colspc, format[1], format[2])
         out += """} \\firsthline\n"""
 
         out += self._make_heading(self._heading1)
@@ -164,8 +181,7 @@ class LongTable(object):
         @ return: str
 
         '''
-        # TODO: implement
-        raise NotImplementedError
+        return """\\tabucline- \\endfoot \n"""
 
     def _make_tex_data(self):
         ''' Prepare data for TeX table 
@@ -207,7 +223,7 @@ class LongTable(object):
                         # element is not a string
                         new_record.append(escape_latex(str(elem).encode('utf-8')))
             record = new_record
-            out += rowstart + """ & """.join(record) + " \\\ \\tabucline- \n"
+            out += rowstart + """ & """.join(record) + " \\\ %s \n" % self._hsep
         return out
     
     # Public
@@ -220,7 +236,7 @@ class LongTable(object):
         """
         out = [
             self._make_tex_header(),
-#            self._make_tex_footer(), # TODO: define
+            self._make_tex_footer(),
             self._make_tex_data(),
             ]
         out.append(CLOSE_TEX_TAB)
@@ -243,22 +259,21 @@ if __name__ == '__main__':
             self.LM = None
 
     data = Transport()
-
-    data.LM ={
-        'DAT_MOV': [0, 'l', '@v0', '@v1', 'Data'],
-        'ID0_MOL': [1, 'l', '@v0', '@v1', 'ID0\_MOL'],
-        'NAM_JRN': [2, 'l', '@v0', '@v1', 'NAM\_JRN'],
-        'NAM_MOV': [3, 'l', '@v0', '@v1', 'Move name'],
-        'NAM_PAR': [4, 'l', '@v0', '@v2', 'Partner name'], 
-        'NAM_PRD': [5, 'l', '@v0', '@v2', 'NAM\_PRD'], 
-        'REF_MOV': [6, 'l', '@v0', '@v2', 'REF\_MOV'], 
+    
+    data.LM = {
+        "DAT_MVL": [0, 'l', '@v0', '@v1', 'Data'],
+        "NAM_PAR": [2, 'l', '@v0', '@v1', 'Partner'],
+        "COD_CON": [4, 'l', '@v0', '@v1', 'Codice Conto'],
+        "NAM_CON": [5, 'l', '@v0', '@v1', 'Conto'],
+        "DBT_MVL": [6, 'r', '@v0', '@v1', 'Dare'],
+        "CRT_MVL": [7, 'r', '@v0', '@v1', 'Avere'],
         }
 
     data.DF = pandas.load('libro_giornale/aderit_ml.pkl')
 
     data.save('libro_giornale/table.pkl')
 
-    tab = LongTable(data)
+    tab = LongTable(data, vsep=False, hsep=False)
     print "tab OK"
     txt = tab.to_latex()
     print "text OK"
@@ -268,32 +283,3 @@ if __name__ == '__main__':
     finally:
         fd.close()
     print "DONE"
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
