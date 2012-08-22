@@ -76,7 +76,7 @@ def escape_latex(str_in):
 class LongTable(object):
     """ Constitute a table that can span over multiple pages """ 
 
-    def __init__(self, data, vsep=True, hsep=True):
+    def __init__(self, data, hsep=False):
         """
         @ param data:
         @ param label:
@@ -92,8 +92,6 @@ class LongTable(object):
         self._ncols = len(data.LM.keys())
         self._vsep = str()
         self._hsep = str()
-        if vsep:
-            self._vsep = "|"
         if hsep:
             self._hsep = "\\tabucline-"
 
@@ -113,6 +111,23 @@ class LongTable(object):
             
     # Non Public 
 
+    def _get_col_format(self, s, span):
+        ''' Evaluate column's parameters from a title string
+        @ param s: the title string
+        @ param span: colspan
+        @ return: a tuple suitable for string substitution
+
+        '''
+        title = s.strip('|')
+        ret = s.partition(title)
+        try:
+            width = float(span) / float(len(self._align))
+        except ZeroDivisionError:
+            width = 1.0
+        if title.startswith('@v'):
+            return {'sep1': ret[0], 'width': width, 'title': str(), 'sep2': ret[2]}
+        return {'sep1': ret[0], 'width': width, 'title': ret[1], 'sep2': ret[2]}
+
     def _make_heading(self, level):
         """ Create a single line of latex table header.
         The main purpose of this method is to evaluate how to group different
@@ -128,24 +143,21 @@ class LongTable(object):
         unique_list(title_list)
         for title in title_list:
             colspan = level.count(title)
-            # factor to multiply to \linewidth to get the column width
-            colfact = float(colspan) / float(len(self._align))
-            if title is None or title.startswith('@v'):
-                # remove meta
-                title = str()
-            out_list.append("""\multicolumn{%s}{%s@{}p{%.2f\\linewidth}@{}}{\centering %s }""" % \
-                (colspan, self._vsep, colfact, title))
+            params = self._get_col_format(title, colspan)
+            params['span'] = colspan
+            out_list.append(
+                "\multicolumn{%(span)s}{%(sep1)s@{}p{%(width).2f\\linewidth}@{}%(sep2)s}{\centering %(title)s}" %\
+                    params)
         out += """ & """.join(out_list)
         # end row
         if self._vsep:
-            out += """ \\vline \\\ \n"""
-        else:
-            out += """ \\\ \n"""
+            out += """ \\vline"""
+        out += """ \\\ \n"""
         if level is self._heading3:
             # end heading
             out += """ \\tabucline- \endhead \n"""
         return out
-
+        
     def _make_tex_header(self):
         ''' Prepare header for TeX table 
 
@@ -160,14 +172,14 @@ class LongTable(object):
             # empy LM case
             colspc = 1.0
         for col in self._align:
-            format = list(col)
+            format = list(col.replace(' ', ''))
             if len(format) < 3:
                 if format[0] != '|':
                     format.insert(0, '')
                 if format[-1] != '|':
                     format.append('')
             print format
-            out += """%sX[%.2f,%s]%s""" % (format[0], colspc, format[1], format[2])
+            out += """%(sep1)sX[%(width).2f,%(title)s]%(sep2)s""" % self._get_col_format(col, 1)
         out += """} \\firsthline\n"""
 
         out += self._make_heading(self._heading1)

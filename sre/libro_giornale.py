@@ -45,7 +45,7 @@ def generate(transport, template, outpath, vsep=True, hsep=True):
 
     size = len(transport)
     for index in xrange(size):
-        table = LongTable(transport[index], vsep=vsep, hsep=hsep)
+        table = LongTable(transport[index], hsep=hsep)
         out = table.to_latex()
         
         table_out = os.path.join(tex_dir, "table%s.tex" % index)
@@ -79,12 +79,12 @@ if __name__ == '__main__':
     data = Transport()
     
     data.LM = {
-        "DAT_MVL": [0, '|c|', '@v0', '@v1', 'Data'],
-        "NAM_PAR": [2, 'l|', '@v0', '@v1', 'Partner'],
-        "COD_CON": [4, 'l|', '@v0', '@v1', 'Codice Conto'],
-        "NAM_CON": [5, 'l|', '@v0', '@v1', 'Conto'],
-        "DBT_MVL": [6, 'r|', '@v0', '@v1', 'Dare'],
-        "CRT_MVL": [7, 'r|', '@v0', '@v1', 'Avere'],
+        "DAT_MVL": [0, '|c|', '|@v0|', '|@v1|', '|Data'],
+        "NAM_PAR": [2, 'l|', '|@v0|', '|@v1|', 'Partner'],
+        "COD_CON": [4, 'l|', '|@v0|', '|@v1|', 'Codice Conto|'],
+        "NAM_CON": [5, 'l|', '@v2|', '@v3|', 'Conto'],
+        "DBT_MVL": [6, 'r|', '@v2|', '@v3|', 'Dare'],
+        "CRT_MVL": [7, 'r|', '@v2|', '@v3|', 'Avere|'],
         }
 
     data.DF = pandas.load('libro_giornale/aderit_ml.pkl')
@@ -103,6 +103,6 @@ if __name__ == '__main__':
     print transport
     generate(transport, config.options.get('template'),
              config.options.get('out_path'),
-             vsep=True, hsep=True)
+             hsep=True)
 
     sys.exit(0)

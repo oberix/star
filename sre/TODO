@@ -1,5 +1,5 @@
 * Servabit Reporting Engine TODO
-** TODO Handle vertical and horizontal separators (toggle)
+** DONE Handle vertical and horizontal separators (toggle)
    - Vertical sep could be set by columns in the LM, along with alignment, just
      like TeX does.
    - Horizonotal sep may be toggle just on and off when intantiasing LongTable,
