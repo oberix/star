@@ -78,13 +78,22 @@ if __name__ == '__main__':
     import pandas
     data = Transport()
     
+    # data.LM = {
+    #     "DAT_MVL": [0, '|c|', '|@v0|', '|@v1|', '|Data'],
+    #     "NAM_PAR": [2, 'l|', '|@v0|', '|@v1|', 'Partner'],
+    #     "COD_CON": [4, 'l|', '|@v0|', '|@v1|', 'Codice Conto|'],
+    #     "NAM_CON": [5, 'l|', '@v2|', '@v3|', 'Conto'],
+    #     "DBT_MVL": [6, 'r|', '@v2|', '@v3|', 'Dare'],
+    #     "CRT_MVL": [7, 'r|', '@v2|', '@v3|', 'Avere|'],
+    #     }
+
     data.LM = {
-        "DAT_MVL": [0, '|c|', '|@v0|', '|@v1|', '|Data'],
-        "NAM_PAR": [2, 'l|', '|@v0|', '|@v1|', 'Partner'],
-        "COD_CON": [4, 'l|', '|@v0|', '|@v1|', 'Codice Conto|'],
-        "NAM_CON": [5, 'l|', '@v2|', '@v3|', 'Conto'],
-        "DBT_MVL": [6, 'r|', '@v2|', '@v3|', 'Dare'],
-        "CRT_MVL": [7, 'r|', '@v2|', '@v3|', 'Avere|'],
+        "DAT_MVL": [0, '|c|', '|@v0|', '|@v1|', '|c|', '|Data'],
+        "NAM_PAR": [2, 'l|', '|@v0|', '|@v1|', '|c|', 'Partner'],
+        "COD_CON": [4, 'l|', '|@v0|', '|@v1|', '|c|', 'Codice Conto|'],
+        "NAM_CON": [5, 'l|', '@v2|', '@v3|', 'd|', 'Conto'],
+        "DBT_MVL": [6, 'r|', '@v2|', '@v3|', 'd|', 'Dare'],
+        "CRT_MVL": [7, 'r|', '@v2|', '@v3|', 'd|', 'Avere|'],
         }
 
     data.DF = pandas.load('libro_giornale/aderit_ml.pkl')

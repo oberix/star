@@ -95,38 +95,47 @@ class LongTable(object):
         if hsep:
             self._hsep = "\\tabucline-"
 
-        # transpose LM
-        self._align = []
-        self._heading1 = []
-        self._heading2 = []
-        self._heading3 = []
+        # Transpose LM
+        self._align = list() # alignment
+        
+        # Extract df columns names
         self._keys = data.LM.items()
         self._keys.sort(key=lambda x : x[1][0])
         self._keys = [k[0] for k in self._keys]
+
+        # Extract heading titles
+        self._heading = list() # title lists
+        self._last_heading = len(data.LM[self._keys[0]]) - 3 # last heading index
+        for i in xrange(self._last_heading + 1):
+            self._heading.append(list())
+
+        # Get heading metadata
         for key in iter(self._keys):
             self._align.append(data.LM[key][1])
-            self._heading1.append(data.LM[key][2])
-            self._heading2.append(data.LM[key][3])
-            self._heading3.append(data.LM[key][4])
-            
+            # First two are not titles (by spec)
+            if len(data.LM[key]) > 2:
+                for i in xrange(2, len(data.LM[key])):
+                    self._heading[i-2].append(data.LM[key][i])
+           
     # Non Public 
 
     def _get_col_format(self, s, span):
         ''' Evaluate column's parameters from a title string
         @ param s: the title string
         @ param span: colspan
-        @ return: a tuple suitable for string substitution
+        @ return: a dict suitable for string substitution
 
         '''
         title = s.strip('|')
-        ret = s.partition(title)
+        part = s.partition(title)
         try:
             width = float(span) / float(len(self._align))
         except ZeroDivisionError:
             width = 1.0
+        ret = {'sep1': part[0], 'width': width, 'title': part[1], 'sep2': part[2]}
         if title.startswith('@v'):
-            return {'sep1': ret[0], 'width': width, 'title': str(), 'sep2': ret[2]}
-        return {'sep1': ret[0], 'width': width, 'title': ret[1], 'sep2': ret[2]}
+            ret['title'] = str()
+        return ret
 
     def _make_heading(self, level):
         """ Create a single line of latex table header.
@@ -153,7 +162,7 @@ class LongTable(object):
         if self._vsep:
             out += """ \\vline"""
         out += """ \\\ \n"""
-        if level is self._heading3:
+        if level is self._heading[self._last_heading]:
             # end heading
             out += """ \\tabucline- \endhead \n"""
         return out
@@ -172,19 +181,11 @@ class LongTable(object):
             # empy LM case
             colspc = 1.0
         for col in self._align:
-            format = list(col.replace(' ', ''))
-            if len(format) < 3:
-                if format[0] != '|':
-                    format.insert(0, '')
-                if format[-1] != '|':
-                    format.append('')
-            print format
             out += """%(sep1)sX[%(width).2f,%(title)s]%(sep2)s""" % self._get_col_format(col, 1)
         out += """} \\firsthline\n"""
 
-        out += self._make_heading(self._heading1)
-        out += self._make_heading(self._heading2)
-        out += self._make_heading(self._heading3)
+        for heading in self._heading:
+            out += self._make_heading(heading)
 
         return out
 
@@ -285,7 +286,7 @@ if __name__ == '__main__':
 
     data.save('libro_giornale/table.pkl')
 
-    tab = LongTable(data, vsep=False, hsep=False)
+    tab = LongTable(data, hsep=False)
     print "tab OK"
     txt = tab.to_latex()
     print "text OK"
