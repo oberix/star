@@ -78,15 +78,8 @@ class LongTable(object):
 
     def __init__(self, data, hsep=False):
         """
-        @ param data:
-        @ param label:
-        @ param headers:
-        @ param caption:
-        @ param footnotes:
-        @ param notes_1:
-        @ param notes_2:
-        @ param style:
-
+        @ param data: Transport object
+        @ param hsep: True if you want hrizontal lines after every record
         """
         self._data = data
         self._ncols = len(data.LM.keys())
@@ -137,15 +130,16 @@ class LongTable(object):
             ret['title'] = str()
         return ret
 
-    def _make_heading(self, level):
-        """ Create a single line of latex table header.
+    def _make_header(self, level):
+        ''' Create a single line of latex table header.
         The main purpose of this method is to evaluate how to group different
         columns in a single span and define the correct '\multicolumns' for a
-        LaTeX longtabe.
+        LaTeX longtable.
 
         @ param level: a list of columns labels
         @ return: str
-        """
+
+        '''
         out = str()
         out_list = list()
         title_list = copy(level)
@@ -167,8 +161,10 @@ class LongTable(object):
             out += """ \\tabucline- \endhead \n"""
         return out
         
-    def _make_tex_header(self):
-        ''' Prepare header for TeX table 
+    def _make_preamble(self):
+        ''' Prepare preamble for TeX table.
+        Preamble is the outermost, general table structure, which will contain
+        the multicolumn headers.
 
         @ return: str
 
@@ -183,14 +179,12 @@ class LongTable(object):
         for col in self._align:
             out += """%(sep1)sX[%(width).2f,%(title)s]%(sep2)s""" % self._get_col_format(col, 1)
         out += """} \\firsthline\n"""
-
-        for heading in self._heading:
-            out += self._make_heading(heading)
-
         return out
 
     def _make_tex_footer(self):
-        ''' Prepare footer for TeX table 
+        ''' Prepare footer for TeX table
+        This is pretty simple: just draw a line at the bottom of the table.
+
         @ return: str
 
         '''
@@ -211,8 +205,8 @@ class LongTable(object):
         try:
             self._keys.append('_FR_')
             records = self._data.DF[self._keys].to_records()
-            # end is used to remove _FR_ values when generating the output
-            # string
+            # End is used to remove _FR_ values when generating the output
+            # string.
             end = -1
         except KeyError:
             self._keys.remove('_FR_')
@@ -223,8 +217,8 @@ class LongTable(object):
             rowstart = str()
             if end is not None:
                 rowstart = FORMATS.get(record[end], str())
-            # remove first element because it's the DF index and eventually
-            # last value if it contains _FR_ values
+            # Remove first element because it's the DF index and eventually
+            # last value if it contains _FR_ values.
             new_record = list()
             for elem in list(record)[1:end]:
                 if elem is None or elem == 'None':
@@ -247,8 +241,14 @@ class LongTable(object):
         @ return: str
 
         """
+        
+        headers = str()
+        for heading in self._heading:
+            headers += self._make_header(heading)
+
         out = [
-            self._make_tex_header(),
+            self._make_preamble(),
+            headers,
             self._make_tex_footer(),
             self._make_tex_data(),
             ]

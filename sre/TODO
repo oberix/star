@@ -8,7 +8,7 @@
 
 ** TODO Let the user specify a column's width inside the LM
 
-** TODO Dinamic headers levels
+** DONE Dinamic headers levels
    - Just test the length of LM lists
 
 ** TODO Set row (header) color(s)
