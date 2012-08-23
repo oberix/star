@@ -23,16 +23,10 @@ __VERSION__ = '0.1'
 __AUTHOR__ = 'Luigi Cirillo (<luigi.cirillo@servabit.it>)'
 
 import sys
-import os
 import pandas
 
 # Servabit libraries
-#sys.path.append('../')
-BASEPATH = os.path.abspath(os.path.join(
-        os.path.dirname(__file__),
-        os.path.pardir))
-sys.path.append(BASEPATH)
-
+sys.path.append('../')
 from share import stark
 
 
@@ -98,4 +92,3 @@ def style(df, gov):
     goal2stark = stark.StarK(df, 'elab' )
     goal2stark.DES = des
     return goal2stark
-

@@ -27,10 +27,12 @@ __AUTHOR__ = 'Luigi Cirillo (<luigi.cirillo@servabit.it>)'
 
 
 import sys
+
 try:
-    import cPickle
+    import cPickle as pickle
 except ImportError:
-    import Pickle as cPickle
+    import pickle
+
 
 
 # Servabit libraries
@@ -81,7 +83,7 @@ class StarK(object):
         print(self.__path)
         f = open(self.__path + '/' + filename,'wb')
         try:
-            cPickle.dump(self, f, protocol=cPickle.HIGHEST_PROTOCOL)
+            pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
         finally:
             f.close()
     
@@ -102,9 +104,12 @@ class StarK(object):
         """
         f = open(file_path+ '/' + filename, 'rb')
         try:
-            starkobj = cPickle.load(f)
+            starkobj = pickle.load(f)
             return starkobj
         finally:
             f.close()
         
         
+if __name__ == '__main__':
+    s = StarK.Loadk('~/workspace/star/trunk/sre/libro_giornale/pkl_original','MVL.pickle')
+    

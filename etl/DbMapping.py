@@ -308,7 +308,7 @@ def open_session():
     open a SQLAlchemy session from informations holded by conf_goal2d
     '''
     global conf_goal, logger
-    logger.debug('Opening session')
+#    logger.debug('Opening session')
     Session = sessionmaker(bind = create_engine( \
         conf_goal.options.get('dbtype') + '+' + \
         conf_goal.options.get('driver') + '://' + \
@@ -332,19 +332,26 @@ def get_account_move_line(name_comp):
     return a dataframe with move lines of the company
     '''
     global conf_goal, logger
-    log_istance()
+#    log_istance()
     session = open_session()
     comp = session.query(ResCompany).filter_by( \
             name = name_comp \
             ).first()
     logger.info('Extracting account_move_line for %s' % (comp.name))
-    data = {'accountMoveLine_id' : [], 'accountMove_name' : [], \
-            'accountMoveLine_ref' : [], 'accountMoveLine_date' : [], \
-            'accountPeriod_name' : [], 'resPartner_name' : [], \
-            'accountAccount_name' : [], 'accountMoveLine_name' : [], \
-            'accountJournal_name' : [], 'accountMoveLine_debit' : [], \
-            'accountMoveLine_credit' : [], 'accountMoveLine_state' : [], \
-            'accountMoveReconcile_name' : [], 'accountTax_name' : [], 
+    data = {'accountMoveLine_id' : [], 
+            'accountMove_name' : [],
+            'accountMoveLine_ref' : [], 
+            'accountMoveLine_date' : [],
+            'accountPeriod_name' : [], 
+            'resPartner_name' : [],
+            'accountAccount_name' : [], 
+            'accountMoveLine_name' : [],
+            'accountJournal_name' : [], 
+            'accountMoveLine_debit' : [],
+            'accountMoveLine_credit' : [], 
+            'accountMoveLine_state' : [],
+            'accountMoveReconcile_name' : [], 
+            'accountTax_name' : [], 
             'accountAccount_code' : []}
     for aml in session.query(\
             AccountMoveLine\
