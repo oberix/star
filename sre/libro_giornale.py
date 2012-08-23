@@ -58,7 +58,7 @@ def generate(transport, template, outpath, vsep=True, hsep=True):
 
     if not os.path.exists(os.path.dirname(outpath)):
         os.makedirs(os.path.dirname(outpath))
-    os.system('texi2pdf -o %s -I %s -c %s' % (outpath, tex_dir, template))
+    os.system('texi2pdf --clean -o %s -I %s -c %s' % (outpath, tex_dir, template))
 
 
 if __name__ == '__main__':
@@ -88,12 +88,12 @@ if __name__ == '__main__':
     #     }
 
     data.LM = {
-        "DAT_MVL": [0, '|c|', '|@v0|', '|@v1|', '|c|', '|Data'],
-        "NAM_PAR": [2, 'l|', '|@v0|', '|@v1|', '|c|', 'Partner'],
-        "COD_CON": [4, 'l|', '|@v0|', '|@v1|', '|c|', 'Codice Conto|'],
-        "NAM_CON": [5, 'l|', '@v2|', '@v3|', 'd|', 'Conto'],
-        "DBT_MVL": [6, 'r|', '@v2|', '@v3|', 'd|', 'Dare'],
-        "CRT_MVL": [7, 'r|', '@v2|', '@v3|', 'd|', 'Avere|'],
+        "DAT_MVL": [0, '|c|', '|@v0|',  '|c|', '|Data|'],
+        "NAM_PAR": [2, '2l|', '|@v0|', '|c|', 'Partner|'],
+        "COD_CON": [4, 'l|', '|@v0|',  '|c|', 'Codice Conto|'],
+        "NAM_CON": [5, '2l|', '@v2|',  'd|', 'Conto|'],
+        "DBT_MVL": [6, '0.5r|', '@v2|', 'd|', 'Dare|'],
+        "CRT_MVL": [7, '0.5r|', '@v2|',  'd|', 'Avere|'],
         }
 
     data.DF = pandas.load('libro_giornale/aderit_ml.pkl')
@@ -109,7 +109,6 @@ if __name__ == '__main__':
     for pkl in config.options.get('pickle_path').split(','):
         transport.append(pickler.load(pkl))
 
-    print transport
     generate(transport, config.options.get('template'),
              config.options.get('out_path'),
              hsep=True)

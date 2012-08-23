@@ -125,7 +125,12 @@ class LongTable(object):
             width = float(span) / float(len(self._align))
         except ZeroDivisionError:
             width = 1.0
-        ret = {'sep1': part[0], 'width': width, 'title': part[1], 'sep2': part[2]}
+        ret = {'sep1': part[0], 
+               'span': span, 
+               'width': width, 
+               'title': part[1], 
+               'sep2': part[2],
+               }
         if title.startswith('@v'):
             ret['title'] = str()
         return ret
@@ -149,7 +154,7 @@ class LongTable(object):
             params = self._get_col_format(title, colspan)
             params['span'] = colspan
             out_list.append(
-                "\multicolumn{%(span)s}{%(sep1)s@{}p{%(width).2f\\linewidth}@{}%(sep2)s}{\centering %(title)s}" %\
+                "\multicolumn{%(span)s}{%(sep1)sc%(sep2)s}{%(title)s}" % \
                     params)
         out += """ & """.join(out_list)
         # end row
@@ -160,7 +165,8 @@ class LongTable(object):
             # end heading
             out += """ \\tabucline- \endhead \n"""
         return out
-        
+
+                
     def _make_preamble(self):
         ''' Prepare preamble for TeX table.
         Preamble is the outermost, general table structure, which will contain
@@ -171,13 +177,9 @@ class LongTable(object):
         '''
         # table preamble
         out = OPEN_TEX_TAB + """ {"""
-        try:
-            colspc = 1.0/len(self._align)
-        except ZeroDivisionError:
-            # empy LM case
-            colspc = 1.0
         for col in self._align:
-            out += """%(sep1)sX[%(width).2f,%(title)s]%(sep2)s""" % self._get_col_format(col, 1)
+            col_format = self._get_col_format(col, 1)
+            out += """%(sep1)sX[%(title)s]%(sep2)s""" % col_format
         out += """} \\firsthline\n"""
         return out
 
@@ -219,18 +221,17 @@ class LongTable(object):
                 rowstart = FORMATS.get(record[end], str())
             # Remove first element because it's the DF index and eventually
             # last value if it contains _FR_ values.
-            new_record = list()
+            out_record = list()
             for elem in list(record)[1:end]:
                 if elem is None or elem == 'None':
-                    new_record.append(str())
+                    out_record.append(str())
                 else:
                     try:
-                        new_record.append(escape_latex(elem.encode('utf-8')))
+                        out_record.append(escape_latex(elem.encode('utf-8')))
                     except AttributeError:
                         # element is not a string
-                        new_record.append(escape_latex(str(elem).encode('utf-8')))
-            record = new_record
-            out += rowstart + """ & """.join(record) + " \\\ %s \n" % self._hsep
+                        out_record.append(escape_latex(str(elem).encode('utf-8')))
+            out += rowstart + """ & """.join(out_record) + " \\\ %s \n" % self._hsep
         return out
     
     # Public
@@ -274,12 +275,12 @@ if __name__ == '__main__':
     data = Transport()
     
     data.LM = {
-        "DAT_MVL": [0, 'l', '@v0', '@v1', 'Data'],
+        "DAT_MVL": [0, 'c', '@v0', '@v1', 'Data'],
         "NAM_PAR": [2, 'l', '@v0', '@v1', 'Partner'],
         "COD_CON": [4, 'l', '@v0', '@v1', 'Codice Conto'],
-        "NAM_CON": [5, 'l', '@v0', '@v1', 'Conto'],
-        "DBT_MVL": [6, 'r', '@v0', '@v1', 'Dare'],
-        "CRT_MVL": [7, 'r', '@v0', '@v1', 'Avere'],
+        "NAM_CON": [5, '{2},l', '@v0', '@v1', 'Conto'],
+        "DBT_MVL": [6, '{0.5},r', '@v0', '@v1', 'Dare'],
+        "CRT_MVL": [7, '{0.5},r', '@v0', '@v1', 'Avere'],
         }
 
     data.DF = pandas.load('libro_giornale/aderit_ml.pkl')

@@ -25,11 +25,11 @@
 \setlength{\headheight}{20pt}
 
 %% left part of the head
-\fancyhead[l]{Aderit - Via Fondazza 31/33 40125 Bologna P.IVA 03147781201}
+\fancyhead[l]{\input{company}}
 %% center of the head
 %\fancyhead[c]{\textit{ArCO Barletta\\Guida Tecnica}}
 %% right part of the head
-\fancyhead[r]{\color{DarkRed}\textbf{\Large{Libro Giornale}}} %\\\textit{Data: }\today}
+\fancyhead[r]{\color{DarkRed}\textbf{\Large{\input{title}}}} %\\\textit{Data: }\today}
 %% left part of the foot
 %\fancyfoot[l]{Servabit Srl}
 %% center of the foot
@@ -43,7 +43,7 @@
 
 
 \begin{document}
-
+Tanto testo in questa riga così che si possa vedere se effettivamente questo maledetto fa stare la tabelle entro i margini del testo porco qui e porco la!
 \begin{centering}
 \tabulinesep=1.5mm
 \input{table0}
