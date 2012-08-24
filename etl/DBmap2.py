@@ -35,12 +35,13 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine, Column, String, Integer, Sequence, ForeignKey, Date, Boolean
 import logging
 
-
-
 # Servabit libraries
-sys.path.append('../')
+BASEPATH = os.path.abspath(os.path.join(
+        os.path.dirname(__file__),
+        os.path.pardir))
+sys.path.append(BASEPATH)
+sys.path = list(set(sys.path))
 from share import config
-
 
 Base = declarative_base()
 filepath = '/home/lcirillo/sviluppo/svn/star/trunk/config/DbConfig.cfg'

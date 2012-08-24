@@ -34,8 +34,8 @@ def getVatRegister(picklesPath, companyName, onlyValidatedMoves, sequenceName=No
         raise RuntimeError("Errore: i parametri periodName e fiscalyearName non devono essere entrambi nulli")
     companyPathPkl = os.path.join(picklesPath,companyName)
     
-    starkTax=StarK.Loadk(companyPathPkl,"TAX.pickle")
-    starkMoveLine=StarK.Loadk(companyPathPkl,"MVL.pickle")
+    starkTax=StarK.load(os.path.join(companyPathPkl,"TAX.pickle"))
+    starkMoveLine=StarK.load(os.path.join(companyPathPkl,"MVL.pickle"))
     df0 = starkMoveLine.DF
     del df0["ID0_MVL"]
     del df0["CHK_MOV"]
@@ -229,27 +229,37 @@ def getVatSummary(picklesPath, companyName, onlyValidatedMoves,
     df1 = addTotalRow(df1,credit=False)
     return df1
 
-def getDeferredVatDetail(picklesPath, companyName, onlyValidatedMoves, 
-                        deferredVatCreditAccountCode, deferredVatDebitAccountCode, 
-                        searchPayments=False, billsPeriodName=None, billsFiscalyearName=None, 
+def getDeferredVatDetail(picklesPath, companyName, onlyValidatedMoves,
+                        deferredVatCreditAccountCode,
+                        deferredVatDebitAccountCode, searchPayments=False,
+                        billsPeriodName=None, billsFiscalyearName=None,
                         paymentsPeriodName=None, paymentsFiscalyearName=None):
-    '''
-    funzione che restituisce l'iva differita o da pagare per il periodo (o l'anno fiscale) passati come parametro
-    se searchPayments è True, si stanno cercando le fatture che sono state pagate nel periodo(paymentsPeriodName) o anno fiscale(paymentsFiscalyearName) ed emesse nel periodo (billsPeriodName) o anno fiscale (billsFiscalyearName)
-    se searchPayments è False, si stanno cercando le fatture che non sono state ancora pagate entro il periodo(paymentsPeriodName) o anno fiscale(paymentsFiscalyearName)
-    @param searchPayments: boolean che indica se si stanno cercando le fatture pagate nel periodo "paymentsPeriodName" oppure quelle non pagate entro il periodo "paymentsPeriodName"
+    ''' Funzione che restituisce l'iva differita o da pagare per il periodo (o
+    l'anno fiscale) passati come parametro se searchPayments è True, si stanno
+    cercando le fatture che sono state pagate nel periodo(paymentsPeriodName) o
+    anno fiscale(paymentsFiscalyearName) ed emesse nel periodo
+    (billsPeriodName) o anno fiscale (billsFiscalyearName) se searchPayments è
+    False, si stanno cercando le fatture che non sono state ancora pagate entro
+    il periodo(paymentsPeriodName) o anno fiscale(paymentsFiscalyearName).
+
+    @param searchPayments: boolean che indica se si stanno cercando le fatture
+           pagate nel periodo "paymentsPeriodName" oppure quelle non pagate entro il
+           periodo "paymentsPeriodName".
     @param paymentsPeriodName: indica il periodo relativo ai pagamenti
     @param paymentsFiscalyearName: indica l'anno fiscale relativo ai pagamenti
-    @param billsPeriodName (opzionale): indica il periodo relativo all'emissione delle fatture. Considerato solo se searchPayments=True
-    @param billsFiscalyearName (opzionale): indica l'anno fiscale relativo all'emissione delle fatture. Considerato solo se searchPayments=True
+    @param billsPeriodName (opzionale): indica il periodo relativo
+           all'emissione delle fatture. Considerato solo se searchPayments=True
+    @param billsFiscalyearName (opzionale): indica l'anno fiscale relativo
+           all'emissione delle fatture. Considerato solo se searchPayments=True
+
     '''
     if not paymentsPeriodName and not paymentsFiscalyearName:
         raise RuntimeError("Errore: i parametri paymentsPeriodName e paymentsFiscalyearName non devono essere entrambi nulli")
     companyPathPkl = os.path.join(picklesPath,companyName)
-    starkTax=StarK.Loadk(companyPathPkl,"TAX.pickle")
-    starkPeriod=StarK.Loadk(companyPathPkl,"PERIOD.pickle")
+    starkTax=StarK.load(os.path.join(companyPathPkl,"TAX.pickle"))
+    starkPeriod=StarK.load(os.path.join(companyPathPkl,"PERIOD.pickle"))
     dfPeriods = starkPeriod.DF
-    starkMoveLine=StarK.Loadk(companyPathPkl,"MVL.pickle")
+    starkMoveLine=StarK.load(os.path.join(companyPathPkl,"MVL.pickle"))
     df0 = starkMoveLine.DF
     df1 = df0.ix[(df0['COD_CON']==deferredVatCreditAccountCode) | (df0['COD_CON']==deferredVatDebitAccountCode)]
     if onlyValidatedMoves:
@@ -508,8 +518,8 @@ def getVatLiquidationSummary(picklesPath, companyName, onlyValidatedMoves, immed
         }
     #recupero il nome delle sequenze iva per cui ci sono dei movimenti nel periodo d'interesse
     companyPathPkl = os.path.join(picklesPath,companyName)
-    starkMoveLine=StarK.Loadk(companyPathPkl,"MVL.pickle")
-    starkPeriod=StarK.Loadk(companyPathPkl,"PERIOD.pickle")
+    starkMoveLine=StarK.load(os.path.join(companyPathPkl,"MVL.pickle"))
+    starkPeriod=StarK.load(os.path.join(companyPathPkl,"PERIOD.pickle"))
     df0 = starkMoveLine.DF
     df0 = df0.ix[df0['COD_SEQ']=='RIVA']
     if periodName:
@@ -590,8 +600,8 @@ def getVatControlSummary(fiscalyearName, vatSummary, picklesPath, companyName,
     previousDeferredVatCredit = 0
     previousDeferredVatDebit = 0
     companyPathPkl = os.path.join(picklesPath,companyName)
-    dfMoveLines = StarK.Loadk(companyPathPkl,"MVL.pickle").DF
-    dfPeriods = StarK.Loadk(companyPathPkl,"PERIOD.pickle").DF
+    dfMoveLines = StarK.load(os.path.join(companyPathPkl,"MVL.pickle")).DF
+    dfPeriods = StarK.load(os.path.join(companyPathPkl,"PERIOD.pickle")).DF
     dfPeriods1 = dfPeriods[['FY_DAT_STR','NAM_FY']]
     dfPeriods1 = dfPeriods1.drop_duplicates()
     df0 = dfPeriods1.ix[dfPeriods1['NAM_FY']==fiscalyearName].reset_index()

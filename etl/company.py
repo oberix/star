@@ -22,6 +22,12 @@
 import pandas as pnd
 from datetime import datetime
 
+# Servabit libraries
+BASEPATH = os.path.abspath(os.path.join(
+        os.path.dirname(__file__),
+        os.path.pardir))
+sys.path.append(BASEPATH)
+sys.path = list(set(sys.path))
 from share.generic_pickler import GenericPickler
 from balance import Balance
 from balance import COLUMNS as BCOLUMNS

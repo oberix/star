@@ -27,14 +27,7 @@ import os
 import pandas
 
 # Servabit libraries
-#sys.path.append('../')
-BASEPATH = os.path.abspath(os.path.join(
-        os.path.dirname(__file__),
-        os.path.pardir))
-sys.path.append(BASEPATH)
-
-from share import stark
-
+import stark
 
 def style(df, gov):
     '''

@@ -25,21 +25,18 @@
 __VERSION__ = '0.1'
 __AUTHOR__ = 'Luigi Cirillo (<luigi.cirillo@servabit.it>)'
 
-
 import sys
-
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
-
-
+import os
 
 # Servabit libraries
-#sys.path.append('../')
+BASEPATH = os.path.abspath(os.path.join(
+        os.path.dirname(__file__),
+        os.path.pardir))
+sys.path.append(BASEPATH)
+sys.path = list(set(sys.path))
+from share.generic_pickler import GenericPickler
 
-
-class StarK(object):
+class StarK(GenericPickler):
     '''
     StarK Class 
     '''
@@ -53,8 +50,8 @@ class StarK(object):
         self.COD = COD
         self.FOOTNOTE = FOOTNOTE
         self.DES = {}
-        self.TITLE = str
-        self.__path = str
+        self.TITLE = str()
+        self.__path = str() # FIXME: what's this for?
         if TYPE == 'elab':
             for e in self.DF.columns:
                 self.DES[e] = {'VARTYPE' : None, 'DASTR' : None, 'DESVAR' : None, 'MUNIT' : None, 'DATYP' : None, }
@@ -64,12 +61,9 @@ class StarK(object):
         if TYPE == 'graph':
             for e in self.DF.columns:
                 self.DES[e] = {'WUSE' : None, 'AXES' : None, 'LEG' : None}
-        
-        
   
     def DefPathPkl(self, path):
         self.__path = path
-    
     
     def Dumpk(self, filename):
         '''
@@ -108,8 +102,3 @@ class StarK(object):
             return starkobj
         finally:
             f.close()
-        
-        
-if __name__ == '__main__':
-    s = StarK.Loadk('~/workspace/star/trunk/sre/libro_giornale/pkl_original','MVL.pickle')
-    

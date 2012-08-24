@@ -22,6 +22,12 @@
 from copy import copy
 import pandas as pnd
 
+# Servabit libraries
+BASEPATH = os.path.abspath(os.path.join(
+        os.path.dirname(__file__),
+        os.path.pardir))
+sys.path.append(BASEPATH)
+sys.path = list(set(sys.path))
 from share.generic_pickler import GenericPickler
 
 __author__ = 'Marco Pattaro (<marco.pattaro@servabit.it>)'

@@ -154,5 +154,5 @@ for row in reader:
     # func_dict[func][1] gov dict
     stk_elab = etl.style.style(df, func_dict[func][1])
     stk_elab.DefPathPkl('/tmp/')
-    stk_elab.Dumpk('stkelab_%i.pickle' %(id_file))
+    stk_elab.save('stkelab_%i.pickle' %(id_file))
     id_file = id_file + 1

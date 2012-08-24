@@ -21,17 +21,16 @@
 
 import sys
 import os
+import codecs
 
 BASEPATH = os.path.abspath(os.path.join(
         os.path.dirname(__file__),
         os.path.pardir))
 sys.path.append(BASEPATH)
-
+sys.path = list(set(sys.path))
 from share.config import Config
 from longtable import LongTable
-import codecs
-
-import share.generic_pickler as pickler
+from share.generic_pickler import GenericPickler
 
 def generate(transport, template, outpath, vsep=True, hsep=True):
     """ Handle the production of a generate report starting from an
@@ -64,7 +63,7 @@ def generate(transport, template, outpath, vsep=True, hsep=True):
 if __name__ == '__main__':
     """ Main flow """ 
 
-    class Transport(pickler.GenericPickler):
+    class Transport(GenericPickler):
         """ A dummy transport.
         This is a dummy implementation of Transport class specification, just to
         have something to load/save in pickle when testing the engine.

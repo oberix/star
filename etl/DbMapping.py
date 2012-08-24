@@ -35,12 +35,6 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine, Column, String, Integer, Sequence, ForeignKey, Date, Boolean, Numeric
 import logging
 
-
-
-# Servabit libraries
-sys.path.append('../')
-
-
 Base = declarative_base()
 conf_goal = None
 logger = None

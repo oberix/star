@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 ##############################################################################
 #
 #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
@@ -27,10 +26,19 @@
 #
 ##############################################################################
 import sys
+import os
 import pandas
-import cPickle
+import logging
 
-class Transport(object):
+# Servabit libraries
+BASEPATH = os.path.abspath(os.path.join(
+        os.path.dirname(__file__),
+        os.path.pardir))
+sys.path.append(BASEPATH)
+sys.path = list(set(sys.path))
+from share.generic_pickler import GenericPickler
+
+class Transport(GenericPickler):
     '''
     Questa classe consente di istanziare un oggetto Transport
     costituito dalle seguenti componenti: 
@@ -45,7 +53,6 @@ class Transport(object):
                 FOOTNOTE (lista di stringhe): ciascuna stringa contiene una riga di footnote 
     '''   
     
-    #definisco la funzione __init__ 
     def __init__(self,COD=None,TIP=None,TITLE=None,DF=None,LM=None,FOOTNOTE=None):
         self.COD=COD
         self.TIP=TIP
@@ -53,39 +60,22 @@ class Transport(object):
         self.DF=DF
         self.LM=LM
         self.FOOTNOTE=FOOTNOTE
-        #controllo coerenza tra variabili del dataframe e variabili contenute in LM
-        #nel caso in cui la tipologia sia quella di una tabella
-        if isinstance(DF,pandas.DataFrame)==False:
-            print("Warnings: DF non è un Dataframe") 
-            return
+
+        # Controllo coerenza tra variabili del dataframe e variabili contenute
+        # in LM nel caso in cui la tipologia sia quella di una tabella.
         if TIP=="tab":
-            lvar=DF.columns
+            try :
+                lvar=DF.columns
+            except AttributeError:
+                print("Warnings: DF non è un Dataframe") 
+                # FIXME: this is not safe, the obj is created, but it's
+                #        broken. It is better to rise the exception.
+                return 
             lvar1=pandas.Index(LM.keys())
             lcheck=lvar-lvar1
             print lcheck
-            if lcheck!=0:
+            if lcheck != 0:
                 print("Warnings: non c'è coerenza tra le variabili del dataframe e le variabili di LM")
+                # FIXME: this is not safe, the obj is created, but it's
+                #        broken. It is better to rise the exception.
                 return
-       
-
-    def dump(self,path,nf):
-        pfile=path+nf      
-        file1=open(pfile, 'w')
-        cPickle.dump(self,file1)
-        file1.close()
-
-    @staticmethod    
-    def load1(path,nf):
-        pfile=path+nf   
-        file1 = open(pfile, 'r')
-        ris=cPickle.load(file1)
-        file1.close()
-        return ris
-
-
-        
-
-
-
-
-
