@@ -51,23 +51,26 @@ def _get_transports(path):
             logging.warning("Could not load pickle %s\nInterpreter says %s", file_, e)
     return ret
 
-def report(template, tranports, dest_path):
+def report(template, tranports, dest_path, save_parts=False):
     if not os.path.exists(os.path.dirname(dest_path)):
         os.makedirs(os.path.dirname(dest_path))
+    addons = list()
     for i in xrange(len(transports)):
         if transport[i].TIP == 'tab':
-            out = LongTable(transports[i]).to_latex()
+            addons.append(LongTable(transports[i]).to_latex())
         else:
             # TODO: handle other types
             continue
-        file_out = os.path.join(dest_path, "table%s"%i)
-        fd = codecs.open(file_out, mode='w', encodings='utf-8')
-        try:
-            fd.write(out)
-        finally:
-            fd.close()
+        if save_parts:
+            file_out = os.path.join(dest_path, "table%s.tex"%i)
+            fd = codecs.open(file_out, mode='w', encodings='utf-8')
+            try:
+                fd.write(out)
+            finally:
+                fd.close()
 
-    tmpl = load_template(template)
+    templ = load_template(template)
+    templ.format(addons) # TODO: check format
     
     os.system('texi2pdf --clean -o %s -c %s' % (dest_path, template))
 
