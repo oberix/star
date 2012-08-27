@@ -29,7 +29,7 @@ BASEPATH = os.path.abspath(os.path.join(
         os.path.dirname(__file__),
         os.path.pardir))
 sys.path.append(BASEPATH)
-sys.path = set(list(sys.path))
+sys.path = list(set((sys.path))
 
 from config import Config
 from Transport import Transport
@@ -68,7 +68,7 @@ def main(dirname):
     
     pdfFileName=False
 
-    assert reportType in REP_TYPE
+    assert(reportType in REP_TYPE)
 
     if reportType == 'registers':
         vatRegister = SDAIva.getVatRegister(

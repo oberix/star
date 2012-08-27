@@ -54,6 +54,7 @@ def style(df, gov):
         return True
             
     def set_des_rec(rec):
+        # FIXME: what's the use of this method? Why not just a copy()?
         rec_des = {}
         rec_des['VARTYPE'] = rec['VARTYPE']
         rec_des['DASTR'] = rec['DASTR']

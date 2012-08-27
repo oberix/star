@@ -26,8 +26,7 @@ __AUTHOR__ = 'Luigi Cirillo (<luigi.cirillo@servabit.it>)'
 Created on 11/lug/2012
 '''
 
-import DBmap3 as DBmap2
-#import DBmap2
+import DBmap2
 
 def create_dict(cl_dmap2, dict_path):
     '''
@@ -50,9 +49,7 @@ def create_dict(cl_dmap2, dict_path):
         return obj
     
     def get_obj(session, cl_dbmap2):
-        objs = session.query(\
-                      cl_dbmap2\
-                      ).all()
+        objs = session.query(cl_dbmap2).all()
         return objs
     
     session = DBmap2.open_session()
@@ -65,7 +62,9 @@ def create_dict(cl_dmap2, dict_path):
             try:
                 out_dict[key].append(tuple2attr(obj, dict_path[key]))
             except AttributeError:
-                out_dict[key].append(None)
+                # FIXME: We'll never fall in here, out_dict elements are all
+                # initialized.
+                out_dict[key] = list()
     DBmap2.close_session(session)
     return out_dict
             
