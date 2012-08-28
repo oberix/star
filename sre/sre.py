@@ -33,7 +33,10 @@ sys.path.append(BASEPATH)
 sys.path = list(set(sys.path))
 
 from share.config import Config
-from sda.Transport import Transport
+try:
+    from sda.Transport import Transport as Bag # Soon it will change name
+except ImportError:
+    from sda.bag import Bag
 from longtable import LongTable
 
 __all__ = ['sre', 'SreTemplate']
@@ -57,7 +60,7 @@ class SreTemplate(Template):
     delimiter = '\SRE'
     idpattern = '[_a-z][_a-z0-9.]*'
 
-def _get_config(src_path, confpath=None):
+def _load_config(src_path, confpath=None):
     ''' Get configuration file.
 
     @ param src_path: project source directory
@@ -92,13 +95,13 @@ def _load_template(path):
             fd.close()
     return templ
 
-def _get_transports(path, template, **kwargs):
-    ''' Load transport files and generates TeX code from them.
+def _load_bags(path, template, **kwargs):
+    ''' Load bag files and generates TeX code from them.
 
     @ param path: directory where .pickle files lives.
     @ param template: a SreTemplate instance to extract placeholders from.
     @ return: dictionary of output TeX code; the dictionary is indexed by
-            transport.COD
+            bag.COD
 
     '''
     ret = dict()
@@ -114,24 +117,24 @@ def _get_transports(path, template, **kwargs):
         base = ph_parts[0]
         if not bags.get(base, False):
             # Load and add to cache
-            bags[base] = Transport.load(os.path.join(path, '.'.join([base, 'pickle'])))
+            bags[base] = Bag.load(os.path.join(path, '.'.join([base, 'pickle'])))
         if len(ph_parts) > 1: # extract attribute
             ret[ph] = eval('.'.join(['bags[base]'] + ph_parts[1:]))
         else: # just use DF/LM 
             if bags[base].TIP == 'tab':
                 ret[ph] = LongTable(bags[base], **kwargs).to_latex()
             else: # TODO: handle other types
-                _logger.warning('Unhandled transport TIP %s found in %s, skipping...', transport.TIP, file_)
+                _logger.warning('Unhandled bag TIP %s found in %s, skipping...', basg[base].TIP, file_)
                 continue
     return ret
 
-def _report(dest_path, templ_path, template, transports, **kwargs):
+def _report(dest_path, templ_path, template, bags, **kwargs):
     ''' Load report template and make the placeholders substitutions.
 
     @ param dest_path: path where to store output.
     @ param templ_path: template file path.
     @ param template: SreTemplate instance
-    @ param transport: dictionary of LaTeX code snippetts to substitute to the
+    @ param bag: dictionary of LaTeX code snippetts to substitute to the
             placeholers; ths dictionary is indexed by placeholder's name.
     @ return texi2pdf exit value or -1 if an error happend.
 
@@ -140,7 +143,7 @@ def _report(dest_path, templ_path, template, transports, **kwargs):
         os.makedirs(os.path.dirname(dest_path))
     # substitute placeholders
     try:
-        templ_out = template.substitute(transports)
+        templ_out = template.substitute(bags)
     except ValueError, err:
         _logger.error("%s in template %s", err, template)
         return -1
@@ -168,7 +171,7 @@ def sre(src_path, config=None, **kwargs):
     Besically the procedure is splitted into these steps:
         - read configuration file
         - load template
-        - load transports
+        - load bags
         - build the report
     
     In most cases every file needed to build the report is stored in the same
@@ -182,7 +185,7 @@ def sre(src_path, config=None, **kwargs):
 
     '''
     src_path = os.path.abspath(src_path)
-    config = _get_config(src_path, confpath=config)
+    config = _load_config(src_path, confpath=config)
 
     global _logger
     logging.basicConfig(level = config.get('logLevel'))
@@ -204,12 +207,12 @@ def sre(src_path, config=None, **kwargs):
 
     # load tranposrts
     try:
-        transport_path = config['transports']
+        bag_path = config['bags']
     except KeyError:
-        transport_path = src_path
-    transports = _get_transports(transport_path, templ, **kwargs)
+        bag_path = src_path
+    bags = _load_bags(bag_path, templ, **kwargs)
     # make report
-    return _report(templ_path, templ_path, templ, transports, **kwargs)
+    return _report(templ_path, templ_path, templ, bags, **kwargs)
 
 
 if __name__ == "__main__":
