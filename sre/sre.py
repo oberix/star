@@ -49,6 +49,10 @@ class SreTemplate(Template):
         - changed in '[_a-z][_a-z0-9.]*' to allow also '.' inside the
           placeholder's name (in case we need to acces just one attribute)
 
+    NOTE: This are class attribute in the superclass, changing them at runtime
+    produces no effects. The only way is subclassing. 
+    Thanks to Doug Hellmann <http://www.doughellmann.com/PyMOTW/string/>.
+
     '''
     delimiter = '\SRE'
     idpattern = '[_a-z][_a-z0-9.]*'
@@ -161,9 +165,10 @@ def _report(dest_path, templ_path, template, transports, **kwargs):
 
 def sre(src_path, config=None, **kwargs):
     ''' Main procedure to generate a report. 
-    Besically the procedure is splitted into three steps:
+    Besically the procedure is splitted into these steps:
         - read configuration file
-        - read transports from pickles
+        - load template
+        - load transports
         - build the report
     
     In most cases every file needed to build the report is stored in the same
@@ -182,19 +187,21 @@ def sre(src_path, config=None, **kwargs):
     global _logger
     logging.basicConfig(level = config.get('logLevel'))
     _logger = logging.getLogger(os.path.basename(__name__))
-
     
+    try:
+        dest_path = config['dest_path']
+    except KeyError:
+        dest_path = src_path
+
     # load template
     try:
         templ_path = config['template']
     except KeyError:
         templ_path = os.path.join(src_path, 'main.tex')
     templ = _load_template(templ_path)
+    if not templ:
+        return templ
 
-    try:
-        dest_path = config['dest_path']
-    except KeyError:
-        dest_path = src_path
     # load tranposrts
     try:
         transport_path = config['transports']
