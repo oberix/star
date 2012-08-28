@@ -200,7 +200,7 @@ class LongTable(object):
         '''
         out = str()
         try:
-            self._data.DF = self._data.DF.sort(column='_OR_')
+            self._data.DF = self._data.DF.sort(columns='_OR_')
         except KeyError:
             # keep it unsorted
             pass

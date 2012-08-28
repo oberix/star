@@ -67,15 +67,9 @@ class Transport(GenericPickler):
             try :
                 lvar=DF.columns
             except AttributeError:
-                print("Warnings: DF non è un Dataframe") 
-                # FIXME: this is not safe, the obj is created, but it's
-                #        broken. It is better to rise the exception.
-                return 
+                raise AttributeError("DF non è un Dataframe") 
             lvar1=pandas.Index(LM.keys())
             lcheck=lvar-lvar1
             print lcheck
-            if lcheck != 0:
-                print("Warnings: non c'è coerenza tra le variabili del dataframe e le variabili di LM")
-                # FIXME: this is not safe, the obj is created, but it's
-                #        broken. It is better to rise the exception.
-                return
+            if len(lcheck) > 0:
+                raise AttributeError("non c'è coerenza tra le variabili del dataframe e le variabili di LM")
