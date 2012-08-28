@@ -59,13 +59,12 @@ def _get_config(src_path, confpath=None):
     config.parse()
     return config.options
 
-def _get_transports(path, dest_path=None, save_parts=False, **kwargs):
+def _get_transports(path, **kwargs):
     ''' Load transport files and generates TeX code from them.
 
     @ param path: directory where .pickle files lives.
     @ param dest_path: directory where output files are stored (if False it's
             the same as path).
-    @ param save_parts: True if you want output LaTeX code to be saved as files.
     @ return: dictionary of output TeX code; the dictionary is indexed by
             transport.COD
     '''
@@ -74,31 +73,23 @@ def _get_transports(path, dest_path=None, save_parts=False, **kwargs):
 
     for file_ in os.listdir(path):
         if file_.endswith('.pickle'):
+            # TODO: get only files referred by at last one placeholder;
+            # * eventually extract specific attribute
             transport = Transport.load(os.path.join(path, file_))
             if transport.TIP == 'tab': # FIXME: How to choose different tables?
                 ret[transport.COD] = LongTable(transport, **kwargs).to_latex()
-            else:
-                _logger.warning('Invalid transport TIP found in %s, skipping...', file_)
-                # TODO: handle other types
+            else: # TODO: handle other types
+                _logger.warning('Unhandled transport TIP %s found in %s, skipping...', transport.TIP, file_)
                 continue
-            if save_parts:
-                # Save generated parts in files
-                file_out = os.path.join(dest_path, "%s%s.tex" % transport.COD)
-                fd = codecs.open(file_out, mode='w', encoding='utf-8')
-                try:
-                    fd.write(file_out)
-                finally:
-                    fd.close()
     return ret
 
-def _report(src_path, template, transports, dest_path=None, **kwargs):
+def _report(dest_path, template, transports, **kwargs):
     ''' Load report template and make the placeholders substitutions.
 
-    @ param src_path: directory where project files lives.
+    @ param dest_path: path where to store output.
     @ param template: template file path.
     @ param transport: dictionary of LaTeX code snippetts to substitute to the
             placeholers; ths dictionary is indexed by placeholder's name.
-    @ param dest_path: path where to store output.
     @ return texi2pdf exit value or -1 if an error happend.
     '''
     if not os.path.exists(os.path.dirname(dest_path)):
@@ -115,7 +106,12 @@ def _report(src_path, template, transports, dest_path=None, **kwargs):
     finally:
         if fd > 0:
             fd.close()
-    templ_out = templ.substitute(transports)
+    try:
+        templ_out = templ.substitute(transports)
+    except ValueError, err:
+        import ipdb; ipdb.set_trace()
+        _logger.error("%s in template %s", err, template)
+        return -1
     # save final document
     template_out = template.replace('.tex', '_out.tex')
     try:
@@ -167,14 +163,14 @@ def sre(src_path, config=None, **kwargs):
         transport_path = config['transports']
     except KeyError:
         transport_path = src_path
-    transports = _get_transports(transport_path, dest_path, **kwargs)
+    transports = _get_transports(transport_path, **kwargs)
     # make report
     try:
         template = config['template']
     except KeyError:
         template = os.path.join(src_path, 'main.tex')
     
-    return _report(src_path, template, transports, dest_path=dest_path)
+    return _report(dest_path, template, transports, **kwargs)
 
 
 if __name__ == "__main__":
