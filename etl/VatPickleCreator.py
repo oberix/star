@@ -46,7 +46,6 @@ import stark
 def CreateVatDW(companyName):
     config = Config()
     config.parse()
-    
     if not companyName:
         companyName=config.options.get('company',False)
     picklesPath = config.options.get('pickles_path',False)
@@ -88,27 +87,26 @@ def CreateVatDW(companyName):
     moveLineDf = pandas.DataFrame(moveLinesDict)
     #moveLineDf['TAX_COD'].ix[moveLineDf['TAX_COD'].isnull()] = "NULL"
     vatDatasDf = moveLineDf.ix[(moveLineDf["COD_SEQ"]=='RIVA') & (moveLineDf["TAX_COD"].notnull())].reset_index()
-    #aggiunta colonna TNAME
+    #aggiunta colonne TNAME e TTAX
     companyPathPkl = os.path.join(picklesPath,companyName)
     taxDf = StarK.Loadk(companyPathPkl,"TAX.pickle").DF
     df2 = vatDatasDf[vatDatasDf['TYP_JRN'].isin(['sale', 'purchase'])]
     df3 = pandas.merge(df2,taxDf,left_on='TAX_COD',right_on='TAX_CODE')
+    df3['TTAX'] = True
     df4 = pandas.merge(df2,taxDf,left_on='TAX_COD',right_on='BASE_CODE')
+    df4['TTAX'] = False
     df5 = vatDatasDf[vatDatasDf['TYP_JRN'].isin(['sale_refund', 'purchase_refund'])]
     df6 = pandas.merge(df5,taxDf,left_on='TAX_COD',right_on='REF_TAX_CODE')
+    df6['TTAX'] = True
     df7 = pandas.merge(df5,taxDf,left_on='TAX_COD',right_on='REF_BASE_CODE')
+    df7['TTAX'] = False
     vatDatasDf = pandas.concat([df3,df4,df6,df7]).reset_index(drop=True)
     del vatDatasDf["TAX_CODE"]
     del vatDatasDf["BASE_CODE"]
     del vatDatasDf["REF_TAX_CODE"]
     del vatDatasDf["REF_BASE_CODE"]
-    vatDatasDf = vatDatasDf.rename(columns={'NAM_TAX' : 'TNAME',
-                                            'NAM_SEQ' : 'SEQUENCE',
-                                            'COD_CON' : 'TACC'
-                                            })
-
     #aggiunta a vatDatasDf delle move.line relative ai pagamenti dell'iva differita
-    df0 = vatDatasDf.ix[(vatDatasDf["TACC"]==deferredVatCreditAccountCode) | (vatDatasDf["TACC"]==deferredVatDebitAccountCode)].reset_index()
+    df0 = vatDatasDf.ix[(vatDatasDf["COD_CON"]==deferredVatCreditAccountCode) | (vatDatasDf["COD_CON"]==deferredVatDebitAccountCode)].reset_index()
     reconcileDf = df0[["RECON","RECON_P"]].drop_duplicates().reset_index(drop=True)
     reconcileDf['RECON'].ix[reconcileDf['RECON'].isnull()] = "NULL"
     reconcileDf['RECON_P'].ix[reconcileDf['RECON_P'].isnull()] = "NULL"
@@ -120,11 +118,17 @@ def CreateVatDW(companyName):
     del df3["RECON_P.y"]
     del df3["RECON.x"]
     del df3["RECON.y"]
+    df3['TTAX'] = True
     vatDatasDf = pandas.concat([vatDatasDf,df3]).reset_index(drop=True)
     #aggiunta a vatDatasDf delle move.line relative ai pagamenti dell'iva sul conto treasuryVatAccountCode
-    df0 = moveLineDf.ix[moveLineDf["TACC"]==treasuryVatAccountCode].reset_index()
+    df0 = moveLineDf.ix[moveLineDf["COD_CON"]==treasuryVatAccountCode].reset_index()
     vatDatasDf = pandas.concat([vatDatasDf,df0]).reset_index(drop=True)
     del vatDatasDf["index"]
+    vatDatasDf = vatDatasDf.rename(columns={'NAM_TAX' : 'TNAME',
+                                            'NAM_SEQ' : 'SEQUENCE',
+                                            'COD_CON' : 'TACC',
+                                            'STA_MOV' : 'STATE'
+                                            })
     #costruzione delle altre colonne del df finale
     vatDatasDf['M_NUM'] = ''
     for i in range(len(vatDatasDf)):
@@ -132,29 +136,61 @@ def CreateVatDW(companyName):
         moveName = row['M_NAME'][i]
         moveNameSplits = moveName.split("/")
         vatDatasDf['M_NUM'][i:i+1] = moveNameSplits[len(moveNameSplits)-1]
-    
-    vatDatasDf['CASH'] = False
+    vatDatasDf['CASH'] = None
     for i in range(len(vatDatasDf)):
         row = vatDatasDf[i:i+1]
         debit = row['DBT_MVL'][i]
         credit = row['CRT_MVL'][i]
         accountCode = row['TACC'][i]
-        vatDatasDf['CASH'][i:i+1] = (debit>0 and accountCode==deferredVatDebitAccountCode) or (credit>0 and accountCode==deferredVatCreditAccountCode)
-                                            
-    vatDatasDf['TTAX'] = False
-    vatDatasDf['TTAX'].ix[vatDatasDf['TACC'].isin([immediateVatCreditAccountCode,immediateVatDebitAccountCode,deferredVatCreditAccountCode,deferredVatDebitAccountCode])] = True
-    
-    vatDatasDf['TCRED'] = False
-    vatDatasDf['TCRED'].ix[vatDatasDf['TACC'].isin([immediateVatCreditAccountCode,deferredVatCreditAccountCode])] = True
-    
-    #TODO
-    vatDatasDf['TDET'] = True
-    vatDatasDf['TDET'].ix[vatDatasDf['TACC'].isin([immediateVatCreditAccountCode,deferredVatCreditAccountCode])] = False
-    
-    
-    print len(vatDatasDf)
-    print len(vatDatasDf.ix[vatDatasDf['TTAX']==True])
-    print len(vatDatasDf.ix[vatDatasDf['TTAX']==False])
+        if accountCode in [deferredVatDebitAccountCode,deferredVatCreditAccountCode]:
+            vatDatasDf['CASH'][i:i+1] = (debit>0 and accountCode==deferredVatDebitAccountCode)\
+    vatDatasDf['AMOUNT'] = 0.00
+    for i in range(len(vatDatasDf)):
+        row = vatDatasDf[i:i+1]
+        debit = row['DBT_MVL'][i]
+        credit = row['CRT_MVL'][i]
+        journalType = row['TYP_JRN'][i]
+        if debit>0:
+            if journalType in [('sale_refund','purchase_refund')]:
+                vatDatasDf['AMOUNT'][i:i+1] = -debit
+            else:
+                vatDatasDf['AMOUNT'][i:i+1] = debit
+        elif credit>0:
+            if journalType in [('sale_refund','purchase_refund')]:
+                vatDatasDf['AMOUNT'][i:i+1] = -credit
+            else:
+                vatDatasDf['AMOUNT'][i:i+1] = credit
+    vatDatasDf['TCRED'] = None
+    vatDatasDf['TCRED'].ix[vatDatasDf['TTAX']==True] = False
+    vatDatasDf['TCRED'].ix[(vatDatasDf['TTAX']==True) & 
+                            (vatDatasDf['TACC'].isin([immediateVatCreditAccountCode,deferredVatCreditAccountCode]))
+                            ]= True
+    vatDatasDf['TCRED'].ix[(vatDatasDf['TTAX']==True) & (vatDatasDf['DBT_MVL']>0) &
+                            (vatDatasDf['TACC']!=immediateVatDebitAccountCode) &
+                            (vatDatasDf['TACC']!=deferredVatDebitAccountCode)
+                            ]= True
+    vatDatasDf['TDET'] = None
+    vatDatasDf['TDET'].ix[vatDatasDf['TTAX']==True] = False
+    vatDatasDf['TDET'].ix[(vatDatasDf['TTAX']==True) & 
+                            vatDatasDf['TACC'].isin([
+                                    immediateVatCreditAccountCode,immediateVatDebitAccountCode,
+                                    deferredVatCreditAccountCode,deferredVatDebitAccountCode])] = True
+    vatDatasDf['TIMM'] = None
+    vatDatasDf['TIMM'].ix[(vatDatasDf['TTAX']==True) & (vatDatasDf['TDET']==True)] = False
+    vatDatasDf['TIMM'].ix[(vatDatasDf['TTAX']==True) & (vatDatasDf['TDET']==True) & 
+                            (vatDatasDf['TACC'].isin([immediateVatCreditAccountCode,immediateVatDebitAccountCode]))
+                            ] = True
+    vatDatasDf['TESI'] = None
+    vatDatasDf['TESI'].ix[vatDatasDf['TIMM']==False] = False
+    vatDatasDf['TESI'].ix[vatDatasDf['TIMM']==True] = True
+    vatDatasDf['TESI'].ix[(vatDatasDf['TIMM']==False) & (vatDatasDf['CASH']==True)] = True
+    vatDatasDf = vatDatasDf[['DATE','DATE_DOC','PERIOD','ESER',
+                            'M_NAME','M_REF','M_NUM','PARTNER','JOURNAL','SEQUENCE',
+                            'STATE','TNAME','RECON','RECON_P','CASH',
+                            'TACC','TTAX','TCRED','TDET','TIMM','TESI','AMOUNT'
+                            ]]
+    vatDatasDf = vatDatasDf.sort(columns=['M_NAME'])
+    #vatDatasDf.to_csv("df.csv",sep=";",encoding="utf-8")
 
 if __name__ == "__main__":
     CreateVatDW("Aderit")

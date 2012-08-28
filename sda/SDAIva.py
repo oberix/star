@@ -34,73 +34,36 @@ def getVatRegister(picklesPath, companyName, onlyValidatedMoves, sequenceName=No
         raise RuntimeError("Errore: i parametri periodName e fiscalyearName non devono essere entrambi nulli")
     companyPathPkl = os.path.join(picklesPath,companyName)
     
-    starkTax=StarK.Loadk(companyPathPkl,"TAX.pickle")
     starkMoveLine=StarK.Loadk(companyPathPkl,"MVL.pickle")
     df0 = starkMoveLine.DF
-    del df0["ID0_MVL"]
-    del df0["CHK_MOV"]
-    del df0["NAM_REC"]
-    del df0["NAM_REC_P"]
-    del df0["CRT_MVL"]
-    del df0["DBT_MVL"]
-    del df0["NAM_CON"]
-    del df0["NAM_JRN"]
-    del df0["NAM_MVL"]
-    del df0["REF_MVL"]    
     
     if sequenceName:
-        df0 = df0.ix[df0['NAM_SEQ']==sequenceName]
-    df1 = df0.ix[(df0['TAX_COD'].notnull()) & (df0['COD_SEQ']=='RIVA')]
+        df0 = df0.ix[df0['SEQUENCE']==sequenceName]
     if periodName:
-        df1 = df1.ix[df1['NAM_PRD']==periodName]
+        df0 = df0.ix[df1['PERIOD']==periodName]
     else:
-        df1 = df1.ix[df1['NAM_FY']==fiscalyearName]
+        df0 = df0.ix[df1['ESER']==fiscalyearName]
     if onlyValidatedMoves:
-        df1 = df1.ix[df0['STA_MOV']=='posted']
-    df1 = df1.reset_index(drop=True)
-    df1 = df1.sort(['DAT_MVL','NAM_MOV'])
-    del df1['STA_MOV']
-    del df1['NAM_FY']
-    del df1['NAM_SEQ']
-    del df1['NAM_PRD']
-    del df1["COD_SEQ"]
-    #merge con tasse a seconda del journal type
-    df2 = df1[df1['TYP_JRN'].isin(['sale', 'purchase'])]
-    df3 = pandas.merge(df2,starkTax.DF,how='left',left_on='TAX_COD',right_on='TAX_CODE')
-
-    df4 = df1[df1['TYP_JRN'].isin(['sale_refund', 'purchase_refund'])]
-    df5 = pandas.merge(df4,starkTax.DF,how='left',left_on='TAX_COD',right_on='REF_TAX_CODE')
-
-    #concatenazione dei due df precedenti
-    df6 = pandas.concat([df3,df5])
-    df6 = df6.reset_index(drop=True)
-    df6['ST_TAX'] = 'TAX'
-    df6['ST_TAX'].ix[df6['NAM_TAX'].isnull()] = 'BASE'
-    df6 = df6.reset_index()
-    #aggregazione delle righe per tax_code uguale nella stessa move
-    df6['BASE_CODE'].ix[df6['BASE_CODE'].isnull()] = "-1"
-    df6['NAM_TAX'].ix[df6['NAM_TAX'].isnull()] = "NULL"
-    df6['REF_BASE_CODE'].ix[df6['REF_BASE_CODE'].isnull()] = "-1"
-    df6['REF_TAX_CODE'].ix[df6['REF_TAX_CODE'].isnull()] = "-1"
-    df6['TAX_CODE'].ix[df6['TAX_CODE'].isnull()] = "-1"
-    del df6["index"]
-    groupbyCols = list(df6.columns)
-    groupbyCols.remove('TAX_AMO')
-    if len(df6)>0:
-        df7 = df6.groupby(groupbyCols).sum()[['TAX_AMO']].reset_index()
-        df7['TAX_AMO']=df7['TAX_AMO'].map(float)
-        df7['BASE_CODE']=df7['BASE_CODE'].map(int)
-        df7['REF_BASE_CODE']=df7['REF_BASE_CODE'].map(int)
-        df7['REF_TAX_CODE']=df7['REF_TAX_CODE'].map(int)
-        df7['TAX_CODE']=df7['TAX_CODE'].map(int)
+        df0 = df0.ix[df0['STATE']=='posted']
+    df1 = df0.reset_index(drop=True)
+    if len(df1)>0:
+        df6 = df1.sort(['DATE','M_NAME'])
+        df6['ST_TAX'] = 'TAX'
+        df6['ST_TAX'].ix[df6['TTAX']==False] = 'BASE'
+        df6 = df6.reset_index()
+        groupbyCols = list(df6.columns)
+        groupbyCols.remove('AMOUNT')
+        df7 = df6.groupby(groupbyCols).sum()[['AMOUNT']].reset_index()
+        df7['AMOUNT']=df7['AMOUNT'].map(float)
 
         #aggiunta colonne BASE e TAX con importi di imponibile e imposta a seconda delle righe
-        df8 = pandas.pivot_table(df7,values='TAX_AMO', cols=['ST_TAX'], 
-                        rows=['NAM_MOV','NAM_TAX','TAX_COD','BASE_CODE','REF_BASE_CODE','TYP_JRN','COD_CON'])
+        df8 = pandas.pivot_table(df7,values='AMOUNT', cols=['ST_TAX'], 
+                        rows=['M_NAME','TNAME','TACC'])
         df8 = df8.reset_index()
 
-        df9 = df8.ix[df8['NAM_TAX']!='NULL']
+        df9 = df8.ix[df8['TTAX']==True]
         df9 = df9.reset_index(drop=True)
+        qui
         for i in range(len(df9)):
             row = df9[i:i+1]
             moveName = row['NAM_MOV'][i]
