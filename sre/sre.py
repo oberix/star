@@ -36,13 +36,22 @@ from share.config import Config
 from sda.Transport import Transport
 from longtable import LongTable
 
-__all__ = ['sre']
+__all__ = ['sre', 'SreTemplate']
 _logger = None
 
 class SreTemplate(Template):
     ''' A custom template class to match the SRE placeholders.
+    We need a different delimiter:
+        - default is '$'
+        - changhed in '\SRE'
+    And a different pattern (used to match the placeholder name)
+        - default is '[_a-z][_a-z0-9]*'
+        - changed in '[_a-z][_a-z0-9.]*' to allow also '.' inside the
+          placeholder's name (in case we need to acces just one attribute)
+
     '''
     delimiter = '\SRE'
+    idpattern = '[_a-z][_a-z0-9.]*'
 
 def _get_config(src_path, confpath=None):
     ''' Get configuration file.
@@ -50,6 +59,7 @@ def _get_config(src_path, confpath=None):
     @ param src_path: project source directory
     @ param confpath: path to the configuration file
     @ return: options dictionary
+
     '''
     if confpath is None:
         confpath = os.path.join(src_path, 'config.cfg')
@@ -57,48 +67,18 @@ def _get_config(src_path, confpath=None):
         return {}
     config = Config(confpath)
     config.parse()
-    return config.options
+    return config.options    
 
-def _get_transports(path, **kwargs):
-    ''' Load transport files and generates TeX code from them.
+def _load_template(path):
+    ''' Read template from file and generate a SreTemplate object.
+    @ param path: path to the template file
+    @ return: SreTemplare instance
 
-    @ param path: directory where .pickle files lives.
-    @ param dest_path: directory where output files are stored (if False it's
-            the same as path).
-    @ return: dictionary of output TeX code; the dictionary is indexed by
-            transport.COD
     '''
-    ret = dict()
-    _logger.info("Reading pickles, this might take a while...")
-
-    for file_ in os.listdir(path):
-        if file_.endswith('.pickle'):
-            # TODO: get only files referred by at last one placeholder;
-            # * eventually extract specific attribute
-            transport = Transport.load(os.path.join(path, file_))
-            if transport.TIP == 'tab': # FIXME: How to choose different tables?
-                ret[transport.COD] = LongTable(transport, **kwargs).to_latex()
-            else: # TODO: handle other types
-                _logger.warning('Unhandled transport TIP %s found in %s, skipping...', transport.TIP, file_)
-                continue
-    return ret
-
-def _report(dest_path, template, transports, **kwargs):
-    ''' Load report template and make the placeholders substitutions.
-
-    @ param dest_path: path where to store output.
-    @ param template: template file path.
-    @ param transport: dictionary of LaTeX code snippetts to substitute to the
-            placeholers; ths dictionary is indexed by placeholder's name.
-    @ return texi2pdf exit value or -1 if an error happend.
-    '''
-    if not os.path.exists(os.path.dirname(dest_path)):
-        os.makedirs(os.path.dirname(dest_path))
-    # substitute placeholders
     fd = 0
     _logger.info("Loading template.")
     try:
-        fd = codecs.open(template, mode='r', encoding='utf-8')
+        fd = codecs.open(path, mode='r', encoding='utf-8')
         templ = SreTemplate(fd.read())
     except IOError, err:
         _logger.error("%s", err)
@@ -106,14 +86,62 @@ def _report(dest_path, template, transports, **kwargs):
     finally:
         if fd > 0:
             fd.close()
+    return templ
+
+def _get_transports(path, template, **kwargs):
+    ''' Load transport files and generates TeX code from them.
+
+    @ param path: directory where .pickle files lives.
+    @ param template: a SreTemplate instance to extract placeholders from.
+    @ return: dictionary of output TeX code; the dictionary is indexed by
+            transport.COD
+
+    '''
+    ret = dict()
+
+    # Make a placeholders list to fetch only needed files and to let access to
+    # single Pickle attributes.
+    ph_list = [ph[2] for ph in template.pattern.findall(template.template)]
+
+    _logger.info("Reading pickles, this might take a while...")
+    bags = dict() # Pickle file's cache (never load twice the same file!)
+    for ph in ph_list:
+        ph_parts = ph.split('.')
+        base = ph_parts[0]
+        if not bags.get(base, False):
+            # Load and add to cache
+            bags[base] = Transport.load(os.path.join(path, '.'.join([base, 'pickle'])))
+        if len(ph_parts) > 1: # extract attribute
+            ret[ph] = eval('.'.join(['bags[base]'] + ph_parts[1:]))
+        else: # just use DF/LM 
+            if bags[base].TIP == 'tab':
+                ret[ph] = LongTable(bags[base], **kwargs).to_latex()
+            else: # TODO: handle other types
+                _logger.warning('Unhandled transport TIP %s found in %s, skipping...', transport.TIP, file_)
+                continue
+    return ret
+
+def _report(dest_path, templ_path, template, transports, **kwargs):
+    ''' Load report template and make the placeholders substitutions.
+
+    @ param dest_path: path where to store output.
+    @ param templ_path: template file path.
+    @ param template: SreTemplate instance
+    @ param transport: dictionary of LaTeX code snippetts to substitute to the
+            placeholers; ths dictionary is indexed by placeholder's name.
+    @ return texi2pdf exit value or -1 if an error happend.
+
+    '''
+    if not os.path.exists(os.path.dirname(dest_path)):
+        os.makedirs(os.path.dirname(dest_path))
+    # substitute placeholders
     try:
-        templ_out = templ.substitute(transports)
+        templ_out = template.substitute(transports)
     except ValueError, err:
-        import ipdb; ipdb.set_trace()
         _logger.error("%s in template %s", err, template)
         return -1
     # save final document
-    template_out = template.replace('.tex', '_out.tex')
+    template_out = templ_path.replace('.tex', '_out.tex')
     try:
         fd = codecs.open(template_out, mode='w', encoding='utf-8')
         fd.write(templ_out)
@@ -126,7 +154,7 @@ def _report(dest_path, template, transports, **kwargs):
     # Call LaTeX compiler
     _logger.info("Compiling into PDF...")
     ret = os.system('texi2pdf -q --clean -o %s -c %s' %\
-                  (os.path.join(dest_path, template.replace('.tex', '')), 
+                  (os.path.join(dest_path, templ_path.replace('.tex', '')), 
                    template_out))
     _logger.info("Done")
     return ret
@@ -146,6 +174,7 @@ def sre(src_path, config=None, **kwargs):
     @ param config: a configuration file (if None, the one inside src_path will
         be used).
     @ return: _report() return value
+
     '''
     src_path = os.path.abspath(src_path)
     config = _get_config(src_path, confpath=config)
@@ -153,6 +182,14 @@ def sre(src_path, config=None, **kwargs):
     global _logger
     logging.basicConfig(level = config.get('logLevel'))
     _logger = logging.getLogger(os.path.basename(__name__))
+
+    
+    # load template
+    try:
+        templ_path = config['template']
+    except KeyError:
+        templ_path = os.path.join(src_path, 'main.tex')
+    templ = _load_template(templ_path)
 
     try:
         dest_path = config['dest_path']
@@ -163,14 +200,9 @@ def sre(src_path, config=None, **kwargs):
         transport_path = config['transports']
     except KeyError:
         transport_path = src_path
-    transports = _get_transports(transport_path, **kwargs)
+    transports = _get_transports(transport_path, templ, **kwargs)
     # make report
-    try:
-        template = config['template']
-    except KeyError:
-        template = os.path.join(src_path, 'main.tex')
-    
-    return _report(dest_path, template, transports, **kwargs)
+    return _report(templ_path, templ_path, templ, transports, **kwargs)
 
 
 if __name__ == "__main__":
