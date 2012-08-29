@@ -23,7 +23,7 @@
 import os
 import sys
 import codecs
-from string import Template
+import string
 import logging
 
 BASEPATH = os.path.abspath(os.path.join(
@@ -32,7 +32,7 @@ BASEPATH = os.path.abspath(os.path.join(
 sys.path.append(BASEPATH)
 sys.path = list(set(sys.path))
 
-from share.config import Config
+from share.config import load_config
 try:
     from sda.Transport import Transport as Bag # Soon it will change name
 except ImportError:
@@ -42,7 +42,7 @@ from longtable import LongTable
 __all__ = ['sre', 'SreTemplate']
 _logger = None
 
-class SreTemplate(Template):
+class SreTemplate(string.Template):
     ''' A custom template class to match the SRE placeholders.
     We need a different delimiter:
         - default is '$'
@@ -60,21 +60,21 @@ class SreTemplate(Template):
     delimiter = '\SRE'
     idpattern = '[_a-z][_a-z0-9.]*'
 
-def _load_config(src_path, confpath=None):
-    ''' Get configuration file.
+# def _load_config(src_path, confpath=None):
+#     ''' Get configuration file.
 
-    @ param src_path: project source directory
-    @ param confpath: path to the configuration file
-    @ return: options dictionary
+#     @ param src_path: project source directory
+#     @ param confpath: path to the configuration file
+#     @ return: options dictionary
 
-    '''
-    if confpath is None:
-        confpath = os.path.join(src_path, 'config.cfg')
-    if not os.path.isfile(confpath):
-        return {}
-    config = Config(confpath)
-    config.parse()
-    return config.options    
+#     '''
+#     if confpath is None:
+#         confpath = os.path.join(src_path, 'config.cfg')
+#     if not os.path.isfile(confpath):
+#         return {}
+#     config = Config(confpath)
+#     config.parse()
+#     return config.options    
 
 def _load_template(path):
     ''' Read template from file and generate a SreTemplate object.
@@ -89,7 +89,7 @@ def _load_template(path):
         templ = SreTemplate(fd.read())
     except IOError, err:
         _logger.error("%s", err)
-        return -1
+        return 1
     finally:
         if fd > 0:
             fd.close()
@@ -146,7 +146,7 @@ def _report(dest_path, templ_path, template, bags, **kwargs):
         templ_out = template.substitute(bags)
     except ValueError, err:
         _logger.error("%s in template %s", err, template)
-        return -1
+        return 1
     # save final document
     template_out = templ_path.replace('.tex', '_out.tex')
     try:
@@ -154,7 +154,7 @@ def _report(dest_path, templ_path, template, bags, **kwargs):
         fd.write(templ_out)
     except IOError, err:
         _logger.error("%s", err)
-        return -1
+        return 1
     finally:
         if fd > 0:
             fd.close()
@@ -169,7 +169,7 @@ def _report(dest_path, templ_path, template, bags, **kwargs):
 def sre(src_path, config=None, **kwargs):
     ''' Main procedure to generate a report. 
     Besically the procedure is splitted into these steps:
-        - read configuration file
+        - load configuration file
         - load template
         - load bags
         - build the report
@@ -185,7 +185,8 @@ def sre(src_path, config=None, **kwargs):
 
     '''
     src_path = os.path.abspath(src_path)
-    config = _load_config(src_path, confpath=config)
+    # load config
+    config = load_config(src_path, confpath=config)
 
     global _logger
     logging.basicConfig(level = config.get('logLevel'))

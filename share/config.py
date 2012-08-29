@@ -62,13 +62,14 @@ class Config(object):
         @ param filename: configuration file's path
         """
         self.config_file = filename
-        self.options = {
-            'database' : DEF_DB,
-            'host': DEF_HOST,
-            'port': DEF_PORT,
-            'username': None,
-            'password': None,
-            }
+        self.options = dict()
+        # self.options = {
+        #     'database' : DEF_DB,
+        #     'host': DEF_HOST,
+        #     'port': DEF_PORT,
+        #     'username': None,
+        #     'password': None,
+        #     }
         self._parser = self._init_parser()
 
     # def __repr__(self):
@@ -143,3 +144,19 @@ class Config(object):
             self.options[key] = opts.ensure_value(key, False)
         self.options['logLevel'] = opts.logLevel
 
+
+def load_config(src_path, confpath=None):
+    ''' Get configuration file.
+
+    @ param src_path: project source directory
+    @ param confpath: path to the configuration file
+    @ return: options dictionary
+
+    '''
+    if confpath is None:
+        confpath = os.path.join(src_path, 'config.cfg')
+    if not os.path.isfile(confpath):
+        return {}
+    config = Config(confpath)
+    config.parse()
+    return config.options    

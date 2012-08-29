@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
 ##############################################################################
 #    
@@ -21,6 +22,7 @@
 
 import os
 import sys
+import logging
 
 BASEPATH = os.path.abspath(os.path.join(
         os.path.dirname(__file__),
@@ -28,38 +30,80 @@ BASEPATH = os.path.abspath(os.path.join(
 sys.path.append(BASEPATH)
 sys.path = list(set(sys.path))
 
-from share.config import Config
+from share.config import load_config
+from etl.stark import StarK
+try:
+    from Transport import Transport as Bag # Soon it will change name
+except ImportError:
+    from bag import Bag
 
-def _get_config(confpath=None):
-    if confpath is None:
-        config = Config(os.path.join(os.path.dirname(__file__), 'config.cfg'))
-    else:
-        config = Config(confpath)
-    config.parse()
-    return config.options
+__all__ = ['sda']
+_logger = None
 
-def _get_starks(path):
-    # TODO: implement
-    pass
+def _load_stark(path, *args):
+    ''' Load data from starks files at path and return a dictionary of StarK
+    objects.
+    @ param path: path to the StarK's pickles
+    @ param *args: list of pickle names, if empty every pickle inside path is
+            read.
+    @ return: dictionary of StarKs
 
-def _save(pickeables, dest_path):
-    for elem in pickleable:
-        elem.save(os.path.join(dest_path, elem.name))
+    ''' 
+    ret = dict()
+    for file_ in os.listdir(path):
+        if file_.endswith('.pickle'):
+            if len(args) > 0 and file_.replace('.pickle', '') not in args:
+                continue
+            stark = StarK.load(file_)
+            ret[stark.COD] = stark
+    return ret
+
+def _elaborate(module, starks, **kwargs):
+    ''' Execute a callback function with datas (StarK objects) as input.
+    @ param module: module to inport callback function from
+    @ param starks: dictionary of input stark objects
+    @ param **kwargs: dictionary of parameters to pass to the funct
+    @ return: a dictionary of StarKs
+
+    '''
+    execfile(module, globals()) # TODO: are locals needed too?
+    return elaborate(starks, **kwargs)
     
-def sda(func, src_path, dest_path, confpath=None):
-    config = _get_config(confpath=confpath)
-    starks = _get_starks(src_path)
-    transports = func(config, starks)
-    _save(transports, dest_path())
+def _build_bags(data, lms, path):
+    ''' Build Bags objects and save them to path as pickle files.
+    @ param data: dictionary of input DataFrames
+    @ param lms: dictionary of LM dictionaries (keys must match data's ones).
+    @ param path: where the Bag's pickles will be saved
+    @ return: 0 if all went good, 1 otherwhise
 
+    ''' 
+    for key in data.iterkeys():
+        try:
+            bag = Bag(COD=data[key].COD, TITLE=data[key].TITLE, TIP=data[key].TYPE,
+                      FOOTNOTE=data[key], DF=data[key].DF, LM=lms[key])
+        except KeyError:
+            _logger.warning("Could not find an LM with key '%s'", key)
+            continue
+        bag.save(os.path.join(path, '.'.join([key, 'pickle'])))
 
-if __name__ == "__main__":
+def sda(path, config=None):
+    config = load_config(path, confpath=config)
+
+    global _logger
+    logging.basicConfig(level=config.get('logLevel'))
+    _logger = logging.getLogger(os.path.basename(__name__))
     
-    def test(config, starks):
-        print("hallo")
+    module = config.pop('module')
+    execfile(config.pop('LM'), globals())
+    lms = LM
 
-    sda(test, 
-        os.path.dirname(__file__), 
-        os.path.dirname(__file__), 
-        confpath=os.path.join(os.path.dirname(__file__), 'report_iva.cfg'))
-
+    datas = _load_stark(path, config.get('stark', []))
+    out_datas = _elaborate(module, datas, **config)
+    _build_bags(out_datas, lms, path)
+    return 0
+    
+if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        logging.error("Specify a path containing a config file")
+        sys.exit(1)
+    sys.exit(sda(sys.argv[1]))
