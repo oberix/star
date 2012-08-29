@@ -24,23 +24,22 @@ import sys
 import os
 import getopt
 
-## local libs
-## append local lib path
-#LIBRARY_PATH = os.path.join(
-    #os.path.dirname(os.path.abspath(sys.argv[0])),
-    #os.path.pardir, os.path.pardir, 'lib')
-#sys.path.append(LIBRARY_PATH)
-PathPr="/home/contabilita/star_branch/share/" #dir che contiene il config.py
-sys.path.append(PathPr)   
-sys.path=list(set(sys.path)) 
-import config
-from config import Config
+# Servabit libraries
+BASEPATH = os.path.abspath(os.path.join(
+                os.path.dirname(__file__),
+                os.path.pardir))
+sys.path.append(BASEPATH)
+sys.path = list(set(sys.path))
+
+from share.config import Config
+from share.stark import StarK
 from Transport import Transport
 import SDAIva
 import CreateLMIva
 
 def main(dirname):
-    config = Config()
+    configFilePath = os.path.join(BASEPATH,"config","report_iva.cfg")
+    config = Config(configFilePath)
     config.parse()
     
     companyName=config.options.get('company',False)
@@ -59,17 +58,21 @@ def main(dirname):
     deferredVatDebitAccountCode=config.options.get('deferred_debit_vat_account_code',False)
     treasuryVatAccountCode=config.options.get('treasury_vat_account_code',False)
     
+    companyPathPkl = os.path.join(picklesPath,companyName)
+    vatStarK = StarK.Loadk(companyPathPkl,"VAT.pickle")
+    vatDf = vatStarK.DF
+    
     pdfFileName=False
     try:
         #vat registers
         if reportType==1:
-            vatRegister = SDAIva.getVatRegister(picklesPath, companyName, onlyValidatedMoves, fiscalyearName=fiscalyearName, sequenceName=sequenceName)
+            vatRegister = SDAIva.getVatRegister(vatDf, companyName, onlyValidatedMoves, fiscalyearName=fiscalyearName, sequenceName=sequenceName)
             print vatRegister
             transportRIva = Transport(DF=vatRegister,TIP='tab',LM=CreateLMIva.lm_registri_iva)
             pdfFileName = "RegistroIVA"+string.replace(sequenceName," ","")+companyName+string.replace(fiscalyearName," ","")
         #vat summary
         elif reportType==2:
-            vatSummary=SDAIva.getVatSummary(picklesPath, companyName, onlyValidatedMoves, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode, periodName=periodName, sequenceName=sequenceName)
+            vatSummary=SDAIva.getVatSummary(vatDf, companyName, onlyValidatedMoves, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode, periodName=periodName, sequenceName=sequenceName)
             print vatSummary
             pdfFileName="RiepilogoIVA"+string.replace(sequenceName," ","")+companyName+string.replace(periodName," ","")
         #vat detail

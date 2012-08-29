@@ -36,19 +36,19 @@ from sqlalchemy import create_engine, Column, String, Integer, Sequence, Foreign
 import logging
 
 # Servabit libraries
-PathPr="/home/contabilita/star_branch/share/" #dir che contiene il config.py
-sys.path.append(PathPr)   
-sys.path=list(set(sys.path)) 
-import config
+BASEPATH = os.path.abspath(os.path.join(
+                os.path.dirname(__file__),
+                os.path.pardir))
+sys.path.append(BASEPATH)
+sys.path = list(set(sys.path))
+from share.config import Config
 
 
 #genero una classe di nome Base da usare con SQLAlchemy
 Base = declarative_base()
-#definisco ikl file di configurazione
-filepath = '/home/contabilita/star_branch/etl/goal2stark.cfg'
-#istanzio un oggeto conf sulla base del file di configurazione
-conf = config.Config(filepath)
-#effettuo la lettura dei dati del file di configurazione
+
+configFilePath = os.path.join(BASEPATH,"config","goal2stark.cfg")
+conf = Config(configFilePath)
 conf.parse()
 
 #definisco una struttura di log per il controllo del programma a video

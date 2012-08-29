@@ -23,10 +23,6 @@ __VERSION__ = '0.1'
 __AUTHOR__ = 'Luigi Cirillo (<luigi.cirillo@servabit.it>)'
 
 import sys
-# Servabit libraries
-PathPr="/home/contabilita/star_branch/etl/"
-sys.path.append(PathPr)   
-sys.path=list(set(sys.path)) 
 import DizPath
 
 DizPath.CreateDWComp('Servabit')

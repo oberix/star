@@ -27,7 +27,6 @@ Created on 11/lug/2012
 '''
 
 import DBmap2
-#import DBmap2
 
 def create_dict(cl_dmap2, dict_path, company_name):
     '''
@@ -70,4 +69,3 @@ def create_dict(cl_dmap2, dict_path, company_name):
                 out_dict[key].append(None)
     DBmap2.close_session(session)
     return out_dict
-            

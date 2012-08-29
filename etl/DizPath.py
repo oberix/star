@@ -23,6 +23,7 @@ __VERSION__ = '0.1'
 __AUTHOR__ = 'Luigi Cirillo (<luigi.cirillo@servabit.it>)'
 
 import sys
+import os
 import pandas
 import MySQLdb
 try:
@@ -31,29 +32,34 @@ except ImportError:
     import Pickle as cPickle
 
 # Servabit libraries
-PathPr1="/home/contabilita/star_branch/etl/"
-PathPr2="/home/contabilita/star_branch/share/"
-sys.path.append(PathPr1) 
-sys.path.append(PathPr2)   
-sys.path=list(set(sys.path)) 
+BASEPATH = os.path.abspath(os.path.join(
+                os.path.dirname(__file__),
+                os.path.pardir))
+sys.path.append(BASEPATH)
+sys.path = list(set(sys.path))
+
 import DBmap2
 import create_dict
-import stark
+from share import stark
+from share.config import Config
 
-def ins_blob(company, tip, name, obj):
-    dumped = cPickle.dumps(obj, protocol=cPickle.HIGHEST_PROTOCOL)
-    c=MySQLdb.connect(host="scoglio.devsite.servabit.it", user = "gigi", passwd="MYSQL.studiabo", db="star")
-    cur = c.cursor()
-    sql = "INSERT INTO pickles (COMPANY, TYP, NAME, FILE) VALUES (%s, %s, %s, %s)"
-    cur.execute(sql, (company, tip, name, dumped))
-    c.close()
-    
-    
-
-def CreateDWComp(Company):
+def CreateDWComp(companyName):
     '''Questa funzione serve a generare per una Comoany i diversi file pickle che compongono il
        Datawarehouse di quella impresa
     ''' 
+    configFilePath = os.path.join(BASEPATH,"config","goal2stark.cfg")
+    config = Config(configFilePath)
+    config.parse()
+    if not companyName:
+        companyName=config.options.get('company',False)
+    picklesPath = config.options.get('pickles_path',False)
+    immediateVatCreditAccountCode=config.options.get('immediate_credit_vat_account_code',False)
+    immediateVatDebitAccountCode=config.options.get('immediate_debit_vat_account_code',False)
+    deferredVatCreditAccountCode=config.options.get('deferred_credit_vat_account_code',False)
+    deferredVatDebitAccountCode=config.options.get('deferred_debit_vat_account_code',False)
+    treasuryVatAccountCode=config.options.get('treasury_vat_account_code',False)
+    path = os.path.join(picklesPath,companyName)
+    
     ############################################################################################
     #  importazione dei dati della classe Account Account
     #  contenente le informazioni sui conti del piano dei conti
@@ -72,13 +78,13 @@ def CreateDWComp(Company):
     #assegno a ACC la classe AccountAccount
     ACC = DBmap2.AccountAccount
     #costruisco il dizionario con le variabili selezionata
-    DIZ_ACC = create_dict.create_dict(ACC, ACCD, Company)
-    DF=pandas.DataFrame(DIZ_ACC)
+    DIZ_ACC = create_dict.create_dict(ACC, ACCD, companyName)
+    accountsDf = pandas.DataFrame(DIZ_ACC)
     #Seleziono i dati per l'impresa Servabit
-    #DF=DF[DF['NAM_IMP']==Company]
-    del DF['NAM_IMP']
-    del DF['TYP_CON']
-    ACC=stark.StarK(DF,TYPE='elab',COD='ACC')
+    #accountsDf=accountsDf[accountsDf['NAM_IMP']==companyName]
+    del accountsDf['NAM_IMP']
+    del accountsDf['TYP_CON']
+    ACC=stark.StarK(accountsDf,TYPE='elab',COD='ACC')
     #effettuo il primo abbellimento di Stark
     ACC.DES['ID0_CON']['DESVAR']=unicode('ID identificativo del conto','utf-8')
     ACC.DES['NAM_CON']['DESVAR']=unicode('Nome descrittivo del conto','utf-8')
@@ -86,9 +92,7 @@ def CreateDWComp(Company):
     ACC.DES['GOV_CON']['DESVAR']=unicode('Tipologia che governa la gestione del conto','utf-8')
     ACC.DES['PAN_CON']['DESVAR']=unicode('Nome descrittivo del conto padre','utf-8')
     ACC.DES['PAC_CON']['DESVAR']=unicode('Codice menorico del conto padre','utf-8')
-    path='/home/contabilita/Goal-PKL/'+Company
     ACC.DefPathPkl(path)
-    #ins_blob(Company, 'STK', path+'/ACC.pickle', ACC)
     ACC.Dumpk('ACC.pickle')
 
     ############################################################################################
@@ -125,13 +129,13 @@ def CreateDWComp(Company):
     #assegno a MOVL la classe AccountMoveLine
     MVL = DBmap2.AccountMoveLine
     #costruisco il dizionario con le variabili selezionata
-    DIZ_MVL = create_dict.create_dict(MVL, MVLD, Company)
-    DF=pandas.DataFrame(DIZ_MVL)
+    DIZ_MVL = create_dict.create_dict(MVL, MVLD, companyName)
+    movelineDf = pandas.DataFrame(DIZ_MVL)
     #Seleziono i dati per l'impresa Servabit
-    #DF=DF[DF['NAM_IMP']==Company]
-    del DF['NAM_IMP']
-    #del DF['TYP_CON']
-    MVL=stark.StarK(DF,TYPE='elab',COD='MVL')
+    #movelineDf=movelineDf[movelineDf['NAM_IMP']==companyName]
+    del movelineDf['NAM_IMP']
+    #del movelineDf['TYP_CON']
+    MVL=stark.StarK(movelineDf,TYPE='elab',COD='MVL')
     #effettuo il primo abbellimento di Stark
     MVL.DES['ID0_MVL']['DESVAR']=unicode('ID identificativo della move line','utf-8')
     MVL.DES['NAM_MVL']['DESVAR']=unicode('Nome descrittivo della move line','utf-8')
@@ -143,9 +147,7 @@ def CreateDWComp(Company):
     MVL.DES['TAX_COD']['DESVAR']=unicode("identificativo relativo al tax_code",'utf-8')
     MVL.DES['TAX_AMO']['DESVAR']=unicode("ammontare di tassa o imponibile",'utf-8')
     MVL.DES['DAT_DOC']['DESVAR']=unicode("la data della fattura",'utf-8')
-    path='/home/contabilita/Goal-PKL/'+Company
     MVL.DefPathPkl(path)
-    #ins_blob(Company, 'STK', path+'/MVL.pickle', MVL)
     MVL.Dumpk('MVL.pickle')
 
 
@@ -170,21 +172,19 @@ def CreateDWComp(Company):
     ##assegno a MOVL la classe AccountMoveLine
     #MOV = DBmap2.AccountMove
     ##costruisco il dizionario con le variabili selezionata
-    #DIZ_MOV = create_dict.create_dict(MOV, MOVD, Company)
-    #DF=pandas.DataFrame(DIZ_MOV)
+    #DIZ_MOV = create_dict.create_dict(MOV, MOVD, companyName)
+    #moveDf=pandas.DataFrame(DIZ_MOV)
     ##Seleziono i dati per l'impresa Servabit
-    ##DF=DF[DF['NAM_IMP']==Company]
-    #del DF['NAM_IMP']
-    ##del DF['TYP_CON']
-    #MOV=stark.StarK(DF,TYPE='elab',COD='MOV')
+    ##moveDf=moveDf[moveDf['NAM_IMP']==companyName]
+    #del moveDf['NAM_IMP']
+    ##del moveDf['TYP_CON']
+    #MOV=stark.StarK(moveDf,TYPE='elab',COD='MOV')
     ##effettuo il primo abbellimento di Stark
     #MOV.DES['ID0_MOL']['DESVAR']=unicode('ID identificativo della move','utf-8')
     #MOV.DES['NAM_MOV']['DESVAR']=unicode('Nome descrittivo della move','utf-8')
     #MOV.DES['NAM_PAR']['DESVAR']=unicode('Partner associato alla move','utf-8')
     #MOV.DES['DATE_DOC']['DESVAR']=unicode("E' la data della fattura (se la move è associata ad una fattura)",'utf-8')
-    #path='/home/contabilita/Goal-PKL/'+Company
     #MOV.DefPathPkl(path)
-    ##ins_blob(Company, 'STK', path+'/MOV.pickle', MOV)
     #MOV.Dumpk('MOV.pickle')
 
 ############################################################################################
@@ -201,21 +201,19 @@ def CreateDWComp(Company):
     #assegno a MOVL la classe AccountMoveLine
     PAR = DBmap2.ResPartner
     #costruisco il dizionario con le variabili selezionata
-    DIZ_PAR = create_dict.create_dict(PAR, PARD, Company)
-    DF=pandas.DataFrame(DIZ_PAR)
+    DIZ_PAR = create_dict.create_dict(PAR, PARD, companyName)
+    partnerDf=pandas.DataFrame(DIZ_PAR)
     #Seleziono i dati per l'impresa Servabit
-    #DF=DF[DF['NAM_IMP']==Company]
-    del DF['NAM_IMP']
-    #del DF['TYP_CON']
-    PAR=stark.StarK(DF,TYPE='elab',COD='PAR')
+    #partnerDf=partnerDf[partnerDf['NAM_IMP']==companyName]
+    del partnerDf['NAM_IMP']
+    #del partnerDf['TYP_CON']
+    PAR=stark.StarK(partnerDf,TYPE='elab',COD='PAR')
     #effettuo il primo abbellimento di Stark
     PAR.DES['ID0_PAR']['DESVAR']=unicode('ID identificativo del partner','utf-8')
     PAR.DES['NAM_PAR']['DESVAR']=unicode('Nome descrittivo del partner','utf-8')
     PAR.DES['CFS_PAR']['DESVAR']=unicode('Codice fiscale del partner','utf-8')
     PAR.DES['IVA_PAR']['DESVAR']=unicode('Partita IVA del partner','utf-8')
-    path='/home/contabilita/Goal-PKL/'+Company
     PAR.DefPathPkl(path)
-    #ins_blob(Company, 'STK', path+'/PAR.pickle', PAR)
     PAR.Dumpk('PAR.pickle')
     
     
@@ -235,22 +233,20 @@ def CreateDWComp(Company):
     #assegno a MOVL la classe AccountMoveLine
     TAX = DBmap2.AccountTax
     #costruisco il dizionario con le variabili selezionata
-    DIZ_TAX = create_dict.create_dict(TAX, TAX_D, Company)
-    DF=pandas.DataFrame(DIZ_TAX)
+    DIZ_TAX = create_dict.create_dict(TAX, TAX_D, companyName)
+    taxDf=pandas.DataFrame(DIZ_TAX)
     #Seleziono i dati per l'impresa Servabit
-    #DF=DF[DF['NAM_IMP']==Company]
-    del DF['NAM_IMP']
-    #del DF['TYP_CON']
-    TAX=stark.StarK(DF,TYPE='elab',COD='TAX')
+    #taxDf=taxDf[taxDf['NAM_IMP']==companyName]
+    del taxDf['NAM_IMP']
+    #del taxDf['TYP_CON']
+    TAX=stark.StarK(taxDf,TYPE='elab',COD='TAX')
     #effettuo il primo abbellimento di Stark
     TAX.DES['NAM_TAX']['DESVAR']=unicode("nome della tassa",'utf-8')
     TAX.DES['TAX_CODE']['DESVAR']=unicode("identificativo del tax_code di tassa",'utf-8')
     TAX.DES['BASE_CODE']['DESVAR']=unicode("identificativo del tax_code di imponibile",'utf-8')
     TAX.DES['REF_TAX_CODE']['DESVAR']=unicode("identificativo del tax_code di tassa (per le note di credito)",'utf-8')
     TAX.DES['REF_BASE_CODE']['DESVAR']=unicode("identificativo del tax_code di imponibile (per le note di credito)",'utf-8')
-    path='/home/contabilita/Goal-PKL/'+Company
     TAX.DefPathPkl(path)
-    #ins_blob(Company, 'STK', path+'/TAX.pickle', TAX)
     TAX.Dumpk('TAX.pickle')
     
     ############################################################################################
@@ -269,22 +265,20 @@ def CreateDWComp(Company):
     #assegno a MOVL la classe AccountMoveLine
     PERIOD = DBmap2.AccountPeriod
     #costruisco il dizionario con le variabili selezionata
-    DIZ_PRD = create_dict.create_dict(PERIOD, PERIOD_D, Company)
-    DF=pandas.DataFrame(DIZ_PRD)
+    DIZ_PRD = create_dict.create_dict(PERIOD, PERIOD_D, companyName)
+    periodDf = pandas.DataFrame(DIZ_PRD)
     #Seleziono i dati per l'impresa Servabit
-    #DF=DF[DF['NAM_IMP']==Company]
-    del DF['NAM_IMP']
-    #del DF['TYP_CON']
-    PERIOD=stark.StarK(DF,TYPE='elab',COD='PERIOD')
+    #periodDf=periodDf[periodDf['NAM_IMP']==companyName]
+    del periodDf['NAM_IMP']
+    #del periodDf['TYP_CON']
+    PERIOD=stark.StarK(periodDf,TYPE='elab',COD='PERIOD')
     #effettuo il primo abbellimento di Stark
     PERIOD.DES['P_DAT_STR']['DESVAR']=unicode("data di inizio del periodo",'utf-8')
     PERIOD.DES['P_DAT_STOP']['DESVAR']=unicode("data di fine del periodo",'utf-8')
     PERIOD.DES['FY_DAT_STR']['DESVAR']=unicode("data di inizio dell'anno fiscale",'utf-8')
     PERIOD.DES['FY_DAT_STOP']['DESVAR']=unicode("data di fine dell'anno fiscale",'utf-8')
     PERIOD.DES['NAM_FY']['DESVAR']=unicode("nome dell'anno fiscale relativo al periodo",'utf-8')
-    path='/home/contabilita/Goal-PKL/'+Company
     PERIOD.DefPathPkl(path)
-    #ins_blob(Company, 'STK', path+'/PERIOD.pickle', PERIOD)
     PERIOD.Dumpk('PERIOD.pickle')
 
     ############################################################################################
@@ -299,17 +293,176 @@ def CreateDWComp(Company):
     ##assegno a MOVL la classe AccountMoveLine
     #SEQUENCE = DBmap2.IrSequence
     ##costruisco il dizionario con le variabili selezionata
-    #DIZ_SEQ = create_dict.create_dict(SEQUENCE, SEQ_D, Company)
-    #DF=pandas.DataFrame(DIZ_SEQ)
+    #DIZ_SEQ = create_dict.create_dict(SEQUENCE, SEQ_D, companyName)
+    #sequenceDf=pandas.DataFrame(DIZ_SEQ)
     ##Seleziono i dati per l'impresa Servabit
-    ##DF=DF[DF['NAM_IMP']==Company]
-    #del DF['NAM_IMP']
-    ##del DF['TYP_CON']
-    #SEQUENCE=stark.StarK(DF,TYPE='elab',COD='SEQUENCE')
+    ##sequenceDf=sequenceDf[sequenceDf['NAM_IMP']==companyName]
+    #del sequenceDf['NAM_IMP']
+    ##del sequenceDf['TYP_CON']
+    #SEQUENCE=stark.StarK(sequenceDf,TYPE='elab',COD='SEQUENCE')
     ##effettuo il primo abbellimento di Stark
     #SEQUENCE.DES['COD_SEQ']['DESVAR']=unicode("codice della sequenza",'utf-8')
     #SEQUENCE.DES['NAM_SEQ']['DESVAR']=unicode("nome della sequenza",'utf-8')
-    #path='/home/contabilita/Goal-PKL/'+Company
     #SEQUENCE.DefPathPkl(path)
-    ##ins_blob(Company, 'STK', path+'/SEQUENCE.pickle', SEQUENCE)
     #SEQUENCE.Dumpk('SEQUENCE.pickle')
+    
+    ############################################################################################
+    #  creazione del dataframe specifico per i report iva
+    ############################################################################################
+    moveLineDf = movelineDf.rename(columns={'NAM_MOV' : 'M_NAME',
+                                            'REF_MOV' : 'M_REF',
+                                            'STA_MOV' : 'STATE',
+                                            'DAT_DOC' : 'DATE_DOC',
+                                            'COD_CON' : 'TACC',
+                                            'DAT_MVL' : 'DATE',
+                                            'NAM_PRD' : 'PERIOD',
+                                            'NAM_FY' : 'ESER',
+                                            'NAM_PAR' : 'PARTNER',
+                                            'NAM_JRN' : 'JOURNAL',
+                                            'NAM_REC' : 'RECON',
+                                            'NAM_REC_P' : 'RECON_P',
+                                            'NAM_SEQ' : 'SEQUENCE',
+                                            'COD_CON' : 'TACC',
+                                            })
+    
+    vatDatasDf = moveLineDf.ix[(moveLineDf["COD_SEQ"]=='RIVA') & (moveLineDf["TAX_COD"].notnull())].reset_index()
+    #aggiunta colonne TNAME e TTAX
+    df3 = pandas.DataFrame()
+    df4 = pandas.DataFrame()
+    df6 = pandas.DataFrame()
+    df7 = pandas.DataFrame()
+    df2 = vatDatasDf[vatDatasDf['TYP_JRN'].isin(['sale', 'purchase'])]
+    try:
+        df3 = pandas.merge(df2,taxDf,left_on='TAX_COD',right_on='TAX_CODE')
+        df3['TTAX'] = True
+    except IndexError:
+        pass
+    try:
+        df4 = pandas.merge(df2,taxDf,left_on='TAX_COD',right_on='BASE_CODE')
+        df4['TTAX'] = False
+    except IndexError:
+        pass
+    df5 = vatDatasDf[vatDatasDf['TYP_JRN'].isin(['sale_refund', 'purchase_refund'])]
+    try:
+        df6 = pandas.merge(df5,taxDf,left_on='TAX_COD',right_on='REF_TAX_CODE')
+        df6['TTAX'] = True
+    except IndexError:
+        pass
+    try:
+        df7 = pandas.merge(df5,taxDf,left_on='TAX_COD',right_on='REF_BASE_CODE')
+        df7['TTAX'] = False
+    except IndexError:
+        pass
+    vatDatasDf = pandas.concat([df3,df4,df6,df7]).reset_index(drop=True)
+    #del vatDatasDf["TAX_CODE"]
+    #del vatDatasDf["BASE_CODE"]
+    #del vatDatasDf["REF_TAX_CODE"]
+    #del vatDatasDf["REF_BASE_CODE"]
+    #aggiunta a vatDatasDf delle move.line relative ai pagamenti dell'iva differita
+    df0 = vatDatasDf.ix[(vatDatasDf["TACC"]==deferredVatCreditAccountCode) | (vatDatasDf["TACC"]==deferredVatDebitAccountCode)].reset_index()
+    reconcileDf = df0[["RECON","RECON_P"]].drop_duplicates().reset_index(drop=True)
+    reconcileDf['RECON'].ix[reconcileDf['RECON'].isnull()] = "NULL"
+    reconcileDf['RECON_P'].ix[reconcileDf['RECON_P'].isnull()] = "NULL"
+    df0 = moveLineDf.ix[moveLineDf["COD_SEQ"]!='RIVA'].reset_index()
+    df1 = pandas.DataFrame()
+    df2 = pandas.DataFrame()
+    try:
+        df1 = pandas.merge(df0,reconcileDf,on="RECON").reset_index(drop=True)
+    except IndexError:
+        pass
+    try:
+        df2 = pandas.merge(df0,reconcileDf,on="RECON_P").reset_index(drop=True)
+    except IndexError:
+        pass
+    df3 = pandas.concat([df1,df2]).reset_index(drop=True)
+    #del df3["RECON_P.x"]
+    #del df3["RECON_P.y"]
+    #del df3["RECON.x"]
+    #del df3["RECON.y"]
+    df3['TTAX'] = True
+    vatDatasDf = pandas.concat([vatDatasDf,df3]).reset_index(drop=True)
+    #aggiunta a vatDatasDf delle move.line relative ai pagamenti dell'iva sul conto treasuryVatAccountCode
+    df0 = moveLineDf.ix[moveLineDf["TACC"]==treasuryVatAccountCode].reset_index()
+    vatDatasDf = pandas.concat([vatDatasDf,df0]).reset_index(drop=True)
+    #del vatDatasDf["index"]
+    vatDatasDf = vatDatasDf.rename(columns={'NAM_TAX' : 'TNAME',
+                                            })
+    #costruzione delle altre colonne del df finale
+    vatDatasDf['M_NUM'] = ''
+    for i in range(len(vatDatasDf)):
+        row = vatDatasDf[i:i+1]
+        moveName = row['M_NAME'][i]
+        moveNameSplits = moveName.split("/")
+        vatDatasDf['M_NUM'][i:i+1] = moveNameSplits[len(moveNameSplits)-1]
+    vatDatasDf['CASH'] = None
+    for i in range(len(vatDatasDf)):
+        row = vatDatasDf[i:i+1]
+        debit = row['DBT_MVL'][i]
+        credit = row['CRT_MVL'][i]
+        accountCode = row['TACC'][i]
+        if accountCode in [deferredVatDebitAccountCode,deferredVatCreditAccountCode]:
+            vatDatasDf['CASH'][i:i+1] = (debit>0 and accountCode==deferredVatDebitAccountCode)\
+                                        or (credit>0 and accountCode==deferredVatCreditAccountCode)
+    vatDatasDf['AMOUNT'] = 0.00
+    for i in range(len(vatDatasDf)):
+        row = vatDatasDf[i:i+1]
+        debit = row['DBT_MVL'][i]
+        credit = row['CRT_MVL'][i]
+        journalType = row['TYP_JRN'][i]
+        if debit>0:
+            if journalType in [('sale_refund','purchase_refund')]:
+                vatDatasDf['AMOUNT'][i:i+1] = -debit
+            else:
+                vatDatasDf['AMOUNT'][i:i+1] = debit
+        elif credit>0:
+            if journalType in [('sale_refund','purchase_refund')]:
+                vatDatasDf['AMOUNT'][i:i+1] = -credit
+            else:
+                vatDatasDf['AMOUNT'][i:i+1] = credit
+    vatDatasDf['TCRED'] = None
+    vatDatasDf['TCRED'].ix[vatDatasDf['TTAX']==True] = False
+    vatDatasDf['TCRED'].ix[(vatDatasDf['TTAX']==True) & 
+                            (vatDatasDf['TACC'].isin([immediateVatCreditAccountCode,deferredVatCreditAccountCode]))
+                            ]= True
+    vatDatasDf['TCRED'].ix[(vatDatasDf['TTAX']==True) & (vatDatasDf['DBT_MVL']>0) &
+                            (vatDatasDf['TACC']!=immediateVatDebitAccountCode) &
+                            (vatDatasDf['TACC']!=deferredVatDebitAccountCode)
+                            ]= True
+    vatDatasDf['TDET'] = None
+    vatDatasDf['TDET'].ix[vatDatasDf['TTAX']==True] = False
+    vatDatasDf['TDET'].ix[(vatDatasDf['TTAX']==True) & 
+                            vatDatasDf['TACC'].isin([
+                                    immediateVatCreditAccountCode,immediateVatDebitAccountCode,
+                                    deferredVatCreditAccountCode,deferredVatDebitAccountCode])] = True
+    vatDatasDf['TIMM'] = None
+    vatDatasDf['TIMM'].ix[(vatDatasDf['TTAX']==True) & (vatDatasDf['TDET']==True)] = False
+    vatDatasDf['TIMM'].ix[(vatDatasDf['TTAX']==True) & (vatDatasDf['TDET']==True) & 
+                            (vatDatasDf['TACC'].isin([immediateVatCreditAccountCode,immediateVatDebitAccountCode]))
+                            ] = True
+    vatDatasDf['TESI'] = None
+    vatDatasDf['TESI'].ix[vatDatasDf['TIMM']==False] = False
+    vatDatasDf['TESI'].ix[vatDatasDf['TIMM']==True] = True
+    vatDatasDf['TESI'].ix[(vatDatasDf['TIMM']==False) & (vatDatasDf['CASH']==True)] = True
+    vatDatasDf = vatDatasDf[['DATE','DATE_DOC','PERIOD','ESER',
+                            'M_NAME','M_REF','M_NUM','PARTNER','JOURNAL','SEQUENCE',
+                            'STATE','TNAME','RECON','RECON_P','CASH',
+                            'TACC','TTAX','TCRED','TDET','TIMM','TESI','AMOUNT'
+                            ]]
+    vatDatasDf = vatDatasDf.sort(columns=['M_NAME'])
+    vatDatasStark=stark.StarK(vatDatasDf,TYPE='elab',COD='VAT')
+    vatDatasStark.DES['ESER']['DESVAR']=unicode("anno fiscale",'utf-8')
+    vatDatasStark.DES['M_NUM']['DESVAR']=unicode("numero di protocollo",'utf-8')
+    vatDatasStark.DES['M_NAME']['DESVAR']=unicode("name della move",'utf-8')
+    vatDatasStark.DES['M_REF']['DESVAR']=unicode("riferimento della move",'utf-8')
+    vatDatasStark.DES['CASH']['DESVAR']=unicode("booleano che indica se è un pagamento",'utf-8')
+    vatDatasStark.DES['TNAME']['DESVAR']=unicode("nome dell'imposta",'utf-8')
+    vatDatasStark.DES['TACC']['DESVAR']=unicode("codice del conto",'utf-8')
+    vatDatasStark.DES['TTAX']['DESVAR']=unicode("booleano che indica se è un'imposta (oppure un imponibile)",'utf-8')
+    vatDatasStark.DES['TCRED']['DESVAR']=unicode("booleano che indica se l'imposta è a credito",'utf-8')
+    vatDatasStark.DES['TDET']['DESVAR']=unicode("booleano che indica se l'imposta è detraibile",'utf-8')
+    vatDatasStark.DES['TIMM']['DESVAR']=unicode("booleano che indica se l'imposta è ad esigibilità immediata",'utf-8')
+    vatDatasStark.DES['TESI']['DESVAR']=unicode("booleano che indica se l'imposta è esigibile nel periodo",'utf-8')
+    vatDatasStark.DES['STATE']['DESVAR']=unicode("stato della scrittura contabile",'utf-8')
+    vatDatasStark.DefPathPkl(path)
+    vatDatasStark.Dumpk('VAT.pickle')
+    #vatDatasDf.to_csv("df"+companyName+".csv",sep=";",encoding="utf-8")

@@ -20,105 +20,70 @@
 import os
 import sys
 import pandas
-from stark import StarK
 from decimal import Decimal
 from datetime import date
 import numpy
 
 
-def getVatRegister(picklesPath, companyName, onlyValidatedMoves, sequenceName=None, periodName=None, fiscalyearName=None):
+def getVatRegister(vatDf, companyName, onlyValidatedMoves, sequenceName=None, periodName=None, fiscalyearName=None):
     '''
     funzione per il calcolo dei registri iva
     '''
     if not periodName and not fiscalyearName:
         raise RuntimeError("Errore: i parametri periodName e fiscalyearName non devono essere entrambi nulli")
-    companyPathPkl = os.path.join(picklesPath,companyName)
-    
-    starkMoveLine=StarK.Loadk(companyPathPkl,"MVL.pickle")
-    df0 = starkMoveLine.DF
-    
+    df0 = vatDf.copy(deep=True)
     if sequenceName:
         df0 = df0.ix[df0['SEQUENCE']==sequenceName]
     if periodName:
-        df0 = df0.ix[df1['PERIOD']==periodName]
+        df0 = df0.ix[df0['PERIOD']==periodName]
     else:
-        df0 = df0.ix[df1['ESER']==fiscalyearName]
+        df0 = df0.ix[df0['ESER']==fiscalyearName]
     if onlyValidatedMoves:
         df0 = df0.ix[df0['STATE']=='posted']
     df1 = df0.reset_index(drop=True)
     if len(df1)>0:
-        df6 = df1.sort(['DATE','M_NAME'])
-        df6['ST_TAX'] = 'TAX'
-        df6['ST_TAX'].ix[df6['TTAX']==False] = 'BASE'
-        df6 = df6.reset_index()
-        groupbyCols = list(df6.columns)
-        groupbyCols.remove('AMOUNT')
+        df6 = df1.sort(['DATE','M_NAME']).reset_index(drop=True)
+        groupbyCols = ['M_NAME','TNAME','TTAX']
         df7 = df6.groupby(groupbyCols).sum()[['AMOUNT']].reset_index()
         df7['AMOUNT']=df7['AMOUNT'].map(float)
-
+        df7['ST_TAX'] = 'TAX'
+        df7['ST_TAX'].ix[df7['TTAX']==False] = 'BASE'
         #aggiunta colonne BASE e TAX con importi di imponibile e imposta a seconda delle righe
         df8 = pandas.pivot_table(df7,values='AMOUNT', cols=['ST_TAX'], 
-                        rows=['M_NAME','TNAME','TACC'])
+                        rows=['M_NAME','TNAME'])
         df8 = df8.reset_index()
-
-        df9 = df8.ix[df8['TTAX']==True]
-        df9 = df9.reset_index(drop=True)
-        qui
-        for i in range(len(df9)):
-            row = df9[i:i+1]
-            moveName = row['NAM_MOV'][i]
-            baseCode = row['BASE_CODE'][i]
-            refBaseCode = row['REF_BASE_CODE'][i]
-            journalType = row['TYP_JRN'][i]
-            df10 = None
-            if journalType in ['sale','purchase']:
-                df10 = df8.ix[df8['NAM_MOV']==moveName].ix[df8['TAX_COD']==baseCode]
-            else:
-                df10 = df8.ix[df8['NAM_MOV']==moveName].ix[df8['TAX_COD']==refBaseCode]
-            df10 = df10.reset_index(drop=True)
-            df9[i:i+1]['BASE'] = df10[0:1]['BASE'][0]
-        del df9['TAX_COD']
-        del df9['BASE_CODE']
-        del df9['REF_BASE_CODE']
-        del df9['TYP_JRN']
-        del df7['TAX_COD']
-        del df7['TYP_JRN']
-        del df7['BASE_CODE']
-        del df7['REF_BASE_CODE']
-        del df7['REF_TAX_CODE']
-        del df7['ST_TAX']
-        del df7['TAX_AMO']
-        del df7['TAX_CODE']
-        del df7['NAM_TAX']
-        df7 = df7.drop_duplicates()
-        df10 = pandas.merge(df7,df9,on=["NAM_MOV","COD_CON"])
-        df10 = df10.sort(['DAT_MVL','NAM_MOV'])
+        vatDf = vatDf.ix[vatDf['TTAX']==True]
+        del vatDf['TTAX']
+        del vatDf['AMOUNT']
+        df10 = pandas.merge(vatDf,df8,on=["M_NAME","TNAME"])
+        df10 = df10.sort(['DATE','M_NAME'])
         df10 = df10.reset_index(drop=True)
         previousMoveName = ""
         for i in range(len(df10)):
             row = df10[i:i+1]
-            moveName = row['NAM_MOV'][i]
+            moveName = row['M_NAME'][i]
             if moveName==previousMoveName:
-                df10[i:i+1]['DAT_DOC'] = ''
-                df10[i:i+1]['DAT_MVL'] = ''
-                df10[i:i+1]['NAM_MOV'] = ''
-                df10[i:i+1]['NAM_PAR'] = ''
-                df10[i:i+1]['REF_MOV'] = ''
+                df10[i:i+1]['DATE_DOC'] = ''
+                df10[i:i+1]['DATE'] = ''
+                df10[i:i+1]['M_NAME'] = ''
+                df10[i:i+1]['PARTNER'] = ''
+                df10[i:i+1]['M_REF'] = ''
             previousMoveName = moveName
-        vatRegister = df10[['DAT_MVL','NAM_MOV','DAT_DOC','REF_MOV','NAM_PAR','NAM_TAX','BASE','TAX','COD_CON']]
+        vatRegister = df10[['DATE','M_NAME','DATE_DOC','M_REF','PARTNER','TNAME','BASE','TAX','TCRED','TDET','TIMM','TESI']]
         return vatRegister
     else:
-        return pandas.DataFrame(columns=['DAT_MVL','NAM_MOV','DAT_DOC','REF_MOV','NAM_PAR','NAM_TAX','BASE','TAX','COD_CON'])
+        return pandas.DataFrame(columns=['DATE','M_NAME','DATE_DOC','M_REF','PARTNER','TNAME','BASE','TAX','TCRED','TDET','TIMM','TESI'])
 
 
-def getVatSummary(picklesPath, companyName, onlyValidatedMoves, 
+def getVatSummary(vatDf, companyName, onlyValidatedMoves, 
                 immediateVatCreditAccountCode, immediateVatDebitAccountCode, 
                 deferredVatCreditAccountCode, deferredVatDebitAccountCode, 
                 sequenceName=None, periodName=None, fiscalyearName=None):
     '''
     funzione per il calcolo dei riepiloghi iva
     '''
-    df1 = getVatRegister(picklesPath, companyName, onlyValidatedMoves, periodName=periodName, fiscalyearName=fiscalyearName, sequenceName=sequenceName)
+    df1 = getVatRegister(vatDf, companyName, onlyValidatedMoves, periodName=periodName, fiscalyearName=fiscalyearName, sequenceName=sequenceName)
+    qui
     del df1['DAT_MVL']
     del df1['NAM_MOV']
     del df1['DAT_DOC']
