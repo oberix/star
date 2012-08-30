@@ -18,7 +18,5 @@
 #
 ##############################################################################
 
-import generic_pickler
-import config
-import stark
+from stark import *
 
