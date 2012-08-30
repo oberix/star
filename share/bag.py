@@ -36,7 +36,7 @@ BASEPATH = os.path.abspath(os.path.join(
         os.path.pardir))
 sys.path.append(BASEPATH)
 sys.path = list(set(sys.path))
-from share.generic_pickler import GenericPickler
+from share import GenericPickler
 
 class Bag(GenericPickler):
     '''
@@ -71,7 +71,7 @@ class Bag(GenericPickler):
             lvar1=pandas.Index(LM.keys())
             lcheck=lvar-lvar1
             print lcheck
-            if lcheck!=0:
+            if len(lcheck) < 0:
                 print("Warnings: non c'è coerenza tra le variabili del dataframe e le variabili di LM")
                 return
        

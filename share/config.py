@@ -32,8 +32,13 @@ CONFIG_PATH = os.path.abspath(
         os.path.pardir, 'config'))
 
 # Map loglevel's names and values
-LEVELS_NAMES = ('CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG')
-LOGLEVELS = dict([(x, getattr(logging, x)) for x in LEVELS_NAMES])
+LOGLEVELS = {
+    'critical': logging.CRITICAL,
+    'error': logging.ERROR,
+    'warning': logging.WARNING,
+    'info': logging.INFO,
+    'debug': logging.DEBUG
+}
 
 # Some defaults
 DEF_CONFIG = os.path.join(CONFIG_PATH, 'config.cfg')
@@ -62,13 +67,7 @@ class Config(object):
         @ param filename: configuration file's path
         """
         self.config_file = filename
-        self.options = {
-            'database' : DEF_DB,
-            'host': DEF_HOST,
-            'port': DEF_PORT,
-            'username': None,
-            'password': None,
-            }
+        self.options = {}
         self._parser = self._init_parser()
 
     def __repr__(self):
@@ -111,7 +110,7 @@ class Config(object):
         parser.add_option('--log-level', dest='logLevel', type='choice', 
                           choices=LOGLEVELS.keys(), 
                           help='specify the level of the logging. Accepted values: %s' % str(LOGLEVELS.keys()),
-                          default=logging.INFO)
+                          default='info')
         return parser
 
     def _read_config(self):
@@ -140,8 +139,23 @@ class Config(object):
         self._read_config()        
         for key in ar:
             self.options[key] = opts.ensure_value(key, False)
-        self.options['logLevel'] = opts.logLevel
+        self.options['logLevel'] = LOGLEVELS[opts.logLevel]
 
+def load_config(src_path, confpath=None):
+    ''' Get configuration file.
+
+    @ param src_path: project source directory
+    @ param confpath: path to the configuration file
+    @ return: options dictionary
+
+    '''
+    if confpath is None:
+        confpath = os.path.join(src_path, 'config.cfg')
+    if not os.path.isfile(confpath):
+        return {}
+    config = Config(confpath)
+    config.parse()
+    return config.options    
 
 
 # Test
