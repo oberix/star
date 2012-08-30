@@ -19,27 +19,26 @@
 #
 ##############################################################################
 '''
-    StarK Class select and rename fields from Goal2df Move Line
+    Stark Class select and rename fields from Goal2df Move Line
     dataframe and hold a description about
 .'''
 __VERSION__ = '0.1'
 __AUTHOR__ = 'Luigi Cirillo (<luigi.cirillo@servabit.it>)'
-
+__all__ = ['Stark']
 
 import sys
-try:
-    import cPickle
-except ImportError:
-    import Pickle as cPickle
+import os 
 
+BASEPATH = os.path.abspath(os.path.join(
+        os.path.dirname(__file__),
+        os.path.pardir))
+sys.path.append(BASEPATH)
+sys.path = list(set(sys.path))
+from share.generic_pickler import GenericPickler
 
-# Servabit libraries
-#sys.path.append('../')
-
-
-class StarK(object):
+class Stark(GenericPickler):
     '''
-    StarK Class 
+    Stark Class 
     '''
     
     def __init__(self, DF, TYPE, COD = None, TITLE = None, FOOTNOTE = None):
@@ -62,49 +61,3 @@ class StarK(object):
         if TYPE == 'graph':
             for e in self.DF.columns:
                 self.DES[e] = {'WUSE' : None, 'AXES' : None, 'LEG' : None}
-        
-        
-  
-    def DefPathPkl(self, path):
-        self.__path = path
-    
-    
-    def Dumpk(self, filename):
-        '''
-        Serialize Stark object
-        
-        Parameters
-        ----------
-        filename: string, file_name.pickle
-        '''
-        #import ipdb; ipdb.set_trace()
-        print(self.__path)
-        f = open(self.__path + '/' + filename,'wb')
-        try:
-            cPickle.dump(self, f, protocol=cPickle.HIGHEST_PROTOCOL)
-        finally:
-            f.close()
-    
-    @staticmethod
-    def Loadk(file_path, filename):
-        """
-        Load Stark object from pickle file from the specified
-        file path
-    
-        Parameters
-        ----------
-        file_path : string, file path
-        filename : string, file name
-    
-        Returns
-        -------
-        unpickled : type of Stark object stored in file
-        """
-        f = open(file_path+ '/' + filename, 'rb')
-        try:
-            starkobj = cPickle.load(f)
-            return starkobj
-        finally:
-            f.close()
-        
-        

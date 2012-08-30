@@ -23,6 +23,7 @@ import pandas
 from decimal import Decimal
 from datetime import date
 import numpy
+from share import Stark
 
 
 def getVatRegister(vatDf, companyName, onlyValidatedMoves, sequenceName=None, periodName=None, fiscalyearName=None):
@@ -172,10 +173,10 @@ def getDeferredVatDetail(picklesPath, companyName, onlyValidatedMoves,
     if not paymentsPeriodName and not paymentsFiscalyearName:
         raise RuntimeError("Errore: i parametri paymentsPeriodName e paymentsFiscalyearName non devono essere entrambi nulli")
     companyPathPkl = os.path.join(picklesPath,companyName)
-    starkTax=StarK.Loadk(companyPathPkl,"TAX.pickle")
-    starkPeriod=StarK.Loadk(companyPathPkl,"PERIOD.pickle")
+    starkTax = Stark.load(os.path.join(companyPathPkl,"TAX.pickle"))
+    starkPeriod = Stark.load(os.path.join(companyPathPkl,"PERIOD.pickle"))
     dfPeriods = starkPeriod.DF
-    starkMoveLine=StarK.Loadk(companyPathPkl,"MVL.pickle")
+    starkMoveLine = Stark.load(os.path.join(companyPathPkl,"MVL.pickle"))
     df0 = starkMoveLine.DF
     df1 = df0.ix[(df0['COD_CON']==deferredVatCreditAccountCode) | (df0['COD_CON']==deferredVatDebitAccountCode)]
     if onlyValidatedMoves:
@@ -434,8 +435,8 @@ def getVatLiquidationSummary(picklesPath, companyName, onlyValidatedMoves, immed
         }
     #recupero il nome delle sequenze iva per cui ci sono dei movimenti nel periodo d'interesse
     companyPathPkl = os.path.join(picklesPath,companyName)
-    starkMoveLine=StarK.Loadk(companyPathPkl,"MVL.pickle")
-    starkPeriod=StarK.Loadk(companyPathPkl,"PERIOD.pickle")
+    starkMoveLine = Stark.load(os.path.join(companyPathPkl,"MVL.pickle"))
+    starkPeriod = Stark.load(os.path.join(companyPathPkl,"PERIOD.pickle"))
     df0 = starkMoveLine.DF
     df0 = df0.ix[df0['COD_SEQ']=='RIVA']
     if periodName:
@@ -516,8 +517,8 @@ def getVatControlSummary(fiscalyearName, vatSummary, picklesPath, companyName,
     previousDeferredVatCredit = 0
     previousDeferredVatDebit = 0
     companyPathPkl = os.path.join(picklesPath,companyName)
-    dfMoveLines = StarK.Loadk(companyPathPkl,"MVL.pickle").DF
-    dfPeriods = StarK.Loadk(companyPathPkl,"PERIOD.pickle").DF
+    dfMoveLines = Stark.load(os.path.join(companyPathPkl,"MVL.pickle")).DF
+    dfPeriods = Stark.load(os.path.join(companyPathPkl,"PERIOD.pickle")).DF
     dfPeriods1 = dfPeriods[['FY_DAT_STR','NAM_FY']]
     dfPeriods1 = dfPeriods1.drop_duplicates()
     df0 = dfPeriods1.ix[dfPeriods1['NAM_FY']==fiscalyearName].reset_index()

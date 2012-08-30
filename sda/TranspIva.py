@@ -31,9 +31,9 @@ BASEPATH = os.path.abspath(os.path.join(
 sys.path.append(BASEPATH)
 sys.path = list(set(sys.path))
 
-from share.config import Config
-from share.stark import StarK
-from Transport import Transport
+from share import Config
+from share import Stark
+from share import Bag
 import SDAIva
 import CreateLMIva
 
@@ -55,7 +55,7 @@ def main(dirname):
     treasuryVatAccountCode=config.options.get('treasury_vat_account_code',False)
     
     companyPathPkl = os.path.join(picklesPath,companyName)
-    vatStarK = StarK.Loadk(companyPathPkl,"VAT.pickle")
+    vatStarK = Stark.load(os.path.join(companyPathPkl,"VAT.pickle"))
     vatDf = vatStarK.DF
     
     pdfFileName=False

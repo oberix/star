@@ -27,12 +27,12 @@ import pandas
 
 # Servabit libraries
 sys.path.append('../')
-from share import stark
+from share import Stark
 
 
 def style(df, gov):
     '''
-    Create a StarK object of type elab from df and gov
+    Create a Stark object of type elab from df and gov
     @param df: DataFrame
     @param gov: dict as {
         field name of initial dataframe:
@@ -45,7 +45,7 @@ def style(df, gov):
              'DATYP' : column type,
              }
            }
-    return: StarK object  
+    return: Stark object  
     '''
     
     def check_vartype(vartype, datyp, el):
@@ -89,6 +89,6 @@ def style(df, gov):
     check_columns(df, col)
     df = pandas.DataFrame(df, columns = col)
     df = df.rename(columns = ren)
-    goal2stark = stark.StarK(df, 'elab' )
+    goal2stark = Stark(df, 'elab' )
     goal2stark.DES = des
     return goal2stark

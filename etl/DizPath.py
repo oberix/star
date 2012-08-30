@@ -40,7 +40,7 @@ sys.path = list(set(sys.path))
 
 import DBmap2
 import create_dict
-from share import stark
+from share import Stark
 from share.config import Config
 
 def CreateDWComp(companyName):
@@ -84,7 +84,7 @@ def CreateDWComp(companyName):
     #accountsDf=accountsDf[accountsDf['NAM_IMP']==companyName]
     del accountsDf['NAM_IMP']
     del accountsDf['TYP_CON']
-    ACC=stark.StarK(accountsDf,TYPE='elab',COD='ACC')
+    ACC = Stark(accountsDf,TYPE='elab',COD='ACC')
     #effettuo il primo abbellimento di Stark
     ACC.DES['ID0_CON']['DESVAR']=unicode('ID identificativo del conto','utf-8')
     ACC.DES['NAM_CON']['DESVAR']=unicode('Nome descrittivo del conto','utf-8')
@@ -92,8 +92,8 @@ def CreateDWComp(companyName):
     ACC.DES['GOV_CON']['DESVAR']=unicode('Tipologia che governa la gestione del conto','utf-8')
     ACC.DES['PAN_CON']['DESVAR']=unicode('Nome descrittivo del conto padre','utf-8')
     ACC.DES['PAC_CON']['DESVAR']=unicode('Codice menorico del conto padre','utf-8')
-    ACC.DefPathPkl(path)
-    ACC.Dumpk('ACC.pickle')
+#    ACC.DefPathPkl(path)
+    ACC.save(os.path.join(path, 'ACC.pickle'))
 
     ############################################################################################
     #  importazione dei dati della classe Account Move Line
@@ -135,7 +135,7 @@ def CreateDWComp(companyName):
     #movelineDf=movelineDf[movelineDf['NAM_IMP']==companyName]
     del movelineDf['NAM_IMP']
     #del movelineDf['TYP_CON']
-    MVL=stark.StarK(movelineDf,TYPE='elab',COD='MVL')
+    MVL = Stark(movelineDf,TYPE='elab',COD='MVL')
     #effettuo il primo abbellimento di Stark
     MVL.DES['ID0_MVL']['DESVAR']=unicode('ID identificativo della move line','utf-8')
     MVL.DES['NAM_MVL']['DESVAR']=unicode('Nome descrittivo della move line','utf-8')
@@ -147,8 +147,7 @@ def CreateDWComp(companyName):
     MVL.DES['TAX_COD']['DESVAR']=unicode("identificativo relativo al tax_code",'utf-8')
     MVL.DES['TAX_AMO']['DESVAR']=unicode("ammontare di tassa o imponibile",'utf-8')
     MVL.DES['DAT_DOC']['DESVAR']=unicode("la data della fattura",'utf-8')
-    MVL.DefPathPkl(path)
-    MVL.Dumpk('MVL.pickle')
+    MVL.save(os.path.join(path, 'MVL.pickle'))
 
 
 ############################################################################################
@@ -178,7 +177,7 @@ def CreateDWComp(companyName):
     ##moveDf=moveDf[moveDf['NAM_IMP']==companyName]
     #del moveDf['NAM_IMP']
     ##del moveDf['TYP_CON']
-    #MOV=stark.StarK(moveDf,TYPE='elab',COD='MOV')
+    #MOV = Stark(moveDf,TYPE='elab',COD='MOV')
     ##effettuo il primo abbellimento di Stark
     #MOV.DES['ID0_MOL']['DESVAR']=unicode('ID identificativo della move','utf-8')
     #MOV.DES['NAM_MOV']['DESVAR']=unicode('Nome descrittivo della move','utf-8')
@@ -207,14 +206,14 @@ def CreateDWComp(companyName):
     #partnerDf=partnerDf[partnerDf['NAM_IMP']==companyName]
     del partnerDf['NAM_IMP']
     #del partnerDf['TYP_CON']
-    PAR=stark.StarK(partnerDf,TYPE='elab',COD='PAR')
+    PAR = Stark(partnerDf,TYPE='elab',COD='PAR')
     #effettuo il primo abbellimento di Stark
     PAR.DES['ID0_PAR']['DESVAR']=unicode('ID identificativo del partner','utf-8')
     PAR.DES['NAM_PAR']['DESVAR']=unicode('Nome descrittivo del partner','utf-8')
     PAR.DES['CFS_PAR']['DESVAR']=unicode('Codice fiscale del partner','utf-8')
     PAR.DES['IVA_PAR']['DESVAR']=unicode('Partita IVA del partner','utf-8')
-    PAR.DefPathPkl(path)
-    PAR.Dumpk('PAR.pickle')
+    # PAR.DefPathPkl(path)
+    PAR.save(os.path.join(path, 'PAR.pickle'))
     
     
     ############################################################################################
@@ -239,15 +238,14 @@ def CreateDWComp(companyName):
     #taxDf=taxDf[taxDf['NAM_IMP']==companyName]
     del taxDf['NAM_IMP']
     #del taxDf['TYP_CON']
-    TAX=stark.StarK(taxDf,TYPE='elab',COD='TAX')
+    TAX = Stark(taxDf,TYPE='elab',COD='TAX')
     #effettuo il primo abbellimento di Stark
     TAX.DES['NAM_TAX']['DESVAR']=unicode("nome della tassa",'utf-8')
     TAX.DES['TAX_CODE']['DESVAR']=unicode("identificativo del tax_code di tassa",'utf-8')
     TAX.DES['BASE_CODE']['DESVAR']=unicode("identificativo del tax_code di imponibile",'utf-8')
     TAX.DES['REF_TAX_CODE']['DESVAR']=unicode("identificativo del tax_code di tassa (per le note di credito)",'utf-8')
     TAX.DES['REF_BASE_CODE']['DESVAR']=unicode("identificativo del tax_code di imponibile (per le note di credito)",'utf-8')
-    TAX.DefPathPkl(path)
-    TAX.Dumpk('TAX.pickle')
+    TAX.save(os.path.join(path, 'TAX.pickle'))
     
     ############################################################################################
     #  importazione dei dati della classe AccountPeriod
@@ -271,15 +269,15 @@ def CreateDWComp(companyName):
     #periodDf=periodDf[periodDf['NAM_IMP']==companyName]
     del periodDf['NAM_IMP']
     #del periodDf['TYP_CON']
-    PERIOD=stark.StarK(periodDf,TYPE='elab',COD='PERIOD')
+    PERIOD = Stark(periodDf,TYPE='elab',COD='PERIOD')
     #effettuo il primo abbellimento di Stark
     PERIOD.DES['P_DAT_STR']['DESVAR']=unicode("data di inizio del periodo",'utf-8')
     PERIOD.DES['P_DAT_STOP']['DESVAR']=unicode("data di fine del periodo",'utf-8')
     PERIOD.DES['FY_DAT_STR']['DESVAR']=unicode("data di inizio dell'anno fiscale",'utf-8')
     PERIOD.DES['FY_DAT_STOP']['DESVAR']=unicode("data di fine dell'anno fiscale",'utf-8')
     PERIOD.DES['NAM_FY']['DESVAR']=unicode("nome dell'anno fiscale relativo al periodo",'utf-8')
-    PERIOD.DefPathPkl(path)
-    PERIOD.Dumpk('PERIOD.pickle')
+#    PERIOD.DefPathPkl(path)
+    PERIOD.save(os.path.join(path, 'PERIOD.pickle'))
 
     ############################################################################################
     #  importazione dei dati della classe IrSequence
@@ -299,12 +297,11 @@ def CreateDWComp(companyName):
     ##sequenceDf=sequenceDf[sequenceDf['NAM_IMP']==companyName]
     #del sequenceDf['NAM_IMP']
     ##del sequenceDf['TYP_CON']
-    #SEQUENCE=stark.StarK(sequenceDf,TYPE='elab',COD='SEQUENCE')
+    #SEQUENCE = Stark(sequenceDf,TYPE='elab',COD='SEQUENCE')
     ##effettuo il primo abbellimento di Stark
     #SEQUENCE.DES['COD_SEQ']['DESVAR']=unicode("codice della sequenza",'utf-8')
     #SEQUENCE.DES['NAM_SEQ']['DESVAR']=unicode("nome della sequenza",'utf-8')
-    #SEQUENCE.DefPathPkl(path)
-    #SEQUENCE.Dumpk('SEQUENCE.pickle')
+    #SEQUENCE.save(os.path.join(path, 'SEQUENCE.pickle'))
     
     ############################################################################################
     #  creazione del dataframe specifico per i report iva
@@ -449,7 +446,7 @@ def CreateDWComp(companyName):
                             'TACC','TTAX','TCRED','TDET','TIMM','TESI','AMOUNT'
                             ]]
     vatDatasDf = vatDatasDf.sort(columns=['M_NAME'])
-    vatDatasStark=stark.StarK(vatDatasDf,TYPE='elab',COD='VAT')
+    vatDatasStark = Stark(vatDatasDf,TYPE='elab',COD='VAT')
     vatDatasStark.DES['ESER']['DESVAR']=unicode("anno fiscale",'utf-8')
     vatDatasStark.DES['M_NUM']['DESVAR']=unicode("numero di protocollo",'utf-8')
     vatDatasStark.DES['M_NAME']['DESVAR']=unicode("name della move",'utf-8')
@@ -463,6 +460,5 @@ def CreateDWComp(companyName):
     vatDatasStark.DES['TIMM']['DESVAR']=unicode("booleano che indica se l'imposta è ad esigibilità immediata",'utf-8')
     vatDatasStark.DES['TESI']['DESVAR']=unicode("booleano che indica se l'imposta è esigibile nel periodo",'utf-8')
     vatDatasStark.DES['STATE']['DESVAR']=unicode("stato della scrittura contabile",'utf-8')
-    vatDatasStark.DefPathPkl(path)
-    vatDatasStark.Dumpk('VAT.pickle')
+    vatDatasStark.save(os.path.join(path, 'VAT.pickle'))
     #vatDatasDf.to_csv("df"+companyName+".csv",sep=";",encoding="utf-8")

@@ -27,10 +27,18 @@
 #
 ##############################################################################
 import sys
+import os
 import pandas
-import cPickle
 
-class Transport(object):
+# Servabit libraries
+BASEPATH = os.path.abspath(os.path.join(
+        os.path.dirname(__file__),
+        os.path.pardir))
+sys.path.append(BASEPATH)
+sys.path = list(set(sys.path))
+from share.generic_pickler import GenericPickler
+
+class Bag(GenericPickler):
     '''
     Questa classe consente di istanziare un oggetto Transport
     costituito dalle seguenti componenti: 
@@ -67,25 +75,3 @@ class Transport(object):
                 print("Warnings: non c'è coerenza tra le variabili del dataframe e le variabili di LM")
                 return
        
-
-    def dump(self,path,nf):
-        pfile=path+nf      
-        file1=open(pfile, 'w')
-        cPickle.dump(self,file1)
-        file1.close()
-
-    @staticmethod    
-    def load1(path,nf):
-        pfile=path+nf   
-        file1 = open(pfile, 'r')
-        ris=cPickle.load(file1)
-        file1.close()
-        return ris
-
-
-        
-
-
-
-
-
