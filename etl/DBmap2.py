@@ -143,6 +143,7 @@ class AccountFiscalyear(Base):
     
     #one2many
     periods = relationship("AccountPeriod")
+    #many2one
     company = relationship("ResCompany")
         
     

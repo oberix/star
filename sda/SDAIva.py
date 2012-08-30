@@ -76,14 +76,12 @@ def getVatRegister(vatDf, companyName, onlyValidatedMoves, sequenceName=None, pe
 
 
 def getVatSummary(vatDf, companyName, onlyValidatedMoves, 
-                immediateVatCreditAccountCode, immediateVatDebitAccountCode, 
-                deferredVatCreditAccountCode, deferredVatDebitAccountCode, 
-                sequenceName=None, periodName=None, fiscalyearName=None):
+                    sequenceName=None, periodName=None, fiscalyearName=None):
     '''
     funzione per il calcolo dei riepiloghi iva
     '''
     df1 = getVatRegister(vatDf, companyName, onlyValidatedMoves, periodName=periodName, fiscalyearName=fiscalyearName, sequenceName=sequenceName)
-    qui
+    print df1
     del df1['DAT_MVL']
     del df1['NAM_MOV']
     del df1['DAT_DOC']

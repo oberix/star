@@ -52,10 +52,6 @@ def main(dirname):
     if str(config.options.get('only_validated_moves',True))=='False':
         onlyValidatedMoves=False
     
-    immediateVatCreditAccountCode=config.options.get('immediate_credit_vat_account_code',False)
-    immediateVatDebitAccountCode=config.options.get('immediate_debit_vat_account_code',False)
-    deferredVatCreditAccountCode=config.options.get('deferred_credit_vat_account_code',False)
-    deferredVatDebitAccountCode=config.options.get('deferred_debit_vat_account_code',False)
     treasuryVatAccountCode=config.options.get('treasury_vat_account_code',False)
     
     companyPathPkl = os.path.join(picklesPath,companyName)
