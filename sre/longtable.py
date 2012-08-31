@@ -131,7 +131,7 @@ class LongTable(object):
                'title': part[1], 
                'sep2': part[2],
                }
-        if title.startswith('@v'):
+        if title.strip().strip('|').startswith('@v'):
             ret['title'] = str()
         return ret
 
