@@ -160,7 +160,8 @@ def _report(dest_path, templ_path, template, bags, **kwargs):
     ret = os.system('texi2pdf -q --clean -o %s -c %s' %\
                   (os.path.join(dest_path, templ_path.replace('.tex', '')), 
                    template_out))
-    _logger.info("Done")
+    if not ret > 0:
+        _logger.info("Done")
     return ret
 
 def sre(src_path, config=None, **kwargs):
@@ -200,7 +201,7 @@ def sre(src_path, config=None, **kwargs):
     except KeyError:
         templ_path = os.path.join(src_path, 'main.tex')
     templ = _load_template(templ_path)
-    if not templ:
+    if templ == 1:
         return templ
 
     # load tranposrts
