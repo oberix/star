@@ -114,7 +114,11 @@ def _load_bags(path, template, **kwargs):
         base = ph_parts[0]
         if not bags.get(base, False):
             # Load and add to cache
-            bags[base] = Bag.load(os.path.join(path, '.'.join([base, 'pickle'])))
+            try:
+                bags[base] = Bag.load(os.path.join(path, '.'.join([base, 'pickle'])))
+            except IOError, err:
+                _logger.warning('%s; skipping...', err)
+                continue
         if len(ph_parts) > 1: # extract attribute
             ret[ph] = eval('.'.join(['bags[base]'] + ph_parts[1:]))
         else: # just use DF/LM 
@@ -140,7 +144,8 @@ def _report(dest_path, templ_path, template, bags, **kwargs):
     if not os.path.exists(os.path.dirname(dest_path)):
         os.makedirs(os.path.dirname(dest_path))
     # substitute placeholders
-    # TODO: handle missing placeholders
+    # FIXME: with safe_substitute, if a placeholder is missing, no exception is
+    # raise, but nothing is told to the user either.
     templ_out = template.safe_substitute(bags)
     # save final document
     template_out = templ_path.replace('.tex', '_out.tex')
