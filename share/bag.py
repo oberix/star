@@ -67,11 +67,11 @@ class Bag(GenericPickler):
             print("Warnings: DF non è un Dataframe") 
             return
         if TIP=="tab":
-            lvar=DF.columns
-            lvar1=pandas.Index(LM.keys())
-            lcheck=lvar-lvar1
+            lvar = DF.columns
+            lvar1 = pandas.Index(LM.keys())
+            lcheck = lvar1 - lvar
             print lcheck
-            if len(lcheck) < 0:
+            if len(lcheck) > 0:
                 print("Warnings: non c'è coerenza tra le variabili del dataframe e le variabili di LM")
                 return
        
