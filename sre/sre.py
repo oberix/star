@@ -86,7 +86,7 @@ def _load_template(path):
         templ = SreTemplate(fd.read())
     except IOError, err:
         _logger.error("%s", err)
-        return 1
+        return False
     finally:
         if fd > 0:
             fd.close()
@@ -115,6 +115,8 @@ def _load_bags(path, template, **kwargs):
         if not bags.get(base, False):
             # Load and add to cache
             try:
+                # FIXME: this is a (bad) way to avoid treating the \SRE command
+                # definition as a placeholder.
                 bags[base] = Bag.load(os.path.join(path, '.'.join([base, 'pickle'])))
             except IOError, err:
                 _logger.warning('%s; skipping...', err)
@@ -192,11 +194,6 @@ def sre(src_path, config=None, **kwargs):
     global _logger
     _logger = logging.getLogger(os.path.basename(__name__))
     
-    try:
-        dest_path = config['dest_path']
-    except KeyError:
-        dest_path = src_path
-
     # Load template
     # Template is loaded first because we want to know the placeholders before
     # reading bags, so we can read just bags that will be actually used.
@@ -205,8 +202,8 @@ def sre(src_path, config=None, **kwargs):
     except KeyError:
         templ_path = os.path.join(src_path, 'main.tex')
     templ = _load_template(templ_path)
-    if templ == 1:
-        return templ
+    if not templ:
+        return 1
 
     # Load Bags
     try:

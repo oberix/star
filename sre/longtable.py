@@ -191,8 +191,8 @@ class LongTable(object):
 
         '''
         ret = str()
+        span = len(self._align)
         if self._data.FOOTNOTE is not None:
-            span = len(self._align)
             ret = self._data.FOOTNOTE 
         return str().join(['\multicolumn{%s}{|c|}{'% span, ret, '} \\\ \\tabucline- \\endfoot \n'])
 
