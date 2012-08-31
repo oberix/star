@@ -107,7 +107,7 @@ def _load_bags(path, template, **kwargs):
     # single Pickle attributes.
     ph_list = [ph[2] for ph in template.pattern.findall(template.template)]
 
-    _logger.info("Reading pickles, this might take a while...")
+    _logger.info("Reading pickles.")
     bags = dict() # Pickle file's cache (never load twice the same file!)
     for ph in ph_list:
         ph_parts = ph.split('.')
@@ -121,7 +121,8 @@ def _load_bags(path, template, **kwargs):
             if bags[base].TIP == 'tab':
                 ret[ph] = LongTable(bags[base], **kwargs).to_latex()
             else: # TODO: handle other types
-                _logger.warning('Unhandled bag TIP %s found in %s, skipping...', basg[base].TIP, file_)
+                _logger.debug('bags = %s', bags)
+                _logger.warning("Unhandled bag TIP '%s' found in %s, skipping...", bags[base].TIP, base)
                 continue
     return ret
 
@@ -132,18 +133,15 @@ def _report(dest_path, templ_path, template, bags, **kwargs):
     @ param templ_path: template file path.
     @ param template: SreTemplate instance
     @ param bag: dictionary of LaTeX code snippetts to substitute to the
-            placeholers; ths dictionary is indexed by placeholder's name.
+            placeholders; ths dictionary is indexed by placeholder's name.
     @ return texi2pdf exit value or -1 if an error happend.
 
     '''
     if not os.path.exists(os.path.dirname(dest_path)):
         os.makedirs(os.path.dirname(dest_path))
     # substitute placeholders
-    try:
-        templ_out = template.substitute(bags)
-    except ValueError, err:
-        _logger.error("%s in template %s", err, template)
-        return 1
+    # TODO: handle missing placeholders
+    templ_out = template.safe_substitute(bags)
     # save final document
     template_out = templ_path.replace('.tex', '_out.tex')
     try:
@@ -156,7 +154,7 @@ def _report(dest_path, templ_path, template, bags, **kwargs):
         if fd > 0:
             fd.close()
     # Call LaTeX compiler
-    _logger.info("Compiling into PDF...")
+    _logger.info("Compiling into PDF, this might take a while...")
     ret = os.system('texi2pdf -q --clean -o %s -c %s' %\
                   (os.path.join(dest_path, templ_path.replace('.tex', '')), 
                    template_out))
@@ -187,7 +185,6 @@ def sre(src_path, config=None, **kwargs):
     config = _load_config(src_path, confpath=config)
 
     global _logger
-    logging.basicConfig(level = config.get('logLevel'))
     _logger = logging.getLogger(os.path.basename(__name__))
     
     try:
@@ -195,7 +192,9 @@ def sre(src_path, config=None, **kwargs):
     except KeyError:
         dest_path = src_path
 
-    # load template
+    # Load template
+    # Template is loaded first because we want to know the placeholders before
+    # reading bags, so we can read just bags that will be actually used.
     try:
         templ_path = config['template']
     except KeyError:
@@ -204,11 +203,15 @@ def sre(src_path, config=None, **kwargs):
     if templ == 1:
         return templ
 
-    # load tranposrts
+    # Load Bags
     try:
         bag_path = config['bags']
     except KeyError:
         bag_path = src_path
+
+    _logger.debug('hlines = %s', config.get('horizontal_lines', False))
+    if config.get('horizontal_lines', False) == 'True':
+        kwargs.update({'hsep' : True})
     bags = _load_bags(bag_path, templ, **kwargs)
     # make report
     return _report(templ_path, templ_path, templ, bags, **kwargs)
