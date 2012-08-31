@@ -183,16 +183,20 @@ class LongTable(object):
         out += """} \\firsthline\n"""
         return out
 
-    def _make_tex_footer(self):
+    def _make_footer(self):
         ''' Prepare footer for TeX table
         This is pretty simple: just draw a line at the bottom of the table.
 
         @ return: str
 
         '''
-        return """\\tabucline- \\endfoot \n"""
+        ret = str()
+        if self._data.FOOTNOTE is not None:
+            span = len(self._align)
+            ret = self._data.FOOTNOTE 
+        return str().join(['\multicolumn{%s}{|c|}{'% span, ret, '} \\\ \\tabucline- \\endfoot \n'])
 
-    def _make_tex_data(self):
+    def _make_data(self):
         ''' Prepare data for TeX table 
         
         @ return: str
@@ -214,7 +218,6 @@ class LongTable(object):
             self._keys.remove('_FR_')
             records = self._data.DF[self._keys].to_records()
             end = None
-
         for record in records:
             rowstart = str()
             if end is not None:
@@ -250,8 +253,8 @@ class LongTable(object):
         out = [
             self._make_preamble(),
             headers,
-            self._make_tex_footer(),
-            self._make_tex_data(),
+            self._make_footer(),
+            self._make_data(),
             ]
         out.append(CLOSE_TEX_TAB)
         out = str().join(out)
