@@ -26,13 +26,39 @@ import numpy
 from share import Stark
 
 
+def GroupInterOrd(group):
+    group['ORD']=range(len(group))
+    S=group
+    return S    
+
 def getVatRegister(vatDf, companyName, onlyValidatedMoves, sequenceName=None, periodName=None, fiscalyearName=None):
     '''
     funzione per il calcolo dei registri iva
+    Nel porgramma vengono usate le seguenti variabili
+    ESER        anno fiscale
+    M_NUM       numero di protocollo
+    M_NAME      name della move
+    M_REF       riferimento della move
+    CASH        booleano che indica se è un pagamento
+    TNAME       nome dell'imposta
+    TACC        codice del conto
+    TTAX        booleano che indica se è un'imposta (oppure un imponibile)
+    TCRED       booleano che indica se l'imposta è a credito
+    TDET        booleano che indica se l'imposta è detraibile
+    TIMM        booleano che indica se l'imposta è ad esigibilità immediata
+    TESI        booleano che indica se l'imposta è esigibile nel periodo
+    STATE       stato della scrittura contabile
+    SEQUENCE    nome della sequenza
+    PERIOD      periodo dell'esercizio
     '''
+    #definisco la lista delle variabili di interesse, da tenere nel corso del programma
+    LVAR=['DATE','M_NAME','DATE_DOC','M_REF','PARTNER','TNAME','BASE','TAX','TCRED','TDET','TIMM','TESI']
+
     if not periodName and not fiscalyearName:
         raise RuntimeError("Errore: i parametri periodName e fiscalyearName non devono essere entrambi nulli")
+
     df0 = vatDf.copy(deep=True)
+    # seleziono le scritture che soddisfano i criteri dati come imput
     if sequenceName:
         df0 = df0.ix[df0['SEQUENCE']==sequenceName]
     if periodName:
@@ -41,37 +67,86 @@ def getVatRegister(vatDf, companyName, onlyValidatedMoves, sequenceName=None, pe
         df0 = df0.ix[df0['ESER']==fiscalyearName]
     if onlyValidatedMoves:
         df0 = df0.ix[df0['STATE']=='posted']
+    #fine selezione
     df1 = df0.reset_index(drop=True)
+
     if len(df1)>0:
         df6 = df1.sort(['DATE','M_NAME']).reset_index(drop=True)
-        groupbyCols = ['M_NAME','TNAME','TTAX']
-        df7 = df6.groupby(groupbyCols).sum()[['AMOUNT']].reset_index()
+        #pulisco il database di eventuali casi in cui ho all'interno di una scrittura
+        #più linee riguardanti la stessa imposta
+        #calcolo la somma per ogni move delle imposte e dell'imponibile per ciascuna tassa
+        G001 = ['M_NAME','TNAME','TTAX']
+        df7 = df6.groupby(G001).sum()[['AMOUNT']].reset_index()
         df7['AMOUNT']=df7['AMOUNT'].map(float)
+        #fine pulizie
+        #isolo le imposte dalla base imponibile e tiporto le due variabili in colonna
         df7['ST_TAX'] = 'TAX'
         df7['ST_TAX'].ix[df7['TTAX']==False] = 'BASE'
         #aggiunta colonne BASE e TAX con importi di imponibile e imposta a seconda delle righe
         df8 = pandas.pivot_table(df7,values='AMOUNT', cols=['ST_TAX'], 
                         rows=['M_NAME','TNAME'])
         df8 = df8.reset_index()
-        vatDf = vatDf.ix[vatDf['TTAX']==True]
-        del vatDf['TTAX']
-        del vatDf['AMOUNT']
-        df10 = pandas.merge(vatDf,df8,on=["M_NAME","TNAME"])
+        #in df8 ci sono le imposte e la base imponibile in colonna. 
+        #la chiave univoca che identifica ciascuna riga è composta 
+        #dal nome della move (M_NAME) e dal nome della tassa (T_NAME)
+
+        # aggiungo al df8 le altre variabili di interesse
+        #vatDf = vatDf.ix[vatDf['TTAX']==True]
+        #del vatDf['TTAX']
+        #del vatDf['AMOUNT']
+        #df10 = pandas.merge(vatDf,df8,on=["M_NAME","TNAME"])
+        #recupero le variabili che servono e che sono associate alla move
+        df91=vatDf[['M_NAME','DATE','DATE_DOC','M_REF','PARTNER']]
+        df91=df91.drop_duplicates() 
+        #recupero le variabili che servono e che sono associate al nome dell'imposte
+        df92=vatDf[['TNAME','TDET','TCRED','TIMM', 'TESI']]
+        df92=df92[df92['TDET'].notnull()]
+        df92=df92.drop_duplicates() 
+        #combino il df8 prima con i dati associati alla move e
+        # quindi con i dati associati alla tassa
+        df10 = pandas.merge(df8 , df91,on=["M_NAME"], how='left')
+        df10 = pandas.merge(df10, df92,on=["TNAME"], how='left')
         df10 = df10.sort(['DATE','M_NAME'])
         df10 = df10.reset_index(drop=True)
-        previousMoveName = ""
-        for i in range(len(df10)):
-            row = df10[i:i+1]
-            moveName = row['M_NAME'][i]
-            if moveName==previousMoveName:
-                df10[i:i+1]['DATE_DOC'] = ''
-                df10[i:i+1]['DATE'] = ''
-                df10[i:i+1]['M_NAME'] = ''
-                df10[i:i+1]['PARTNER'] = ''
-                df10[i:i+1]['M_REF'] = ''
-            previousMoveName = moveName
-        vatRegister = df10[['DATE','M_NAME','DATE_DOC','M_REF','PARTNER','TNAME','BASE','TAX','TCRED','TDET','TIMM','TESI']]
-        return vatRegister
+        df10=df10[LVAR]
+
+        #previousMoveName = ""
+        #for i in range(len(df10)):
+        #    row = df10[i:i+1]
+        #    moveName = row['M_NAME'][i]
+        #    if moveName==previousMoveName:
+        #        df10[i:i+1]['DATE_DOC'] = ''
+        #        df10[i:i+1]['DATE'] = ''
+        #        df10[i:i+1]['M_NAME'] = ''
+        #        df10[i:i+1]['PARTNER'] = ''
+        #        df10[i:i+1]['M_REF'] = ''
+        #    previousMoveName = moveName
+
+        #PMN = ""
+        #for i in range(len(df10)):
+        #    row = df10[i:i+1]
+        #    MN = row['M_NAME'][i]
+        #    if MN==PMN:
+        #        df10[i:i+1]['DATE_DOC'] = ''
+        #        df10[i:i+1]['DATE'] = ''
+        #        df10[i:i+1]['M_NAME'] = ''
+        #        df10[i:i+1]['PARTNER'] = ''
+        #        df10[i:i+1]['M_REF'] = ''
+        #    PMN = MN
+        #aggiungo una variabile "ordinamento" per ogni move
+        df10['ORDTOT']=range(len(df10))
+        df11=df10.groupby(['M_NAME']).apply(GroupInterOrd)
+        #isolo il DF con la prima riga della move
+        df11A=df11.ix[df11['ORD']==0]
+        #isolo il DF con le altre righe della move
+        #e poongo a "" le variabili che nondevono essere stampate
+        df11B=df11.ix[df11['ORD']>0]
+        df11B[['DATE_DOC','DATE','M_NAME','PARTNER','M_REF']] = ''
+        #ricombino i due df
+        df13=pandas.concat([df11A,df11B])
+        df13=df13.sort('ORDTOT')
+        df13=df13[LVAR]
+        return df13
     else:
         return pandas.DataFrame(columns=['DATE','M_NAME','DATE_DOC','M_REF','PARTNER','TNAME','BASE','TAX','TCRED','TDET','TIMM','TESI'])
 
