@@ -31,6 +31,8 @@ BASEPATH = os.path.abspath(os.path.join(
 sys.path.append(BASEPATH)
 sys.path = list(set(sys.path))
 
+OUT_PATH = os.path.join(BASEPATH,"sre","registro_iva")
+
 from share import Config
 from share import Stark
 from share import Bag
@@ -67,16 +69,17 @@ def main(dirname):
         #vat registers
         if reportType==1:
             vatRegister = SDAIva.getVatRegister(vatDf, comNam, onlyValML, fiscalyearName=fiscalyearName, sequenceName=sequenceName)
-            print vatRegister
-            bagRIva = Bag(DF=vatRegister,TIP='tab',LM=CreateLMIva.lm_registri_iva)
-            pdfFileName = "RegistroIVA"+string.replace(sequenceName," ","")+comNam+string.replace(fiscalyearName," ","")
+            bagRIva = Bag(DF=vatRegister,TIP='tab',LM=CreateLMIva.lm_registri_iva,TITLE='Registro IVA '+sequenceName)
+            setattr(bagRIva,"YEAR",fiscalyearName)
+            bagRIva.save(os.path.join(OUT_PATH, 'vat_register.pickle'))
+            #pdfFileName = "RegistroIVA"+string.replace(sequenceName," ","")+comNam+string.replace(fiscalyearName," ","")
         #vat summary
         elif reportType==2:
             vatSummary=SDAIva.getVatSummary(vatDf, comNam, onlyValML, periodName=periodName, sequenceName=sequenceName)
-            print vatSummary
-            xxx
-            bagRIva = Bag(DF=vatRegister,TIP='tab',LM=CreateLMIva.lm_registri_iva)
-            pdfFileName="RiepilogoIVA"+string.replace(sequenceName," ","")+comNam+string.replace(periodName," ","")
+            bagRIva = Bag(DF=vatSummary,TIP='tab',LM=CreateLMIva.lm_riepiloghi_iva,TITLE='Riepilogo IVA '+sequenceName)
+            setattr(bagRIva,"PERIOD",periodName)
+            bagRIva.save(os.path.join(OUT_PATH, 'vat_summary.pickle'))
+            #pdfFileName="RiepilogoIVA"+string.replace(sequenceName," ","")+comNam+string.replace(periodName," ","")
         ##vat detail
         #elif reportType==3:
             #vatRegister = SDAIva.getVatRegister(picklesPath, comNam, onlyValML, periodName=periodName, sequenceName=sequenceName)
