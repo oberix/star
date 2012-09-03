@@ -310,7 +310,7 @@ def CreateDWComp(companyName):
                                             'REF_MOV' : 'M_REF',
                                             'STA_MOV' : 'STATE',
                                             'DAT_DOC' : 'DATE_DOC',
-                                            'COD_CON' : 'TACC',
+                                            'COD_CON' : 'T_ACC',
                                             'DAT_MVL' : 'DATE',
                                             'NAM_PRD' : 'PERIOD',
                                             'NAM_FY' : 'ESER',
@@ -319,11 +319,11 @@ def CreateDWComp(companyName):
                                             'NAM_REC' : 'RECON',
                                             'NAM_REC_P' : 'RECON_P',
                                             'NAM_SEQ' : 'SEQUENCE',
-                                            'COD_CON' : 'TACC',
+                                            'COD_CON' : 'T_ACC',
                                             })
     
     vatDatasDf = moveLineDf.ix[(moveLineDf["COD_SEQ"]=='RIVA') & (moveLineDf["TAX_COD"].notnull())].reset_index()
-    #aggiunta colonne TNAME e TTAX
+    #aggiunta colonne T_NAME e T_TAX
     df3 = pandas.DataFrame()
     df4 = pandas.DataFrame()
     df6 = pandas.DataFrame()
@@ -331,23 +331,23 @@ def CreateDWComp(companyName):
     df2 = vatDatasDf[vatDatasDf['TYP_JRN'].isin(['sale', 'purchase'])]
     try:
         df3 = pandas.merge(df2,taxDf,left_on='TAX_COD',right_on='TAX_CODE')
-        df3['TTAX'] = True
+        df3['T_TAX'] = True
     except IndexError:
         pass
     try:
         df4 = pandas.merge(df2,taxDf,left_on='TAX_COD',right_on='BASE_CODE')
-        df4['TTAX'] = False
+        df4['T_TAX'] = False
     except IndexError:
         pass
     df5 = vatDatasDf[vatDatasDf['TYP_JRN'].isin(['sale_refund', 'purchase_refund'])]
     try:
         df6 = pandas.merge(df5,taxDf,left_on='TAX_COD',right_on='REF_TAX_CODE')
-        df6['TTAX'] = True
+        df6['T_TAX'] = True
     except IndexError:
         pass
     try:
         df7 = pandas.merge(df5,taxDf,left_on='TAX_COD',right_on='REF_BASE_CODE')
-        df7['TTAX'] = False
+        df7['T_TAX'] = False
     except IndexError:
         pass
     vatDatasDf = pandas.concat([df3,df4,df6,df7]).reset_index(drop=True)
@@ -356,7 +356,7 @@ def CreateDWComp(companyName):
     #del vatDatasDf["REF_TAX_CODE"]
     #del vatDatasDf["REF_BASE_CODE"]
     #aggiunta a vatDatasDf delle move.line relative ai pagamenti dell'iva differita
-    df0 = vatDatasDf.ix[(vatDatasDf["TACC"]==deferredVatCreditAccountCode) | (vatDatasDf["TACC"]==deferredVatDebitAccountCode)].reset_index()
+    df0 = vatDatasDf.ix[(vatDatasDf["T_ACC"]==deferredVatCreditAccountCode) | (vatDatasDf["T_ACC"]==deferredVatDebitAccountCode)].reset_index()
     reconcileDf = df0[["RECON","RECON_P"]].drop_duplicates().reset_index(drop=True)
     reconcileDf['RECON'].ix[reconcileDf['RECON'].isnull()] = "NULL"
     reconcileDf['RECON_P'].ix[reconcileDf['RECON_P'].isnull()] = "NULL"
@@ -376,13 +376,13 @@ def CreateDWComp(companyName):
     #del df3["RECON_P.y"]
     #del df3["RECON.x"]
     #del df3["RECON.y"]
-    df3['TTAX'] = True
+    df3['T_TAX'] = True
     vatDatasDf = pandas.concat([vatDatasDf,df3]).reset_index(drop=True)
     #aggiunta a vatDatasDf delle move.line relative ai pagamenti dell'iva sul conto treasuryVatAccountCode
-    df0 = moveLineDf.ix[moveLineDf["TACC"]==treasuryVatAccountCode].reset_index()
+    df0 = moveLineDf.ix[moveLineDf["T_ACC"]==treasuryVatAccountCode].reset_index()
     vatDatasDf = pandas.concat([vatDatasDf,df0]).reset_index(drop=True)
     #del vatDatasDf["index"]
-    vatDatasDf = vatDatasDf.rename(columns={'NAM_TAX' : 'TNAME',
+    vatDatasDf = vatDatasDf.rename(columns={'NAM_TAX' : 'T_NAME',
                                             })
     #costruzione delle altre colonne del df finale
     vatDatasDf['M_NUM'] = ''
@@ -396,7 +396,7 @@ def CreateDWComp(companyName):
         row = vatDatasDf[i:i+1]
         debit = row['DBT_MVL'][i]
         credit = row['CRT_MVL'][i]
-        accountCode = row['TACC'][i]
+        accountCode = row['T_ACC'][i]
         if accountCode in [deferredVatDebitAccountCode,deferredVatCreditAccountCode]:
             vatDatasDf['CASH'][i:i+1] = (debit>0 and accountCode==deferredVatDebitAccountCode)\
                                         or (credit>0 and accountCode==deferredVatCreditAccountCode)
@@ -416,34 +416,34 @@ def CreateDWComp(companyName):
                 vatDatasDf['AMOUNT'][i:i+1] = -credit
             else:
                 vatDatasDf['AMOUNT'][i:i+1] = credit
-    vatDatasDf['TCRED'] = None
-    vatDatasDf['TCRED'].ix[vatDatasDf['TTAX']==True] = False
-    vatDatasDf['TCRED'].ix[(vatDatasDf['TTAX']==True) & 
-                            (vatDatasDf['TACC'].isin([immediateVatCreditAccountCode,deferredVatCreditAccountCode]))
+    vatDatasDf['T_CRED'] = None
+    vatDatasDf['T_CRED'].ix[vatDatasDf['T_TAX']==True] = False
+    vatDatasDf['T_CRED'].ix[(vatDatasDf['T_TAX']==True) & 
+                            (vatDatasDf['T_ACC'].isin([immediateVatCreditAccountCode,deferredVatCreditAccountCode]))
                             ]= True
-    vatDatasDf['TCRED'].ix[(vatDatasDf['TTAX']==True) & (vatDatasDf['DBT_MVL']>0) &
-                            (vatDatasDf['TACC']!=immediateVatDebitAccountCode) &
-                            (vatDatasDf['TACC']!=deferredVatDebitAccountCode)
+    vatDatasDf['T_CRED'].ix[(vatDatasDf['T_TAX']==True) & (vatDatasDf['DBT_MVL']>0) &
+                            (vatDatasDf['T_ACC']!=immediateVatDebitAccountCode) &
+                            (vatDatasDf['T_ACC']!=deferredVatDebitAccountCode)
                             ]= True
-    vatDatasDf['TDET'] = None
-    vatDatasDf['TDET'].ix[vatDatasDf['TTAX']==True] = False
-    vatDatasDf['TDET'].ix[(vatDatasDf['TTAX']==True) & 
-                            vatDatasDf['TACC'].isin([
+    vatDatasDf['T_DET'] = None
+    vatDatasDf['T_DET'].ix[vatDatasDf['T_TAX']==True] = False
+    vatDatasDf['T_DET'].ix[(vatDatasDf['T_TAX']==True) & 
+                            vatDatasDf['T_ACC'].isin([
                                     immediateVatCreditAccountCode,immediateVatDebitAccountCode,
                                     deferredVatCreditAccountCode,deferredVatDebitAccountCode])] = True
-    vatDatasDf['TIMM'] = None
-    vatDatasDf['TIMM'].ix[(vatDatasDf['TTAX']==True) & (vatDatasDf['TDET']==True)] = False
-    vatDatasDf['TIMM'].ix[(vatDatasDf['TTAX']==True) & (vatDatasDf['TDET']==True) & 
-                            (vatDatasDf['TACC'].isin([immediateVatCreditAccountCode,immediateVatDebitAccountCode]))
+    vatDatasDf['T_IMM'] = None
+    vatDatasDf['T_IMM'].ix[(vatDatasDf['T_TAX']==True) & (vatDatasDf['T_DET']==True)] = False
+    vatDatasDf['T_IMM'].ix[(vatDatasDf['T_TAX']==True) & (vatDatasDf['T_DET']==True) & 
+                            (vatDatasDf['T_ACC'].isin([immediateVatCreditAccountCode,immediateVatDebitAccountCode]))
                             ] = True
-    vatDatasDf['TESI'] = None
-    vatDatasDf['TESI'].ix[vatDatasDf['TIMM']==False] = False
-    vatDatasDf['TESI'].ix[vatDatasDf['TIMM']==True] = True
-    vatDatasDf['TESI'].ix[(vatDatasDf['TIMM']==False) & (vatDatasDf['CASH']==True)] = True
+    vatDatasDf['T_EXI'] = None
+    vatDatasDf['T_EXI'].ix[vatDatasDf['T_IMM']==False] = False
+    vatDatasDf['T_EXI'].ix[vatDatasDf['T_IMM']==True] = True
+    vatDatasDf['T_EXI'].ix[(vatDatasDf['T_IMM']==False) & (vatDatasDf['CASH']==True)] = True
     vatDatasDf = vatDatasDf[['DATE','DATE_DOC','PERIOD','ESER',
                             'M_NAME','M_REF','M_NUM','PARTNER','JOURNAL','SEQUENCE',
-                            'STATE','TNAME','RECON','RECON_P','CASH',
-                            'TACC','TTAX','TCRED','TDET','TIMM','TESI','AMOUNT'
+                            'STATE','T_NAME','RECON','RECON_P','CASH',
+                            'T_ACC','T_TAX','T_CRED','T_DET','T_IMM','T_EXI','AMOUNT'
                             ]]
     vatDatasDf = vatDatasDf.sort(columns=['M_NAME'])
     vatDatasStark = Stark(vatDatasDf,TYPE='elab',COD='VAT')
@@ -452,13 +452,22 @@ def CreateDWComp(companyName):
     vatDatasStark.DES['M_NAME']['DESVAR']=unicode("name della move",'utf-8')
     vatDatasStark.DES['M_REF']['DESVAR']=unicode("riferimento della move",'utf-8')
     vatDatasStark.DES['CASH']['DESVAR']=unicode("booleano che indica se è un pagamento",'utf-8')
-    vatDatasStark.DES['TNAME']['DESVAR']=unicode("nome dell'imposta",'utf-8')
-    vatDatasStark.DES['TACC']['DESVAR']=unicode("codice del conto",'utf-8')
-    vatDatasStark.DES['TTAX']['DESVAR']=unicode("booleano che indica se è un'imposta (oppure un imponibile)",'utf-8')
-    vatDatasStark.DES['TCRED']['DESVAR']=unicode("booleano che indica se l'imposta è a credito",'utf-8')
-    vatDatasStark.DES['TDET']['DESVAR']=unicode("booleano che indica se l'imposta è detraibile",'utf-8')
-    vatDatasStark.DES['TIMM']['DESVAR']=unicode("booleano che indica se l'imposta è ad esigibilità immediata",'utf-8')
-    vatDatasStark.DES['TESI']['DESVAR']=unicode("booleano che indica se l'imposta è esigibile nel periodo",'utf-8')
+    vatDatasStark.DES['T_NAME']['DESVAR']=unicode("nome dell'imposta",'utf-8')
+    vatDatasStark.DES['T_ACC']['DESVAR']=unicode("codice del conto",'utf-8')
+    vatDatasStark.DES['T_TAX']['DESVAR']=unicode("booleano che indica se è un'imposta (oppure un imponibile)",'utf-8')
+    vatDatasStark.DES['T_CRED']['DESVAR']=unicode("booleano che indica se l'imposta è a credito",'utf-8')
+    vatDatasStark.DES['T_DET']['DESVAR']=unicode("booleano che indica se l'imposta è detraibile",'utf-8')
+    vatDatasStark.DES['T_IMM']['DESVAR']=unicode("booleano che indica se l'imposta è ad esigibilità immediata",'utf-8')
+    vatDatasStark.DES['T_EXI']['DESVAR']=unicode("booleano che indica se l'imposta è esigibile nel periodo",'utf-8')
     vatDatasStark.DES['STATE']['DESVAR']=unicode("stato della scrittura contabile",'utf-8')
+    vatDatasStark.DES['PERIOD']['DESVAR']=unicode("nome del periodo",'utf-8')
+    vatDatasStark.DES['JOURNAL']['DESVAR']=unicode("nome del journal",'utf-8')
+    vatDatasStark.DES['DATE_DOC']['DESVAR']=unicode("data della fattura",'utf-8')
+    vatDatasStark.DES['DATE']['DESVAR']=unicode("data di registrazione",'utf-8')
+    vatDatasStark.DES['PARTNER']['DESVAR']=unicode("nome del partner",'utf-8')
+    vatDatasStark.DES['RECON']['DESVAR']=unicode("nome della riconciliazione",'utf-8')
+    vatDatasStark.DES['RECON_P']['DESVAR']=unicode("nome della riconciliazione parziale",'utf-8')
+    vatDatasStark.DES['AMOUNT']['DESVAR']=unicode("importo (di imponibile o imposta o pagamento)",'utf-8')
+    vatDatasStark.DES['SEQUENCE']['DESVAR']=unicode("nome della sequenza",'utf-8')
     vatDatasStark.save(os.path.join(path, 'VAT.pickle'))
     #vatDatasDf.to_csv("df"+companyName+".csv",sep=";",encoding="utf-8")

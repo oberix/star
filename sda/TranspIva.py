@@ -68,18 +68,20 @@ def main(dirname):
         if reportType==1:
             vatRegister = SDAIva.getVatRegister(vatDf, comNam, onlyValML, fiscalyearName=fiscalyearName, sequenceName=sequenceName)
             print vatRegister
-            transportRIva = Transport(DF=vatRegister,TIP='tab',LM=CreateLMIva.lm_registri_iva)
+            bagRIva = Bag(DF=vatRegister,TIP='tab',LM=CreateLMIva.lm_registri_iva)
             pdfFileName = "RegistroIVA"+string.replace(sequenceName," ","")+comNam+string.replace(fiscalyearName," ","")
         #vat summary
-        #elif reportType==2:
-            #vatSummary=SDAIva.getVatSummary(vatDf, comNam, onlyValML, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode, periodName=periodName, sequenceName=sequenceName)
-            #print vatSummary
-            #pdfFileName="RiepilogoIVA"+string.replace(sequenceName," ","")+comNam+string.replace(periodName," ","")
+        elif reportType==2:
+            vatSummary=SDAIva.getVatSummary(vatDf, comNam, onlyValML, periodName=periodName, sequenceName=sequenceName)
+            print vatSummary
+            xxx
+            bagRIva = Bag(DF=vatRegister,TIP='tab',LM=CreateLMIva.lm_registri_iva)
+            pdfFileName="RiepilogoIVA"+string.replace(sequenceName," ","")+comNam+string.replace(periodName," ","")
         ##vat detail
         #elif reportType==3:
             #vatRegister = SDAIva.getVatRegister(picklesPath, comNam, onlyValML, periodName=periodName, sequenceName=sequenceName)
             #print vatRegister
-            #transportRIva = Transport(DF=vatRegister,TIP='tab',LM=CreateLMIva.lm_registri_iva)
+            #bagRIva = Bag(DF=vatRegister,TIP='tab',LM=CreateLMIva.lm_registri_iva)
             #vatSummary=SDAIva.getVatSummary(picklesPath, comNam, onlyValML, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode, periodName=periodName, sequenceName=sequenceName)
             #print vatSummary
             #pdfFileName="DettaglioIVA"+string.replace(sequenceName," ","")+comNam+string.replace(periodName," ","")
@@ -89,8 +91,8 @@ def main(dirname):
             #notPayed = SDAIva.getDeferredVatDetail(picklesPath, comNam, onlyValML, deferredVatCreditAccountCode, deferredVatDebitAccountCode, searchPayments=False, paymentsPeriodName=periodName)
             #print payments
             #print notPayed
-            #transportPayments = Transport(DF=payments,TIP='tab',LM=CreateLMIva.lm_pagamenti_iva_differita)
-            #transportNotPayed = Transport(DF=notPayed,TIP='tab',LM=CreateLMIva.lm_da_pagare_iva_differita)
+            #transportPayments = Bag(DF=payments,TIP='tab',LM=CreateLMIva.lm_pagamenti_iva_differita)
+            #transportNotPayed = Bag(DF=notPayed,TIP='tab',LM=CreateLMIva.lm_da_pagare_iva_differita)
             #pdfFileName="DettaglioIVAEsigibDifferita"+comNam+string.replace(periodName," ","")
         ##deferred vat summary
         #elif reportType==5:
