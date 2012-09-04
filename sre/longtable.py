@@ -27,7 +27,7 @@ from copy import copy
 import re
 
 __author__ = "Marco Pattaro <marco.pattaro@servabit.it>"
-__version__ = "0.1"
+__version__ = "1.0"
 __all__ = ['LongTable', 'unique_list', 'escape_latex']
 
 OPEN_TEX_TAB = """\\begin{longtabu} to \\linewidth"""
@@ -43,7 +43,6 @@ FORMATS = {
     '@p' : "\\pagebreak \n",
 }
 
-# TODO: make a recursive pattern substitution funcion
 PATTERNS = {
     re.compile("€"): "\\officialeuro", 
     re.compile("%"): "\\%", 
@@ -68,30 +67,18 @@ def unique_list(list_):
         for i in xrange(enum - 1):
             list_.remove(elem)
 
-def escape_latex(string):
+def escape_latex(string, patterns=PATTERNS):
     ''' Escape string to work with LaTeX.
     The function calls PATTERNS dictionary to methc regexp with their escaped
     version.
 
     @ param string: the string to escape
+    @ param patterns: a pattern/string mapping dictionary
     @ return: escaped version of string
 
     '''
-    def substitute(string, pattern, sub):
-        ''' Recursivly substitute matches with escaped version of the string.
-        '''
-        match = pattern.search(string)
-        if match is not None:
-            return ''.join([
-                    string[:match.start()], 
-                    sub,
-                    substitute(string[match.end()+1:], pattern, sub)
-                    ])
-        else:
-            return string
-
-    for pattern, sub in PATTERNS.iteritems():
-        string = substitute(string, pattern, sub)
+    for pattern, sub in patterns.iteritems():
+        string = re.sub(pattern, sub, string)
     return string
 
 class LongTable(object):
@@ -150,7 +137,7 @@ class LongTable(object):
         ret = {'sep1': part[0], 
                'span': span, 
                'width': width, 
-               'title': part[1], 
+               'title': escape_latex(part[1]), 
                'sep2': part[2],
                }
         if title.strip().strip('|').startswith('@v'):

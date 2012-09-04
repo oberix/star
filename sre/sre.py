@@ -22,6 +22,7 @@
 
 import os
 import sys
+import re
 import codecs
 import string
 import logging
@@ -84,7 +85,9 @@ def _load_template(path):
     _logger.info("Loading template.")
     try:
         fd = codecs.open(path, mode='r', encoding='utf-8')
-        templ = SreTemplate(fd.read())
+        templ = fd.read()
+        templ = re.sub("\\\\newcommand\{\\\\\\SRE\}\{.*?\}", "", templ)
+        templ = SreTemplate(templ)
     except IOError, err:
         _logger.error("%s", err)
         return False
