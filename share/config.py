@@ -26,33 +26,34 @@ import os
 import sys
 
 # Dirr path to configuration file(s)
-CONFIG_PATH = os.path.abspath(
-    os.path.join(
-        os.path.dirname(os.path.abspath(sys.argv[0])),
-        os.path.pardir, 'config'))
+# CONFIG_PATH = os.path.abspath(
+#     os.path.join(
+#         os.path.dirname(os.path.abspath(sys.argv[0])),
+#         os.path.pardir, 'config'))
 
 # Map loglevel's names and values
-LEVELS_NAMES = ('CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG')
-LOGLEVELS = dict([(x, getattr(logging, x)) for x in LEVELS_NAMES])
+LOGLEVELS = {
+    'critical': logging.CRITICAL,
+    'error': logging.ERROR,
+    'warning': logging.WARNING,
+    'info': logging.INFO,
+    'debug': logging.DEBUG
+}
 
 # Some defaults
-DEF_CONFIG = os.path.join(CONFIG_PATH, 'config.cfg')
-DEF_DB = os.getenv('LOGNAME')
-DEF_HOST = 'localhost'
-DEF_PORT = 5432
+DEF_CONFIG = os.path.join('config.cfg')
 
-__all__ = ['Config', 'CONFIG_PATH']
+__all__ = ['Config']
 
 class Config(object):
     """ Generic class to handle configuration parameters, it provides common
     parameters for any script of this suite, such as db conection parameters.
 
-    Config is capable of handling relative paths only when they are placed
-    inside CONFIG_PATH base path; to make Config aware that an option is a
-    path, just put it undet 'path' section in your config file.
+    Config is capable of handling relative paths; to make Config aware that an
+    option is a path, just put it undet 'path' section in your config file.
     """
 
-    def __init__(self, filename=DEF_CONFIG, *args, **kwargs):
+    def __init__(self, filename=DEF_CONFIG, root_path=None, *args, **kwargs):
         """ Initialize the following instance attribute:
         
         - db_options : database connection parameter
@@ -60,21 +61,18 @@ class Config(object):
         - configfile : path to configuration file
 
         @ param filename: configuration file's path
+        @ root_path: base path to use when making relative path absolute.
         """
-        self.config_file = filename
-        self.options = dict()
-        # self.options = {
-        #     'database' : DEF_DB,
-        #     'host': DEF_HOST,
-        #     'port': DEF_PORT,
-        #     'username': None,
-        #     'password': None,
-        #     }
+        if root_path is None:
+            root_path = os.path.dirname(filename)
+        self._root_path = root_path
+        self.config_file = os.path.abspath(os.path.join(root_path, filename))
+        self.options = {}
         self._parser = self._init_parser()
 
-    # def __repr__(self):
-    #     """ Print options dictionary instead of object. """
-    #     return "db_options = %s"%(repr(self.db_options))
+    def __repr__(self):
+        """ Print options dictionary instead of object. """
+        return "db_options = %s"%(repr(self.db_options))
 
     # non-public methods
 
@@ -85,7 +83,7 @@ class Config(object):
         """
         if os.path.isabs(path):
             return path
-        return os.path.abspath(os.path.join(CONFIG_PATH, path))
+        return os.path.abspath(os.path.join(self._root_path, path))
 
     def _init_parser(self):
         """ Create an option parser and add options to it.
@@ -94,26 +92,10 @@ class Config(object):
         parser = OptionParser()
         parser.add_option("-c", "--config", dest="config", 
                           help="specify alternate config file")
-        parser.add_option("-d", "--dbname", dest = "database", 
-                          help="specify the dbname", 
-                          default=os.getenv('LOGNAME'))
-        parser.add_option("-u", "--username", dest="username", 
-                          help="specify username for connecting to db", 
-                          default=None)
-        parser.add_option("-p", "--password", dest="password", 
-                          help="specify the password for connecting to db", 
-                          default=None)
-        parser.add_option("-H", "--host", dest="host", 
-                          help="specify the host in which it's present the db", 
-                          default=DEF_HOST)
-        parser.add_option("-P", "--port", dest="port", 
-                          help="specify the port for connecting to db", 
-                          default=DEF_PORT)
         parser.add_option('--log-level', dest='logLevel', type='choice', 
                           choices=LOGLEVELS.keys(), 
-                          help='specify the level of the logging. Accepted values: %s' % \
-                              str(LOGLEVELS.keys()),
-                          default=logging.INFO)
+                          help='specify the level of the logging. Accepted values: %s' % str(LOGLEVELS.keys()),
+                          default='info')
         return parser
 
     def _read_config(self):
@@ -134,7 +116,7 @@ class Config(object):
 
     def parse(self):
         """ Joins options from cli an config file. 
-        Command line arguments override config files values.
+        Command line arguments overwrite config files values.
         """
         (opts, ar) = self._parser.parse_args()
         if opts.ensure_value('config', False):
@@ -142,21 +124,5 @@ class Config(object):
         self._read_config()        
         for key in ar:
             self.options[key] = opts.ensure_value(key, False)
-        self.options['logLevel'] = opts.logLevel
-
-
-def load_config(src_path, confpath=None):
-    ''' Get configuration file.
-
-    @ param src_path: project source directory
-    @ param confpath: path to the configuration file
-    @ return: options dictionary
-
-    '''
-    if confpath is None:
-        confpath = os.path.join(src_path, 'config.cfg')
-    if not os.path.isfile(confpath):
-        return {}
-    config = Config(confpath)
-    config.parse()
-    return config.options    
+        self.options['logLevel'] = LOGLEVELS[opts.logLevel]
+        logging.basicConfig(level = LOGLEVELS[opts.logLevel])

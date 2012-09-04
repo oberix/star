@@ -2,11 +2,7 @@ import sys
 
 
 # Servabit libraries
-BASEPATH = os.path.abspath(os.path.join(
-        os.path.dirname(__file__),
-        os.path.pardir))
-sys.path.append(BASEPATH)
-sys.path = list(set(sys.path))
+sys.path.append('../')
 import etl
 
 dict_to_in = {

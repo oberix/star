@@ -1,15 +1,10 @@
 import sys
-import os
 import difflib
-import csv
 
 # Servabit libraries
-BASEPATH = os.path.abspath(os.path.join(
-        os.path.dirname(__file__),
-        os.path.pardir))
-sys.path.append(BASEPATH)
-sys.path = list(set(sys.path))
+sys.path.append('../')
 import etl
+import csv
 
 path_cvs = 'goal2stark.csv'
 
@@ -159,5 +154,5 @@ for row in reader:
     # func_dict[func][1] gov dict
     stk_elab = etl.style.style(df, func_dict[func][1])
     stk_elab.DefPathPkl('/tmp/')
-    stk_elab.save('stkelab_%i.pickle' %(id_file))
+    stk_elab.Dumpk('stkelab_%i.pickle' %(id_file))
     id_file = id_file + 1

@@ -37,22 +37,28 @@ import logging
 
 # Servabit libraries
 BASEPATH = os.path.abspath(os.path.join(
-        os.path.dirname(__file__),
-        os.path.pardir))
+                os.path.dirname(__file__),
+                os.path.pardir))
 sys.path.append(BASEPATH)
 sys.path = list(set(sys.path))
-from share import config
+from share.config import Config
 
+
+#genero una classe di nome Base da usare con SQLAlchemy
 Base = declarative_base()
-filepath = '/home/lcirillo/sviluppo/svn/star/trunk/config/DbConfig.cfg'
-conf = config.Config(filepath)
+
+configFilePath = os.path.join(BASEPATH,"config","goal2stark.cfg")
+conf = Config(configFilePath)
 conf.parse()
+
+#definisco una struttura di log per il controllo del programma a video
 log_istance =  'DBMapping'
 logging.basicConfig(level = conf.options.get('log_level'))
 logger = logging.getLogger('DBMapping')
 
 
 class IrSequence(Base):
+    '''Mmappatura della tabella contenente i dati relativi alle sequenza associate ad un journal '''
     __tablename__ = 'ir_sequence'
     
     name = Column(String(64), nullable=False)
@@ -62,9 +68,12 @@ class IrSequence(Base):
     
     #one2many
     journals = relationship("AccountJournal")
+    company = relationship("ResCompany")
     
     
 class ResCompany(Base):
+    '''Mappatura della tabella contenente i dati relativi ad una company, ossia all'impresa
+    di cui il database contiene i dati'''    
     __tablename__ = 'res_company'
     
     name = Column(String(64), nullable=False)
@@ -76,6 +85,12 @@ class ResCompany(Base):
     
         
 class ResPartner(Base):
+    '''Mappatura della tabella contenente i dati relativi ad un partner
+        - nome/ragione sociale
+        - partita iva
+        - codice fiscale (tax)
+        - indirizzi associati al partner
+    '''    
     __tablename__ = 'res_partner'
     
     name = Column(String(64), nullable=False)
@@ -91,6 +106,13 @@ class ResPartner(Base):
     
     
 class ResPartnerAddress(Base):
+    '''Mappatura della tabella contenente i dati relativi ad un indirizzo
+        - nome identificativo del'indirizzo
+        - id del partner
+        - via
+        - città
+        - Codice avviamento postale        
+    '''    
     __tablename__ = 'res_partner_address'
     
     name = Column(String(64), nullable=False)
@@ -105,6 +127,12 @@ class ResPartnerAddress(Base):
         
         
 class AccountFiscalyear(Base):
+    '''Mappatura della tabella contenente i dati relativi ad un Anno fiscale
+        - nome identificativo dell'anno
+        - company_id
+        - data inizio
+        - data fine
+    '''    
     __tablename__ = 'account_fiscalyear'
     
     name = Column(String(64), nullable=False)
@@ -115,9 +143,19 @@ class AccountFiscalyear(Base):
     
     #one2many
     periods = relationship("AccountPeriod")
+    #many2one
+    company = relationship("ResCompany")
         
     
 class AccountPeriod(Base):
+    '''Mappatura della tabella contenente i dati relativi ad un Periodo Fiscale
+        - nome identificativo del periodo
+        - company_id
+        - data inizio
+        - data fine
+        - special ??????
+        - anno fiscale di riferimento
+    '''    
     __tablename__ = 'account_period'
     
     name = Column(String(64), nullable=False)
@@ -129,9 +167,14 @@ class AccountPeriod(Base):
     
     fiscalyear_id = Column(Integer, ForeignKey('account_fiscalyear.id'), nullable=False)
     fiscalyear = relationship("AccountFiscalyear")
+    company = relationship("ResCompany")
     
     
 class AccountAccountType(Base):
+    '''Mappatura della tabella contenente i dati relativi ad tipo di Conto
+        - nome identificativo del tipo
+        - codice che identifica il tipo
+    '''    
     __tablename__ = 'account_account_type'
     
     name = Column(String(64), nullable=False)
@@ -140,6 +183,14 @@ class AccountAccountType(Base):
     
 
 class AccountAccount(Base):
+    '''Mappatura della tabella contenente i dati relativi al Conto di un piano dei conti
+        - nome identificativo del conto 
+        - codice che identifica del conto
+        - comapny_id
+        - riferimento al tipo di conto
+        - type ????
+        - conto padre
+    '''    
     __tablename__ = 'account_account'
     
     name = Column(String(128), nullable=False)
@@ -155,6 +206,11 @@ class AccountAccount(Base):
     
     
 class AccountJournal(Base):
+    '''Mappatura della tabella contenente i dati relativi al Journal
+        - nome identificativo del journal
+        - type ????
+        - riferimneto alla sequenza aassociata al Journal
+    '''    
     __tablename__ = 'account_journal'
     
     name = Column(String(64), nullable=False)
@@ -166,6 +222,13 @@ class AccountJournal(Base):
 
 
 class AccountTax(Base):
+    '''Mappatura della tabella contenente i dati relativi alle Imposte/tasse
+        - nome identificativo della tassa
+        - tax code: è il codice associato alla tassa che nella contabiltà delle tasse riporta l'ammontare d'imposta
+        - base code: è il codice associato alla base imponibile che nella contabiltà delle tasse riporta l'ammontare della base imponibile
+        - ref tax code: idem che tax code ma riferito ad un reso
+        - ref base code: idem che base code ma riferito ad un reso
+    '''    
     __tablename__ = 'account_tax'
     
     name = Column(String(64), nullable=False)
@@ -177,14 +240,33 @@ class AccountTax(Base):
     ref_tax_code_id = Column(Integer, ForeignKey('account_tax_code.id'), nullable=False)
     ref_base_code_id = Column(Integer, ForeignKey('account_tax_code.id'), nullable=False)
     
+    company = relationship("ResCompany")
     
 class AccountTaxCode(Base):
+    '''Mappatura della tabella contenente i dati relativi Codici della Contabilità delle Tasse/Imposte
+        - nome identificativo del Codice
+        - id identificatvo
+    '''    
     __tablename__ = 'account_tax_code'
     
     name = Column(String(64), nullable=False)
     id = Column(Integer, Sequence('user_id_seq'), primary_key=True, )
 
 class AccountVoucher(Base):
+    '''Mappatura della tabella contenente i dati relativi ad un "Diritto/Impegno di Incasso/Pagamento"
+        - nome identificativo del Diritto/Impegno
+        - id identificatvo
+        - company_id
+        - period_id
+        - scrittura contabile (relazione meny2one) 
+        - partner
+        - data di registrazione
+        - data di scadenza
+        - numero ??
+        - stato  : registrato o meno
+        - type   ??
+        - importo 
+    '''    
     __tablename__ = 'account_voucher'
     
     name = Column(String(64), nullable=False)
@@ -203,10 +285,28 @@ class AccountVoucher(Base):
 
     partner = relationship("ResPartner",  uselist=False)
     move = relationship("AccountMove",  uselist=False)
+    company = relationship("ResCompany")
+
+
+
+
 
 class AccountInvoice(Base):
+    '''Mappatura della tabella contenente i dati relativi ad una fattura
+        - nome identificativo della fattura
+        - id identificatvo
+        - company_id
+        - period_id
+        - scrittura contabile (relazione many2one) 
+        - partner
+        - data del documento
+        - data della fattura - diventer la data di registrazione
+        - data di scadenza
+        - numero del documento
+        - importo 
+    '''
     __tablename__ = 'account_invoice'
-    
+  
     name = Column(String(64), nullable=False)
     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
     
@@ -215,6 +315,7 @@ class AccountInvoice(Base):
     move_id = Column(Integer, ForeignKey('account_move.id'))
     partner_id = Column(Integer, ForeignKey('res_partner.id'), nullable=False)
     date_document = Column(Date, nullable=False)
+    date_invoice = Column(Date)  #inserito da Luigi il 11/7/2011
     date_due = Column(Date)
     number = Column(String(64))
     state = Column(String(16))
@@ -223,9 +324,25 @@ class AccountInvoice(Base):
     
     move = relationship("AccountMove",  uselist=False)
     partner = relationship("ResPartner",  uselist=False)
+    company = relationship("ResCompany")
 
     
 class AccountMove(Base):
+    '''Mappatura della tabella contenente i dati relativi ad una scrittura (composta da più linee)
+        - nome identificativo della scrittura
+        - id identificatvo
+        - campo testo di contenente riferimenti
+        - stato della scrittura: bozza o validata
+        - company_id
+        - journal_id
+        - period_id
+        - data di registrazione
+        - partner
+        - fattura di riferimento
+        - da controllare
+        - linee della scrittura (relazione one2many)
+    '''    
+
     __tablename__ = 'account_move'
     
     name = Column(String(64), nullable=False)
@@ -248,6 +365,28 @@ class AccountMove(Base):
     journal = relationship("AccountJournal")
            
 class AccountMoveLine(Base):
+    '''Mappatura della tabella contenente i dati relativi ad una linea di scrittura
+        - nome identificativo della linea
+        - id identificatvo
+        - campo testo di contenente riferimenti
+        - stato della scrittura: bozza o validata
+        - company_id
+        - journal_id
+        - period_id
+        - account_id    conto del piano dei conti
+        - move_id
+        - tax_code_id  questo può essere riferito ad un code di tassa o ad un code di base imponibile
+
+        - riferimento alla riconciliazione
+        - riferimento alla riconciliazione parziale
+
+        - partner
+        - data di registrazione
+        - date di scadenza (quello che in fattura è chiamato date_due)
+        - importo a debito
+        - importo a credito
+        - importo della imposta/tassa o della base imponibile
+    '''    
     __tablename__ = 'account_move_line'
     
     name = Column(String(64), nullable=False)
@@ -285,6 +424,13 @@ class AccountMoveLine(Base):
     period = relationship("AccountPeriod")
     
 class AccountMoveReconcile(Base):
+    '''Mappatura della tabella contenente i dati relativi alla Riconciliazione
+        - nome identificativo della linea
+        - id identificatvo
+        - tipo
+        - riferimento alla linea di registrazione
+        - riferimneto della riconciliazione partiale alla linea di registrazione
+    '''    
     __tablename__ = 'account_move_reconcile'
     
     name = Column(String(64), nullable=False)
@@ -297,7 +443,7 @@ class AccountMoveReconcile(Base):
 
 def open_session():
     '''
-    open a SQLAlchemy session from informations holded by conf_goal2d
+    open a SQLAlchemy session from informations holded by goal2stark.cfg
     '''
     global conf, logger
     logger.debug('Opening session')

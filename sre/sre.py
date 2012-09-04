@@ -22,6 +22,7 @@
 
 import os
 import sys
+import re
 import codecs
 import string
 import logging
@@ -32,11 +33,8 @@ BASEPATH = os.path.abspath(os.path.join(
 sys.path.append(BASEPATH)
 sys.path = list(set(sys.path))
 
-from share.config import load_config
-try:
-    from sda.Transport import Transport as Bag # Soon it will change name
-except ImportError:
-    from sda.bag import Bag
+from share import Config
+from share import Bag
 from longtable import LongTable
 
 __all__ = ['sre', 'SreTemplate']
@@ -60,21 +58,22 @@ class SreTemplate(string.Template):
     delimiter = '\SRE'
     idpattern = '[_a-z][_a-z0-9.]*'
 
-# def _load_config(src_path, confpath=None):
-#     ''' Get configuration file.
+def _load_config(src_path, confpath=None):
+    ''' Get configuration file.
 
-#     @ param src_path: project source directory
-#     @ param confpath: path to the configuration file
-#     @ return: options dictionary
+    @ param src_path: project source directory
+    @ param confpath: path to the configuration file
+    @ return: options dictionary
 
-#     '''
-#     if confpath is None:
-#         confpath = os.path.join(src_path, 'config.cfg')
-#     if not os.path.isfile(confpath):
-#         return {}
-#     config = Config(confpath)
-#     config.parse()
-#     return config.options    
+    '''
+    if confpath is None:
+        confpath = os.path.join(src_path, 'config.cfg')
+    if not os.path.isfile(confpath):
+        logging.warning('No config file found in %s', confpath)
+        return {}
+    config = Config(confpath)
+    config.parse()
+    return config.options    
 
 def _load_template(path):
     ''' Read template from file and generate a SreTemplate object.
@@ -86,10 +85,12 @@ def _load_template(path):
     _logger.info("Loading template.")
     try:
         fd = codecs.open(path, mode='r', encoding='utf-8')
-        templ = SreTemplate(fd.read())
+        templ = fd.read()
+        templ = re.sub("\\\\newcommand\{\\\\\\SRE\}\{.*?\}", "", templ)
+        templ = SreTemplate(templ)
     except IOError, err:
         _logger.error("%s", err)
-        return 1
+        return False
     finally:
         if fd > 0:
             fd.close()
@@ -110,21 +111,28 @@ def _load_bags(path, template, **kwargs):
     # single Pickle attributes.
     ph_list = [ph[2] for ph in template.pattern.findall(template.template)]
 
-    _logger.info("Reading pickles, this might take a while...")
+    _logger.info("Reading pickles.")
     bags = dict() # Pickle file's cache (never load twice the same file!)
     for ph in ph_list:
         ph_parts = ph.split('.')
         base = ph_parts[0]
         if not bags.get(base, False):
             # Load and add to cache
-            bags[base] = Bag.load(os.path.join(path, '.'.join([base, 'pickle'])))
+            try:
+                # FIXME: this is a (bad) way to avoid treating the \SRE command
+                # definition as a placeholder.
+                bags[base] = Bag.load(os.path.join(path, '.'.join([base, 'pickle'])))
+            except IOError, err:
+                _logger.warning('%s; skipping...', err)
+                continue
         if len(ph_parts) > 1: # extract attribute
             ret[ph] = eval('.'.join(['bags[base]'] + ph_parts[1:]))
         else: # just use DF/LM 
             if bags[base].TIP == 'tab':
                 ret[ph] = LongTable(bags[base], **kwargs).to_latex()
             else: # TODO: handle other types
-                _logger.warning('Unhandled bag TIP %s found in %s, skipping...', basg[base].TIP, file_)
+                _logger.debug('bags = %s', bags)
+                _logger.warning("Unhandled bag TIP '%s' found in %s, skipping...", bags[base].TIP, base)
                 continue
     return ret
 
@@ -135,18 +143,16 @@ def _report(dest_path, templ_path, template, bags, **kwargs):
     @ param templ_path: template file path.
     @ param template: SreTemplate instance
     @ param bag: dictionary of LaTeX code snippetts to substitute to the
-            placeholers; ths dictionary is indexed by placeholder's name.
+            placeholders; ths dictionary is indexed by placeholder's name.
     @ return texi2pdf exit value or -1 if an error happend.
 
     '''
     if not os.path.exists(os.path.dirname(dest_path)):
         os.makedirs(os.path.dirname(dest_path))
     # substitute placeholders
-    try:
-        templ_out = template.substitute(bags)
-    except ValueError, err:
-        _logger.error("%s in template %s", err, template)
-        return 1
+    # FIXME: with safe_substitute, if a placeholder is missing, no exception is
+    # raise, but nothing is told to the user either.
+    templ_out = template.safe_substitute(bags)
     # save final document
     template_out = templ_path.replace('.tex', '_out.tex')
     try:
@@ -159,11 +165,15 @@ def _report(dest_path, templ_path, template, bags, **kwargs):
         if fd > 0:
             fd.close()
     # Call LaTeX compiler
-    _logger.info("Compiling into PDF...")
-    ret = os.system('texi2pdf -q --clean -o %s -c %s' %\
-                  (os.path.join(dest_path, templ_path.replace('.tex', '')), 
-                   template_out))
-    _logger.info("Done")
+    _logger.info("Compiling into PDF, this might take a while...")
+    _logger.debug("out = %s\n\tin = %s\n\tin_path = %s",
+                  os.path.join(dest_path, templ_path.replace('.tex', '')),
+                  template_out, os.path.dirname(templ_path))
+    ret = os.system('texi2pdf -q --batch --clean -o %s -c %s -I %s' %\
+                        (os.path.join(dest_path, templ_path.replace('.tex', '')),
+                         template_out, os.path.dirname(templ_path)))
+    if not ret > 0:
+        _logger.info("Done")
     return ret
 
 def sre(src_path, config=None, **kwargs):
@@ -186,31 +196,31 @@ def sre(src_path, config=None, **kwargs):
     '''
     src_path = os.path.abspath(src_path)
     # load config
-    config = load_config(src_path, confpath=config)
+    config = _load_config(src_path, confpath=config)
 
     global _logger
-    logging.basicConfig(level = config.get('logLevel'))
-    _logger = logging.getLogger(os.path.basename(__name__))
+    _logger = logging.getLogger(os.path.basename(__file__))
     
-    try:
-        dest_path = config['dest_path']
-    except KeyError:
-        dest_path = src_path
-
-    # load template
+    # Load template
+    # Template is loaded first because we want to know the placeholders before
+    # reading bags, so we can read just bags that will be actually used.
     try:
         templ_path = config['template']
     except KeyError:
         templ_path = os.path.join(src_path, 'main.tex')
     templ = _load_template(templ_path)
     if not templ:
-        return templ
+        return 1
 
-    # load tranposrts
+    # Load Bags
     try:
         bag_path = config['bags']
     except KeyError:
         bag_path = src_path
+
+    _logger.debug('hlines = %s', config.get('horizontal_lines', False))
+    if config.get('horizontal_lines', False) == 'True':
+        kwargs.update({'hsep' : True})
     bags = _load_bags(bag_path, templ, **kwargs)
     # make report
     return _report(templ_path, templ_path, templ, bags, **kwargs)

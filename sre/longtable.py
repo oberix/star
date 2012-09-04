@@ -27,7 +27,7 @@ from copy import copy
 import re
 
 __author__ = "Marco Pattaro <marco.pattaro@servabit.it>"
-__version__ = "0.1"
+__version__ = "1.0"
 __all__ = ['LongTable', 'unique_list', 'escape_latex']
 
 OPEN_TEX_TAB = """\\begin{longtabu} to \\linewidth"""
@@ -43,6 +43,18 @@ FORMATS = {
     '@p' : "\\pagebreak \n",
 }
 
+PATTERNS = {
+    re.compile("€"): "\\officialeuro", 
+    re.compile("%"): "\\%", 
+    re.compile("&"): "\\&",
+    re.compile("\$(?!\w+)"): "\\$",
+    re.compile(">(?!\{)"): "\\textgreater",
+    re.compile("<(?!\{)"): "\\textless",
+    re.compile("\n"): "\\\\",
+    re.compile("_"): "\_",
+    re.compile("/"): "/\-", # tell LaTeX that an hyphen can be inserted after a '/'
+    }
+
 def unique_list(list_):
     """ Remove all duplicate elements from a list inplace, keeping the order
     (unlike set()).
@@ -55,23 +67,19 @@ def unique_list(list_):
         for i in xrange(enum - 1):
             list_.remove(elem)
 
-def escape_latex(str_in):
-    patterns = [("€", "\\officialeuro"), 
-                ("%", "\\%"), 
-                ("&", "\\&"),
-                ("\$(?!\w+)", "\\$"),
-                (">(?!\{)", "\\textgreater"),
-                ("<(?!\{)", "\\textless"),
-                ("\n", "\\\\"),
-                ("_", "\_"),
-                ("/", "/\-") # tell LaTeX that an hyphen can be inserted after a '/'
-                ]
-    for p, subs in patterns:
-        pattern = re.compile(p)
-        match = pattern.search(str_in)
-        if match:
-            str_in = ''.join([str_in[:match.start()], subs, str_in[match.end():]])
-    return str_in
+def escape_latex(string, patterns=PATTERNS):
+    ''' Escape string to work with LaTeX.
+    The function calls PATTERNS dictionary to methc regexp with their escaped
+    version.
+
+    @ param string: the string to escape
+    @ param patterns: a pattern/string mapping dictionary
+    @ return: escaped version of string
+
+    '''
+    for pattern, sub in patterns.iteritems():
+        string = re.sub(pattern, sub, string)
+    return string
 
 class LongTable(object):
     """ Constitute a table that can span over multiple pages """ 
@@ -119,6 +127,7 @@ class LongTable(object):
         @ return: a dict suitable for string substitution
 
         '''
+        # FIXME: check s is a string
         title = s.strip('|')
         part = s.partition(title)
         try:
@@ -128,10 +137,10 @@ class LongTable(object):
         ret = {'sep1': part[0], 
                'span': span, 
                'width': width, 
-               'title': part[1], 
+               'title': escape_latex(part[1]), 
                'sep2': part[2],
                }
-        if title.startswith('@v'):
+        if title.strip().strip('|').startswith('@v'):
             ret['title'] = str()
         return ret
 
@@ -183,16 +192,20 @@ class LongTable(object):
         out += """} \\firsthline\n"""
         return out
 
-    def _make_tex_footer(self):
+    def _make_footer(self):
         ''' Prepare footer for TeX table
         This is pretty simple: just draw a line at the bottom of the table.
 
         @ return: str
 
         '''
-        return """\\tabucline- \\endfoot \n"""
+        ret = str()
+        span = len(self._align)
+        if self._data.FOOTNOTE is not None:
+            ret = self._data.FOOTNOTE 
+        return str().join(['\multicolumn{%s}{|c|}{'% span, ret, '} \\\ \\tabucline- \\endfoot \n'])
 
-    def _make_tex_data(self):
+    def _make_data(self):
         ''' Prepare data for TeX table 
         
         @ return: str
@@ -214,7 +227,6 @@ class LongTable(object):
             self._keys.remove('_FR_')
             records = self._data.DF[self._keys].to_records()
             end = None
-
         for record in records:
             rowstart = str()
             if end is not None:
@@ -250,50 +262,10 @@ class LongTable(object):
         out = [
             self._make_preamble(),
             headers,
-            self._make_tex_footer(),
-            self._make_tex_data(),
+            self._make_footer(),
+            self._make_data(),
             ]
         out.append(CLOSE_TEX_TAB)
         out = str().join(out)
         return unicode(out, 'utf-8')
 
-
-if __name__ == '__main__':
-    """ Just a test """
-
-    BASEPATH = os.path.abspath(os.path.join(os.path.dirname(__file__),
-                                        os.path.pardir))
-    sys.path.append(BASEPATH)
-    from share.generic_pickler import GenericPickler
-
-    class Transport(GenericPickler):
-        ''' A dummy transport ''' 
-        def __init__(self):
-            self.DF = None
-            self.LM = None
-
-    data = Transport()
-    
-    data.LM = {
-        "DAT_MVL": [0, 'c', '@v0', '@v1', 'Data'],
-        "NAM_PAR": [2, 'l', '@v0', '@v1', 'Partner'],
-        "COD_CON": [4, 'l', '@v0', '@v1', 'Codice Conto'],
-        "NAM_CON": [5, '{2},l', '@v0', '@v1', 'Conto'],
-        "DBT_MVL": [6, '{0.5},r', '@v0', '@v1', 'Dare'],
-        "CRT_MVL": [7, '{0.5},r', '@v0', '@v1', 'Avere'],
-        }
-
-    data.DF = pandas.load('libro_giornale/aderit_ml.pkl')
-
-    data.save('libro_giornale/table.pkl')
-
-    tab = LongTable(data, hsep=False)
-    print "tab OK"
-    txt = tab.to_latex()
-    print "text OK"
-    try:
-        fd = codecs.open('libro_giornale/table0.tex', mode='w', encoding='utf-8')
-        fd.write(txt)
-    finally:
-        fd.close()
-    print "DONE"
