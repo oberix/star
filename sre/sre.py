@@ -166,9 +166,9 @@ def _report(dest_path, templ_path, template, bags, **kwargs):
             fd.close()
     # Call LaTeX compiler
     _logger.info("Compiling into PDF, this might take a while...")
-    ret = os.system('texi2pdf -q --clean -o %s -c %s' %\
-                  (os.path.join(dest_path, templ_path.replace('.tex', '')), 
-                   template_out))
+    ret = os.system('texi2pdf -q --clean -o %s -c %s -I %s' %\
+                  (os.path.join(dest_path, templ_path.replace('.tex', '')),
+                   template_out, os.path.dirname(templ_path)))
     if not ret > 0:
         _logger.info("Done")
     return ret
