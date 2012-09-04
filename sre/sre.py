@@ -68,6 +68,7 @@ def _load_config(src_path, confpath=None):
     if confpath is None:
         confpath = os.path.join(src_path, 'config.cfg')
     if not os.path.isfile(confpath):
+        logging.warning('No config file found in %s', confpath)
         return {}
     config = Config(confpath)
     config.parse()
@@ -192,7 +193,7 @@ def sre(src_path, config=None, **kwargs):
     config = _load_config(src_path, confpath=config)
 
     global _logger
-    _logger = logging.getLogger(os.path.basename(__name__))
+    _logger = logging.getLogger(os.path.basename(__file__))
     
     # Load template
     # Template is loaded first because we want to know the placeholders before
