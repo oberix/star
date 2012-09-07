@@ -40,17 +40,18 @@ from share import GenericPickler
 
 class Bag(GenericPickler):
     '''
-    Questa classe consente di istanziare un oggetto Transport
-    costituito dalle seguenti componenti: 
-                COD (stringa): identificativo univoco all'interno del dossier
-                TIP (stringa): qualifica la tipologia di oggetto grafico
-                               può assumere i valori "tab" o "graph"
-                TITLE (stringa): titolo dell'oggetto grafico
-                DF: dataframe
-                LM (lista di dizionari): ciascun dizionario ha come chiave il nome della variabile
-                                         e come valori la lista degli header da stampare per quella
-                                         variabile
-                FOOTNOTE (lista di stringhe): ciascuna stringa contiene una riga di footnote 
+    Questa classe consente di istanziare un oggetto Bag costituito dalle
+    seguenti componenti:
+        COD (stringa): identificativo univoco all'interno del dossier
+        TIP (stringa): qualifica la tipologia di oggetto grafico
+            può assumere i valori "tab" o "graph".
+        TITLE (stringa): titolo dell'oggetto grafico.
+        DF: dataframe.
+        LM (lista di dizionari): ciascun dizionario ha come chiave il nome
+            della variabile e come valori la lista degli header da stampare per
+            quella variabile.
+        FOOTNOTE (lista di stringhe): ciascuna stringa contiene una riga di
+            footnote.
     '''   
     
     #definisco la funzione __init__ 

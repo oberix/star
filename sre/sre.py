@@ -119,8 +119,6 @@ def _load_bags(path, template, **kwargs):
         if not bags.get(base, False):
             # Load and add to cache
             try:
-                # FIXME: this is a (bad) way to avoid treating the \SRE command
-                # definition as a placeholder.
                 bags[base] = Bag.load(os.path.join(path, '.'.join([base, 'pickle'])))
             except IOError, err:
                 _logger.warning('%s; skipping...', err)
@@ -151,7 +149,7 @@ def _report(dest_path, templ_path, template, bags, **kwargs):
         os.makedirs(os.path.dirname(dest_path))
     # substitute placeholders
     # FIXME: with safe_substitute, if a placeholder is missing, no exception is
-    # raise, but nothing is told to the user either.
+    # raised, but nothing is told to the user either.
     templ_out = template.safe_substitute(bags)
     # save final document
     template_out = templ_path.replace('.tex', '_out.tex')

@@ -19,10 +19,6 @@
 #
 ##############################################################################
 
-import pandas
-import sys
-import os 
-import codecs
 from copy import copy
 import re
 
@@ -64,8 +60,10 @@ def unique_list(list_):
     unique = set(list_)
     for elem in unique:
         enum = list_.count(elem)
-        for i in xrange(enum - 1):
+        i = 0
+        while i < (enum - 1):
             list_.remove(elem)
+            i += 1
 
 def escape_latex(string, patterns=PATTERNS):
     ''' Escape string to work with LaTeX.
@@ -84,7 +82,7 @@ def escape_latex(string, patterns=PATTERNS):
 class LongTable(object):
     """ Constitute a table that can span over multiple pages """ 
 
-    def __init__(self, data, hsep=False):
+    def __init__(self, data, hsep=False, **kwargs):
         """
         @ param data: Transport object
         @ param hsep: True if you want hrizontal lines after every record
@@ -130,13 +128,8 @@ class LongTable(object):
         # FIXME: check s is a string
         title = s.strip('|')
         part = s.partition(title)
-        try:
-            width = float(span) / float(len(self._align))
-        except ZeroDivisionError:
-            width = 1.0
         ret = {'sep1': part[0], 
                'span': span, 
-               'width': width, 
                'title': escape_latex(part[1]), 
                'sep2': part[2],
                }
