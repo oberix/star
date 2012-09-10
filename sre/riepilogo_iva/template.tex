@@ -1,0 +1,55 @@
+\documentclass[a4paper]{article}
+
+\usepackage{graphicx}                    % used to import images
+\usepackage{fancyhdr}                    % used to make the header and footer in three parts
+\usepackage{lastpage}                    % used to print ``page x of N'' in the footer
+\usepackage{eurosym}
+\usepackage[colorlinks=true,linkcolor=black]{hyperref}                    % used to insert URLs with \url
+\usepackage{longtable}
+\usepackage{tabu}                   % used to handle long text wrapping in
+                                % table and correct of referencing
+\usepackage{indentfirst}
+\usepackage[usenames, dvipsnames]{color} % used to customize colors
+\usepackage[italian]{babel}              % the italian dictionary
+\usepackage[utf8]{inputenc}              % utf-8 charset encoding
+\usepackage{moreverb}
+\usepackage{float}
+\usepackage[cm]{fullpage}
+
+\newcommand{\SRE}{inserisci}
+
+\definecolor{DarkGray}{RGB}{51,51,51}
+\definecolor{DarkRed}{RGB}{128,0,0}
+\definecolor{VicemViolet}{RGB}{148,0,128}
+\pagestyle{fancy}
+
+\setlength{\topmargin}{-1cm}
+\setlength{\headheight}{20pt}
+
+%% left part of the head
+\fancyhead[l]{\input{company}}
+%% center of the head
+%\fancyhead[c]{\textit{ArCO Barletta\\Guida Tecnica}}
+%% right part of the head
+\fancyhead[r]{\color{DarkRed}\textbf{\Large{\SRE{vat_summary.TITLE}}}} %\\\textit{Data: }\today}
+%% left part of the foot
+%\fancyfoot[l]{Servabit Srl}
+%% center of the foot
+\fancyfoot[c]{}
+%% right part of the foot
+\fancyfoot[r]{Pagina \thepage}
+%% line of the head
+\renewcommand{\headrulewidth}{0.5pt}
+%% line of the foot
+\renewcommand{\footrulewidth}{0.5pt}
+
+
+\begin{document}
+% Anno: \SRE{vat_summary.TITLE}
+\begin{centering}
+\tabulinesep=1.5mm
+%%\input{table0}
+\SRE{vat_summary}
+\end {centering}
+
+\end{document}
