@@ -72,7 +72,7 @@ class Config(object):
 
     def __repr__(self):
         """ Print options dictionary instead of object. """
-        return "db_options = %s"%(repr(self.db_options))
+        return "options = %s"%(repr(self.options))
 
     # non-public methods
 
