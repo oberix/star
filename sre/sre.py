@@ -38,7 +38,6 @@ from share import Bag
 from longtable import TexTable
 
 __all__ = ['sre', 'TexSreTemplate']
-_logger = None
 
 def _load_config(src_path, confpath=None):
         ''' Get configuration file.
@@ -55,6 +54,7 @@ def _load_config(src_path, confpath=None):
             return {}
         config = Config(confpath)
         config.parse()
+	logging.debug('%s', config)
         return config.options    
 
 class TexSreTemplate(string.Template):
@@ -78,7 +78,6 @@ class TexSreTemplate(string.Template):
 
     def __init__(self, src_path, config=None):
         self._src_path = os.path.abspath(src_path)
-	config = _load_config(self._src_path, confpath=config)
 	self._logger = logging.getLogger(__name__)
 	# load template
 	try:
@@ -110,7 +109,6 @@ class TexSreTemplate(string.Template):
             fd = codecs.open(path, mode='r', encoding='utf-8')
             templ = fd.read()
             templ = re.sub("\\\\newcommand\{\\\\\\SRE\}\{.*?\}", "", templ)
-
             super(TexSreTemplate, self).__init__(templ)
         # except IOError, err:
         #     self._logger.error("%s", err)
@@ -163,7 +161,7 @@ class TexSreTemplate(string.Template):
 
         '''
         if not os.path.exists(os.path.dirname(self._dest_path)):
-            os.makedirs(os.path.dirname(dest_path))
+            os.makedirs(os.path.dirname(self._dest_path))
         # substitute placeholders
         # FIXME: with safe_substitute, if a placeholder is missing, no exception is
         # raised, but nothing is told to the user either.
@@ -186,10 +184,34 @@ class TexSreTemplate(string.Template):
                       template_out, os.path.dirname(self._templ_path))
         ret = os.system('texi2pdf -q --batch --clean -o %s -c %s -I %s' %\
                             (os.path.join(self._dest_path, self._templ_path.replace('.tex', '')),
-                             template_out, os.path.dirname(self._templ_path)))
+                             template_out, 
+			     os.path.dirname(self._templ_path)))
         if not ret > 0:
             self._logger.info("Done")
         return ret
+
+class HTMLSreTemplate(string.Template):
+    ''' A custom template class to match the SRE placeholders.
+    We need a different delimiter:
+        - default is '$'
+        - changhed in '\SRE'
+    And a different pattern (used to match the placeholder name)
+        - default is '[_a-z][_a-z0-9]*'
+        - changed in '[_a-z][_a-z0-9.]*' to allow also '.' inside the
+          placeholder's name (in case we need to acces just one attribute)
+
+    NOTE: This are class attribute in the superclass, changing them at runtime
+    produces no effects. The only way is subclassing. 
+    Thanks to Doug Hellmann <http://www.doughellmann.com/PyMOTW/string/>.
+
+    '''
+
+    delimiter = '\SRE'
+    idpattern = '[_a-z][_a-z0-9.]*' 
+
+    def __init__(self, src_path, config=None):
+        # TODO: implement
+        raise NotImplementedError
 
 def sre(src_path, config=None, **kwargs):
     ''' Main procedure to generate a report. 
@@ -209,8 +231,20 @@ def sre(src_path, config=None, **kwargs):
     @ return: _report() return value
 
     '''
+    config = _load_config(src_path, confpath=config)
+    templ_path = None
 
-    template = TexSreTemplate(src_path, config=config)
+    try:
+        templ_path = config['template']
+    except KeyError:
+        if os.path.isfile(os.path.join(src_path, 'main.tex')):
+            templ_path = os.path.join(src_path, 'main.tex')
+	elif os.path.isfile(os.path.join(src_path, 'main.html')):
+            templ_path = os.path.join(src_path, 'main.html')
+    if templ_path.endswith('.tex'):
+        template = TexSreTemplate(src_path, config=config)
+    elif templ_path.endswith('.html'):
+        template = HTMLSreTemplate(src_path, config=config)
     # make report
     return template.report()
 
