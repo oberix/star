@@ -64,7 +64,7 @@ class Config(object):
         @ root_path: base path to use when making relative path absolute.
         """
         if root_path is None:
-            root_path = os.path.dirname(filename)
+            root_path = os.path.dirname(os.path.basename(filename))
         self._root_path = root_path
         self.config_file = os.path.abspath(os.path.join(root_path, filename))
         self.options = {}
