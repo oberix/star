@@ -126,6 +126,7 @@ class TexTable(Table):
         @ param hsep: True if you want hrizontal lines after every record
         """
         super(TexTable, self).__init__(data, **kwargs)
+        self._hsep = str()
         if hsep:
             self._hsep = "\\tabucline-"
            
