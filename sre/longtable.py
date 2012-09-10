@@ -24,7 +24,7 @@ import re
 
 __author__ = "Marco Pattaro <marco.pattaro@servabit.it>"
 __version__ = "1.0"
-__all__ = ['LongTable', 'unique_list', 'escape_latex']
+__all__ = ['TexTable', 'unique_list', 'escape_latex']
 
 OPEN_TEX_TAB = """\\begin{longtabu} to \\linewidth"""
 CLOSE_TEX_TAB = """\\end{longtabu}"""
@@ -79,20 +79,15 @@ def escape_latex(string, patterns=PATTERNS):
         string = re.sub(pattern, sub, string)
     return string
 
-class LongTable(object):
-    """ Constitute a table that can span over multiple pages """ 
+class Table(object):
 
-    def __init__(self, data, hsep=False, **kwargs):
+    def __init__(self, data, **kwargs):
         """
         @ param data: Transport object
         @ param hsep: True if you want hrizontal lines after every record
         """
         self._data = data
         self._ncols = len(data.LM.keys())
-        self._vsep = str()
-        self._hsep = str()
-        if hsep:
-            self._hsep = "\\tabucline-"
 
         # Transpose LM
         self._align = list() # alignment
@@ -115,6 +110,24 @@ class LongTable(object):
             if len(data.LM[key]) > 2:
                 for i in xrange(2, len(data.LM[key])):
                     self._heading[i-2].append(data.LM[key][i])
+        
+    def parse_lm(self, lm):
+        pass
+
+    def out(self):
+        raise NotImplementedError
+
+class TexTable(Table):
+    """ Constitute a table that can span over multiple pages """ 
+
+    def __init__(self, data, hsep=False, **kwargs):
+        """
+        @ param data: Transport object
+        @ param hsep: True if you want hrizontal lines after every record
+        """
+        super(TexTable, self).__init__(data, **kwargs)
+        if hsep:
+            self._hsep = "\\tabucline-"
            
     # Non Public 
 
@@ -160,14 +173,11 @@ class LongTable(object):
                     params)
         out += """ & """.join(out_list)
         # end row
-        if self._vsep:
-            out += """ \\vline"""
         out += """ \\\ \n"""
         if level is self._heading[self._last_heading]:
             # end heading
             out += """ \\tabucline- \endhead \n"""
         return out
-
                 
     def _make_preamble(self):
         ''' Prepare preamble for TeX table.
@@ -241,7 +251,8 @@ class LongTable(object):
     
     # Public
 
-    def to_latex(self):
+    def out(self):
+
         """ Return a string that contains valid LaTeX code for a table.
         
         @ return: str
@@ -262,3 +273,8 @@ class LongTable(object):
         out = str().join(out)
         return unicode(out, 'utf-8')
 
+class HTMLTable(Table):
+
+    def out(self):
+        # TODO: implement
+        raise NotImplementedError
