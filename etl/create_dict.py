@@ -27,6 +27,7 @@ Created on 11/lug/2012
 '''
 
 import DBmap2
+import sqlalchemy
 
 def create_dict(cl_dmap2, dict_path, company_name):
     '''
@@ -45,14 +46,17 @@ def create_dict(cl_dmap2, dict_path, company_name):
         while(el[1] != None):
             obj = getattr(obj, el[0])
             el = el[1]
+        if isinstance(obj,sqlalchemy.orm.collections.InstrumentedList):
+            obj = obj[0]
         obj = getattr(obj, el[0])
         return obj
     
     def get_obj(session, cl_dbmap2, company_name):
         objs = None
-        if cl_dbmap2.company:
+        try:
+            getattr(cl_dbmap2, 'company')
             objs = session.query(cl_dbmap2).filter(cl_dbmap2.company.has(name=company_name)).all()
-        else:
+        except AttributeError:    
             objs = session.query(cl_dbmap2).all()
         return objs
     

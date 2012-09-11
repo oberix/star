@@ -219,7 +219,6 @@ def CreateDWComp(companyName):
     ############################################################################################
     #  importazione dei dati della classe Account Tax
     #  contenente le informazioni sulle tasse
-    #  aggiunto da Nicola (13-7-2012 ore 9.45)
     ############################################################################################
     TAX_D = {
              'NAM_TAX' : ('name', None),
@@ -400,6 +399,10 @@ def CreateDWComp(companyName):
         if accountCode in [deferredVatDebitAccountCode,deferredVatCreditAccountCode]:
             vatDatasDf['CASH'][i:i+1] = (debit>0 and accountCode==deferredVatDebitAccountCode)\
                                         or (credit>0 and accountCode==deferredVatCreditAccountCode)
+    
+    vatDatasDf['CRED'] = True
+    vatDatasDf['CRED'].ix[vatDatasDf['DBT_MVL']>0] = False
+    
     vatDatasDf['AMOUNT'] = 0.00
     for i in range(len(vatDatasDf)):
         row = vatDatasDf[i:i+1]
@@ -407,24 +410,25 @@ def CreateDWComp(companyName):
         credit = row['CRT_MVL'][i]
         journalType = row['TYP_JRN'][i]
         if debit>0:
-            if journalType in [('sale_refund','purchase_refund')]:
+            if journalType in ['sale_refund','purchase_refund']:
                 vatDatasDf['AMOUNT'][i:i+1] = -debit
             else:
                 vatDatasDf['AMOUNT'][i:i+1] = debit
         elif credit>0:
-            if journalType in [('sale_refund','purchase_refund')]:
+            if journalType in ['sale_refund','purchase_refund']:
                 vatDatasDf['AMOUNT'][i:i+1] = -credit
             else:
                 vatDatasDf['AMOUNT'][i:i+1] = credit
     vatDatasDf['T_CRED'] = None
     vatDatasDf['T_CRED'].ix[vatDatasDf['T_TAX']==True] = False
     vatDatasDf['T_CRED'].ix[(vatDatasDf['T_TAX']==True) & 
-                            (vatDatasDf['T_ACC'].isin([immediateVatCreditAccountCode,deferredVatCreditAccountCode]))
-                            ]= True
+                             (vatDatasDf['T_ACC'].isin([immediateVatCreditAccountCode,deferredVatCreditAccountCode]))
+                             ]= True
     vatDatasDf['T_CRED'].ix[(vatDatasDf['T_TAX']==True) & (vatDatasDf['DBT_MVL']>0) &
-                            (vatDatasDf['T_ACC']!=immediateVatDebitAccountCode) &
-                            (vatDatasDf['T_ACC']!=deferredVatDebitAccountCode)
-                            ]= True
+                             (vatDatasDf['T_ACC']!=immediateVatDebitAccountCode) &
+                             (vatDatasDf['T_ACC']!=deferredVatDebitAccountCode)
+                             ]= True                       
+    
     vatDatasDf['T_DET'] = None
     vatDatasDf['T_DET'].ix[vatDatasDf['T_TAX']==True] = False
     vatDatasDf['T_DET'].ix[(vatDatasDf['T_TAX']==True) & 
@@ -442,7 +446,7 @@ def CreateDWComp(companyName):
     vatDatasDf['T_EXI'].ix[(vatDatasDf['T_IMM']==False) & (vatDatasDf['CASH']==True)] = True
     vatDatasDf = vatDatasDf[['DATE','DATE_DOC','PERIOD','ESER',
                             'M_NAME','M_REF','M_NUM','PARTNER','JOURNAL','SEQUENCE',
-                            'STATE','T_NAME','RECON','RECON_P','CASH',
+                            'STATE','T_NAME','RECON','RECON_P','CASH', 'CRED',
                             'T_ACC','T_TAX','T_CRED','T_DET','T_IMM','T_EXI','AMOUNT'
                             ]]
     vatDatasDf = vatDatasDf.sort(columns=['M_NAME'])
@@ -468,6 +472,39 @@ def CreateDWComp(companyName):
     vatDatasStark.DES['RECON']['DESVAR']=unicode("nome della riconciliazione",'utf-8')
     vatDatasStark.DES['RECON_P']['DESVAR']=unicode("nome della riconciliazione parziale",'utf-8')
     vatDatasStark.DES['AMOUNT']['DESVAR']=unicode("importo (di imponibile o imposta o pagamento)",'utf-8')
+    vatDatasStark.DES['CRED']['DESVAR']=unicode("booleano che indica se l'importo originario era in dare o in avere",'utf-8')
     vatDatasStark.DES['SEQUENCE']['DESVAR']=unicode("nome della sequenza",'utf-8')
     vatDatasStark.save(os.path.join(path, 'VAT.pickle'))
     #vatDatasDf.to_csv("df"+companyName+".csv",sep=";",encoding="utf-8")
+    
+    ############################################################################################
+    #  importazione dei dati della classe ResCompany
+    #  contenente le informazioni sull'impresa
+    ############################################################################################
+    companyDict = {
+             'NAME' : ('name', None),
+             'TAX' : ('partner', ('tax', None)),
+             'VAT' : ('partner', ('vat', None)),
+             'ADDRESS' : ('partner', ('addresses', ('street', None))),
+             'CITY' : ('partner', ('addresses', ('city', None))),
+             'ZIP' : ('partner', ('addresses', ('zip', None))),
+             'PHONE' : ('partner', ('addresses', ('phone', None))),
+             }
+    #assegno a MOVL la classe AccountMoveLine
+    ResCompany = DBmap2.ResCompany
+    #costruisco il dizionario con le variabili selezionata
+    companyDict = create_dict.create_dict(ResCompany, companyDict, companyName)
+    companyDf = pandas.DataFrame(companyDict)
+    #Seleziono i dati per l'impresa Servabit
+    companyDf = companyDf[companyDf['NAME']==companyName]
+    companyDf = companyDf.reset_index(drop=True)
+    ResCompanyStark = Stark(companyDf,TYPE='elab',COD='COM')
+    #effettuo il primo abbellimento di Stark
+    ResCompanyStark.DES['NAME']['DESVAR']=unicode("nome dell'azienda",'utf-8')
+    ResCompanyStark.DES['TAX']['DESVAR']=unicode("codice fiscale",'utf-8')
+    ResCompanyStark.DES['VAT']['DESVAR']=unicode("partita iva",'utf-8')
+    ResCompanyStark.DES['ADDRESS']['DESVAR']=unicode("indirizzo",'utf-8')
+    ResCompanyStark.DES['CITY']['DESVAR']=unicode("città",'utf-8')
+    ResCompanyStark.DES['ZIP']['DESVAR']=unicode("cap",'utf-8')
+    ResCompanyStark.DES['PHONE']['DESVAR']=unicode("telefono",'utf-8')
+    ResCompanyStark.save(os.path.join(path, 'COMP.pickle'))

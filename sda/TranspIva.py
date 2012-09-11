@@ -31,7 +31,7 @@ BASEPATH = os.path.abspath(os.path.join(
 sys.path.append(BASEPATH)
 sys.path = list(set(sys.path))
 
-OUT_PATH = os.path.join(BASEPATH,"sre","registro_iva")
+SRE_PATH = os.path.join(BASEPATH,"sre")
 
 from share import Config
 from share import Stark
@@ -57,83 +57,93 @@ def main(dirname):
     onlyValML=True
     if str(config.options.get('only_validated_moves',True))=='False':
         onlyValML=False
-
-    #lettura dell'oggetto stark di interesse VAT.pickle    
+    #lettura degli oggetti stark di interesse
     companyPathPkl = os.path.join(picklesPath,comNam)
     vatStarK = Stark.load(os.path.join(companyPathPkl,"VAT.pickle"))
     vatDf = vatStarK.DF
-    
-    pdfFileName=False
-    #in  base al tipo di report scelto dall'utente, il porgramma lancia la funzione corrispondente
+    periodStarK = Stark.load(os.path.join(companyPathPkl,"PERIOD.pickle"))
+    periodDf = periodStarK.DF
+    companyStarK = Stark.load(os.path.join(companyPathPkl,"COMP.pickle"))
+    companyDf = companyStarK.DF
+    companyString = companyDf['NAME'][0]+" \linebreak "+companyDf['ADDRESS'][0]+" \linebreak "+companyDf['ZIP'][0]+" "+companyDf['CITY'][0]+"\linebreak P.IVA "+companyDf['VAT'][0]
+    #in  base al tipo di report scelto dall'utente, il programma lancia la funzione corrispondente
     try:
         #vat registers
         if reportType==1:
             vatRegister = SDAIva.getVatRegister(vatDf, comNam, onlyValML, fiscalyearName=fiscalyearName, sequenceName=sequenceName)
-            bagRIva = Bag(DF=vatRegister,TIP='tab',LM=CreateLMIva.lm_registri_iva,TITLE='Registro IVA '+sequenceName)
-            setattr(bagRIva,"YEAR",fiscalyearName)
-            bagRIva.save(os.path.join(OUT_PATH, 'vat_register.pickle'))
-            #pdfFileName = "RegistroIVA"+string.replace(sequenceName," ","")+comNam+string.replace(fiscalyearName," ","")
+            bagVatRegister = Bag(DF=vatRegister,TIP='tab',LM=CreateLMIva.lm_registri_iva)
+            setattr(bagVatRegister,"SEQUENCE",sequenceName)
+            setattr(bagVatRegister,"YEAR",fiscalyearName)
+            setattr(bagVatRegister,"COMPANY_STRING",companyString)
+            OUT_PATH = os.path.join(SRE_PATH, 'registro_iva')
+            bagVatRegister.save(os.path.join(OUT_PATH, 'vat_register.pickle'))
         #vat summary
         elif reportType==2:
             vatSummary=SDAIva.getVatSummary(vatDf, comNam, onlyValML, periodName=periodName, sequenceName=sequenceName)
-            bagRIva = Bag(DF=vatSummary,TIP='tab',LM=CreateLMIva.lm_riepiloghi_iva,TITLE='Riepilogo IVA '+sequenceName)
-            setattr(bagRIva,"PERIOD",periodName)
-            bagRIva.save(os.path.join(OUT_PATH, 'vat_summary.pickle'))
-            #pdfFileName="RiepilogoIVA"+string.replace(sequenceName," ","")+comNam+string.replace(periodName," ","")
-        ##vat detail
-        #elif reportType==3:
-            #vatRegister = SDAIva.getVatRegister(picklesPath, comNam, onlyValML, periodName=periodName, sequenceName=sequenceName)
-            #print vatRegister
-            #bagRIva = Bag(DF=vatRegister,TIP='tab',LM=CreateLMIva.lm_registri_iva)
-            #vatSummary=SDAIva.getVatSummary(picklesPath, comNam, onlyValML, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode, periodName=periodName, sequenceName=sequenceName)
-            #print vatSummary
-            #pdfFileName="DettaglioIVA"+string.replace(sequenceName," ","")+comNam+string.replace(periodName," ","")
-        ##deferred vat detail
-        #elif reportType==4:            
-            #payments = SDAIva.getDeferredVatDetail(picklesPath, comNam, onlyValML, deferredVatCreditAccountCode, deferredVatDebitAccountCode, searchPayments=True, paymentsPeriodName=periodName)
-            #notPayed = SDAIva.getDeferredVatDetail(picklesPath, comNam, onlyValML, deferredVatCreditAccountCode, deferredVatDebitAccountCode, searchPayments=False, paymentsPeriodName=periodName)
-            #print payments
-            #print notPayed
-            #transportPayments = Bag(DF=payments,TIP='tab',LM=CreateLMIva.lm_pagamenti_iva_differita)
-            #transportNotPayed = Bag(DF=notPayed,TIP='tab',LM=CreateLMIva.lm_da_pagare_iva_differita)
-            #pdfFileName="DettaglioIVAEsigibDifferita"+comNam+string.replace(periodName," ","")
-        ##deferred vat summary
-        #elif reportType==5:
-            #deferredVatSummary = SDAIva.getDeferredVatSummary(picklesPath, comNam, onlyValML, deferredVatCreditAccountCode, deferredVatDebitAccountCode, paymentsPeriodName=periodName)
-            #print deferredVatSummary
-            #pdfFileName="RiepilogoIVAEsigibDifferita"+comNam+string.replace(periodName," ","")
-        ##vat liquidation
-        #elif reportType==6:
-            #liquidationSummary = SDAIva.getVatLiquidationSummary(picklesPath, comNam, onlyValML, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode, treasuryVatAccountCode, periodName=periodName)
-            #print liquidationSummary
-            #pdfFileName="ProspettoLiquidazioneIVA"+comNam+string.replace(periodName," ","")
-        ##exercise control summary
-        #elif reportType==7:
-            #vatSummary = SDAIva.getVatSummary(picklesPath, comNam, onlyValML, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode, fiscalyearName=fiscalyearName)
-            ##print vatSummary
-            #vatControlSummary = SDAIva.getVatControlSummary(fiscalyearName, vatSummary, picklesPath, comNam, onlyValML, immediateVatCreditAccountCode, immediateVatDebitAccountCode, deferredVatCreditAccountCode, deferredVatDebitAccountCode, treasuryVatAccountCode)
-                        
-            #pdfFileName="ProspettoControlloEsercizio"+comNam+string.replace(fiscalyearName," ","")
-            
+            bagVatSummary = Bag(DF=vatSummary,TIP='tab',LM=CreateLMIva.lm_riepiloghi_iva,TITLE='Riepilogo IVA '+sequenceName)
+            setattr(bagVatSummary,"PERIOD",periodName)
+            setattr(bagVatSummary,"COMPANY_STRING",companyString)
+            OUT_PATH = os.path.join(SRE_PATH, 'riepilogo_iva')
+            bagVatSummary.save(os.path.join(OUT_PATH, 'vat_summary.pickle'))
+        #vat detail
+        elif reportType==3:
+            vatRegister = SDAIva.getVatRegister(vatDf, comNam, onlyValML, periodName=periodName, sequenceName=sequenceName)
+            bagVatRegister = Bag(DF=vatRegister,TIP='tab',LM=CreateLMIva.lm_registri_iva,TITLE='Dettaglio IVA '+sequenceName)
+            setattr(bagVatRegister,"PERIOD",periodName)
+            setattr(bagVatRegister,"COMPANY_STRING",companyString)
+            vatSummary=SDAIva.getVatSummary(vatDf, comNam, onlyValML, periodName=periodName, sequenceName=sequenceName)
+            bagVatSummary = Bag(DF=vatSummary,TIP='tab',LM=CreateLMIva.lm_riepiloghi_iva,TITLE='Riepilogo')
+            OUT_PATH = os.path.join(SRE_PATH, 'dettaglio_iva')
+            bagVatRegister.save(os.path.join(OUT_PATH, 'vat_register.pickle'))
+            bagVatSummary.save(os.path.join(OUT_PATH, 'vat_summary.pickle'))
+        #deferred vat detail
+        elif reportType==4:            
+            payments = SDAIva.getDeferredVatDetailPayments(vatDf, comNam, onlyValML, paymentsPeriodName=periodName)
+            notPayed = SDAIva.getDeferredVatDetailNotPayed(vatDf, comNam, onlyValML, periodDf, paymentsPeriodName=periodName)
+            bagPayments = Bag(DF=payments,TIP='tab',LM=CreateLMIva.lm_pagamenti_iva_differita,TITLE="Dettaglio IVA \nad esigibilita' differita")
+            setattr(bagPayments,"PERIOD",periodName)
+            setattr(bagPayments,"COMPANY_STRING",companyString)
+            bagNotPayed = Bag(DF=notPayed,TIP='tab',LM=CreateLMIva.lm_da_pagare_iva_differita)
+            OUT_PATH = os.path.join(SRE_PATH, 'dettaglio_iva_differita')
+            bagPayments.save(os.path.join(OUT_PATH, 'payments.pickle'))
+            bagNotPayed.save(os.path.join(OUT_PATH, 'not_payed.pickle'))
+        #deferred vat summary
+        elif reportType==5:
+            deferredVatSummaryDf = SDAIva.getDeferredVatSummary(vatDf, comNam, onlyValML, 
+                                                            periodDf, paymentsPeriodName=periodName)
+            bagSummary= Bag(DF=deferredVatSummaryDf['dfSummary'],TIP='tab',LM=CreateLMIva.lm_riepilogo_differita,TITLE="Riepilogo")
+            setattr(bagSummary,"PERIOD",periodName)
+            setattr(bagSummary,"COMPANY_STRING",companyString)
+            bagSynthesis= Bag(DF=deferredVatSummaryDf['dfSynthesis'],TIP='tab',LM=CreateLMIva.lm_riepilogo_differita,TITLE="Sintesi")
+            OUT_PATH = os.path.join(SRE_PATH, 'riepilogo_iva_differita')
+            bagSummary.save(os.path.join(OUT_PATH, 'deferred_vat_summary.pickle'))
+            bagSynthesis.save(os.path.join(OUT_PATH, 'deferred_vat_synthesis.pickle'))
+        #vat liquidation
+        elif reportType==6:
+            liquidationSummary = SDAIva.getVatLiquidationSummary(vatDf, periodDf,
+                                                                comNam, onlyValML, treasuryVatAccountCode, periodName=periodName)
+            bagLiquidationSummary = Bag(DF=liquidationSummary,TIP='tab',LM=CreateLMIva.lm_liquidazione_iva,TITLE='Prospetto liquidazione Iva')
+            setattr(bagLiquidationSummary,"PERIOD",periodName)
+            setattr(bagLiquidationSummary,"COMPANY_STRING",companyString)
+            OUT_PATH = os.path.join(SRE_PATH, 'liquidazione_iva')
+            bagLiquidationSummary.save(os.path.join(OUT_PATH, 'liquidation_summary.pickle'))
+        #exercise control summary
+        elif reportType==7:
+            vatSummary = SDAIva.getVatSummary(vatDf, comNam, onlyValML, fiscalyearName=fiscalyearName)
+            vatControlSummaryDf = SDAIva.getVatControlSummary(fiscalyearName, vatSummary, vatDf, 
+                                                            periodDf, comNam, onlyValML, treasuryVatAccountCode)
+            OUT_PATH = os.path.join(SRE_PATH, 'controllo_esercizio')
+            bagVatSummary = Bag(DF=vatSummary,TIP='tab',LM=CreateLMIva.lm_riepiloghi_iva,TITLE='Riepilogo IVA')
+            setattr(bagVatSummary,"YEAR",fiscalyearName)
+            setattr(bagVatSummary,"COMPANY_STRING",companyString)
+            bagVatSummary.save(os.path.join(OUT_PATH, 'vat_summary.pickle'))
+            bagSummary2 = Bag(DF=vatControlSummaryDf['summary'],TIP='tab',LM=CreateLMIva.lm_controllo_esercizio,TITLE='Riepilogo con IVA diventata esigibile')
+            bagSummary2.save(os.path.join(OUT_PATH, 'vat_summary_2.pickle'))
+            bagLiquidationSummary = Bag(DF=vatControlSummaryDf['liquidationSummary'],TIP='tab',LM=CreateLMIva.lm_controllo_esercizio,TITLE='Liquidazione IVA')
+            bagLiquidationSummary.save(os.path.join(OUT_PATH, 'liquidation_summary.pickle'))
     except:
         raise
 
-    #create tex files
-    #basepath = os.path.join(dirname, os.path.pardir, os.path.pardir)
-    #texDirPath=os.path.join(basepath, "templates")
-    #Tools.writeTex(headerFileWrapper, os.path.join(texDirPath,"header.tex"))
-    #Tools.writeTex(documentFileWrapper, os.path.join(texDirPath,"document.tex"))
-    
-    ##create pdf file
-
-    #templateTexDirPath=os.path.join(texDirPath,"template.tex")
-    #pdfdirPath=os.path.join(basepath,"pdf")
-    #pdfFilePath=os.path.join(pdfdirPath,string.replace(pdfFileName,"/","")+".pdf")
-   
-    #if not os.path.exists(pdfdirPath):
-        #os.makedirs(pdfdirPath)
-    #if pdfFileName:
-        #os.system("texi2pdf -o "+pdfFilePath+" -I "+texDirPath+" -c --quiet "+templateTexDirPath)
     return 0
 
 

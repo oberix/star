@@ -63,23 +63,23 @@ from share import Stark
 # usare questo metodo per concatenare diverse parti di un path.                  
 ST01 = Stark.load(os.path.join(PKL_PATH, COMPANY, 'MVL.pickle'))
 
-# Estraggo il DataFrame dall'oggetto Stark e lo salvo in df
+# Estraggo il DataFrame dall'oggetto Stark e lo salvo in DF01
 DF01 = ST01.DF
 
-#considero un sottoinsieme di df, estaendo solo le variabili di interesse
-DF01=DF01[['DAT_MVL','COD_CON','NAM_CON','NAM_PAR','DBT_MVL','CRT_MVL',]]
+#considero un sottoinsieme di DF01, estaendo solo le variabili di interesse
+DF01 = DF01[['DAT_MVL','COD_CON','NAM_CON','NAM_PAR','DBT_MVL','CRT_MVL',]]
 
 # Creo un dizionario LM (descrive il layout della tabella).                     
 # Le barre verticali "|" indicano quali separatori disegnare; i numeri a fianco 
 # dell'indicazione dell'allineamento sono le dimensioni relativi delle colonne  
 # (0.5 metà delle altre colonne; 2 doppio delle altre colonne, etc.)            
 lm = {
-    'DAT_MVL': [0,   '|  c|'  , '|@v0|', '|Data|'],
-    'COD_CON': [4,   '   l|'  , '|@v0|', ' Codice Conto|'],
-    'NAM_CON': [5,   '  2l|'  , ' @v2|', ' Conto|'],
-    'NAM_PAR': [2,   '  2l|'  , '|@v0|', ' Partner|'],
-    'DBT_MVL': [6,   '0.5r|'  , ' @v2|', ' Dare|'],
-    'CRT_MVL': [7,   '0.5r|'  , ' @v2|', ' Avere|'],
+    'DAT_MVL': [0,   '|c|'  , '|@v0|', '|Data|'],
+    'COD_CON': [2,   ' l|'  , '|@v0|', 'Codice Conto|'],
+    'NAM_CON': [3,   '2l|'  , '@v1|', ' Conto|'],
+    'NAM_PAR': [1,   '2l|'  , '|@v0|', ' Partner|'],
+    'DBT_MVL': [4,   '0.5r|'  , '@v1|', ' Dare|'],
+    'CRT_MVL': [5,   '0.5r|'  , '@v1|', ' Avere|'],
 }
 
 # Creo un oggetto Bag usando come Dataframe df, come LM lm e come TITLE 'Libro
