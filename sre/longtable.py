@@ -49,6 +49,7 @@ PATTERNS = {
     re.compile("\n"): "\\\\",
     re.compile("_"): "\_",
     re.compile("/"): "/\-", # tell LaTeX that an hyphen can be inserted after a '/'
+    re.compile("\^"): "\textasciicircum",
     }
 
 def unique_list(list_):
