@@ -90,9 +90,8 @@ class TexSreTemplate(string.Template):
             templ = fd.read()
             templ = re.sub("\\\\newcommand\{\\\\\\SRE\}\{.*?\}", "", templ)
             super(TexSreTemplate, self).__init__(templ)
-        # except IOError, err:
-        #     self._logger.error("%s", err)
-	#     raise err
+        except IOError, err:
+            self._logger.error("%s", err)
         finally:
             if fd > 0:
                 fd.close()
@@ -176,6 +175,7 @@ class HTMLSreTemplate(string.Template):
 
     '''
 
+    # TODO: redefine for HTML
     delimiter = '\SRE'
     idpattern = '[_a-z][_a-z0-9.]*' 
 
