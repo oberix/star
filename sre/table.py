@@ -20,6 +20,7 @@
 ##############################################################################
 
 from copy import copy
+import logging
 import re
 import logging
 
@@ -298,6 +299,81 @@ class TexTable(Table):
 
 class HTMLTable(Table):
 
+    '''
+    for tests 
+    python sre.py esempio_html --log-level=debug
+    '''
+
+    def __init__(self, data, hsep=False, **kwargs):
+        self._logger = logging.getLogger(type(self).__name__)
+        super(HTMLTable, self).__init__(data, **kwargs)
+
+
+    def _make_header_table(self):
+        '''
+        sezione che costruisce l'header della tabella: thead
+        '''
+
+        out = '''<thead>'''
+        records = self._heading
+        #self._logger.info("In Make Header Table %s", records)
+	out += '''<tr>'''
+        for i in records[1]:
+	    out += '''<th>%s</th>''' % i.replace("|","").replace(" ","")
+	out += '''</tr>'''
+        out += '''</thead>\n'''
+        return out
+
+
+    def _make_body(self):
+        '''
+        sezione che costruisce il body della tabella: thead
+        '''
+
+        out = '''<tbody>\n'''
+        records = self._data.DF[self._keys].to_records()
+        #self._logger.info("In Make Body %s", records)
+        for line in list(records):
+	    out += '''<tr>\n'''
+	    for idx,i in enumerate(list(line)[1:]):
+                if i is None or i == 'None':
+	            out += '''<td>&nbsp;</td>'''
+		else:
+		    align = self._align[idx].replace("|","").replace(" ","")
+		    if align.find("c") >= 0:
+			align = 'style="text-align:center;"'
+		    elif align.find("l") >= 0:
+			align = 'style="text-align:left; padding-left:5px;"'
+		    elif align.find("r") >= 0:
+			align = 'style="text-align:right; padding-right:5px;"'
+		    else:
+			align = ""
+	            out += '''<td %s>%s</td>''' % (align, i)
+	    out += '''\n</tr>\n'''
+        out += '''</tbody>\n'''
+        return out
+
+    def _make_footer(self):
+        ''' Prepare footer for Html table
+        This is pretty simple: just draw a line at the bottom of the table.
+        '''
+
+        ret = str()
+        span = self._align
+        if self._data.FOOTNOTE is not None:
+            ret = "<hr/>" + self._data.FOOTNOTE
+        return str().join(ret)
+
+
     def out(self):
-        # TODO: implement
-        raise NotImplementedError
+        ''' Return a string that contains valid Html code for a table.
+        '''
+        out = [
+	    self._make_header_table(),
+	    self._make_body(),
+	    self._make_footer(),
+            ]
+        out = unicode(str().join(out))
+        return out
+
+
