@@ -150,6 +150,7 @@ class TexSreTemplate(string.Template):
         # raised, but nothing is told to the user either.
         templ_out = self.safe_substitute(self.bags)
         # save final document
+        pdf_out = os.path.basename(self._templ_path).replace('.tex', '')
         template_out = self._templ_path.replace('.tex', '_out.tex')
         try:
             fd = codecs.open(template_out, mode='w', encoding='utf-8')
@@ -162,20 +163,18 @@ class TexSreTemplate(string.Template):
                 fd.close()
         # Call LaTeX compiler
         self._logger.info("Compiling into PDF, this might take a while...")
-        self._logger.debug("out = %s\n\tin = %s\n\tin_path = %s",
-                      os.path.join(self._dest_path, self._templ_path.replace('.tex', '')),
-                      template_out, os.path.dirname(self._templ_path))
         self._logger.debug("texi2pdf -q --batch --clean -o %s -c %s -I %s" %\
-			    (os.path.join(self._dest_path, self._templ_path.replace('.tex', '')),
-                             template_out, 
-                             os.path.dirname(self._templ_path)))
+                               (os.path.join(self._dest_path, pdf_out),
+                                template_out, 
+                                os.path.dirname(self._templ_path)))
 	ret = os.system('texi2pdf -q --batch --clean -o %s -c %s -I %s' %\
-                            (os.path.join(self._dest_path, self._templ_path.replace('.tex', '')),
+                            (os.path.join(self._dest_path, pdf_out),
                              template_out, 
                              os.path.dirname(self._templ_path)))
         if not ret > 0:
             self._logger.info("Done")
         return ret
+
 
 class HTMLSreTemplate(string.Template):
     ''' 
