@@ -64,9 +64,9 @@ class Config(object):
         @ root_path: base path to use when making relative path absolute.
         """
         if root_path is None:
-            root_path = os.path.dirname(os.path.basename(filename))
+            root_path = os.path.dirname(filename)
         self._root_path = root_path
-        self.config_file = os.path.abspath(os.path.join(root_path, filename))
+        self.config_file = os.path.abspath(filename)
         self.options = {}
         self._parser = self._init_parser()
 
@@ -80,6 +80,7 @@ class Config(object):
         """ make a path relative to CONFIG_PATH an absolute one. 
         @ param path: path to convert
         @ return: absolute path
+
         """
         if os.path.isabs(path):
             return path
@@ -88,6 +89,7 @@ class Config(object):
     def _init_parser(self):
         """ Create an option parser and add options to it.
         If you need to add other options just extend this method.
+
         """ 
         parser = OptionParser()
         parser.add_option("-c", "--config", dest="config", 
@@ -102,6 +104,7 @@ class Config(object):
         """ Read configuration file and and save values inside internal
         dictionaries. Try to make anything under 'path' section an absolute
         path.
+
         """
         p = ConfigParser.ConfigParser()
         p.optionxform = str
@@ -117,11 +120,12 @@ class Config(object):
     def parse(self):
         """ Joins options from cli an config file. 
         Command line arguments overwrite config files values.
+
         """
         (opts, ar) = self._parser.parse_args()
         if opts.ensure_value('config', False):
             self.config_file = os.path.abspath(opts.config)
-        self._read_config()        
+        self._read_config()
         for key in ar:
             self.options[key] = opts.ensure_value(key, False)
         self.options['logLevel'] = LOGLEVELS[opts.logLevel]

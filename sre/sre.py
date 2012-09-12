@@ -50,7 +50,7 @@ def _load_config(src_path, confpath=None):
         return {}
     config = Config(confpath)
     config.parse()
-    logging.debug('%s', config)
+    logging.warning('%s', config)
     return config.options
 
 def sre(src_path, config=None, **kwargs):
