@@ -18,6 +18,70 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
 #
 ##############################################################################
+
+#################
+######definizione degli lm
+#################
+
+lm_registri_iva = {
+        'DATE': [0, 'c', 'Data','registrazione'],
+        'M_NUM': [1, '0.5c', 'Numero','protocollo'],
+        'DATE_DOC': [2, 'c', 'Data ','documento'],
+        'M_REF': [3, 'c', 'Numero ','documento '],
+        'PARTNER': [4, '1.3c', 'Controparte',"@v3"],
+        'T_NAME': [5, '1.5c', 'Tipo','imposta'],
+        'BASE': [6, '0.5r', 'Imponibile',"@v1"],
+        'TAX': [7, '0.5r', 'Imposta',"@v2"],
+        }
+        
+lm_riepiloghi_iva = {
+        'TEXT': [0, '2c', "@v1","@v2",],
+        'T_NAME': [1, '2c', "@v1","Tipo imposta"],
+        'BASE_DEB': [2, '0.5r', 'Iva a debito',"Imponibile"],
+        'TAX_DEB': [3, '0.5r', 'Iva a debito',"Imposta"],
+        'BASE_CRED': [4, '0.5r', 'Iva a credito',"Imponibile "],
+        'TAX_CRED': [5, '0.5r', 'Iva a credito',"Imposta "],
+        }
+        
+lm_pagamenti_iva_differita = {
+        'DAT_PAY': [0, 'c', 'Data incasso',"o pagamento"],
+        'SEQUENCE': [1, 'c', 'Registro IVA',"@v1"],
+        'M_NUM': [2, 'c', "Numero","protocollo"],
+        'DATE': [3, 'c', "Data", "registrazione"],
+        'PARTNER': [4, 'c', 'Controparte',"@v2"],
+        'T_NAME': [5, '2c', 'Tipo',"imposta"],
+        'AMOUNT': [6, '0.5r', 'Imposta',"@v3"],
+        }
+        
+lm_da_pagare_iva_differita = {
+        'SEQUENCE': [0, 'c', 'Registro IVA',"@v1"],
+        'M_NUM': [1, 'c', 'Numero', 'protocollo'],
+        'DATE': [2, 'c', 'Data', 'registrazione'],
+        'PARTNER': [3, 'c', 'Controparte',"@v2"],
+        'T_NAME': [4, '2c', 'Tipo', 'imposta'],
+        'AMOUNT': [5, '0.5r', 'Imposta',"@v3"],
+        }
+        
+lm_riepilogo_differita = {
+        'T_NAME': [0, '3l', "@v1"],
+        'TEXT': [1, 'l', "@v2"],
+        'AMOUNT': [2, '0.5r', 'Imposta'],
+        }
+        
+lm_liquidazione_iva = {
+        'TEXT': [0, '2l', "@v1"],
+        'SEQUENCE': [1, 'l', "@v2"],
+        'DBT': [2, '0.5r', 'Iva a debito'],
+        'CRT': [3, '0.5r', 'Iva a credito'],
+        }
+        
+lm_controllo_esercizio = {
+        'TEXT': [0, '4l', "@v1"],
+        'DBT': [1, '0.5r', 'Iva a debito'],
+        'CRT': [2, '0.5r', 'Iva a credito'],
+        }
+
+
 import sys
 import os
 import getopt
@@ -36,8 +100,6 @@ SRE_PATH = os.path.join(BASEPATH,"sre")
 from share import Config
 from share import Stark
 from share import Bag
-import SDAIva
-import LMIva
 
 def main(dirname):
     #legge il file config    
@@ -70,8 +132,8 @@ def main(dirname):
     try:
         #vat registers
         if reportType==1:
-            vatRegister = SDAIva.getVatRegister(vatDf, comNam, onlyValML, fiscalyearName=fiscalyearName, sequenceName=sequenceName)
-            bagVatRegister = Bag(DF=vatRegister,TIP='tab',LM=LMIva.lm_registri_iva)
+            vatRegister = getVatRegister(vatDf, comNam, onlyValML, fiscalyearName=fiscalyearName, sequenceName=sequenceName)
+            bagVatRegister = Bag(DF=vatRegister,TIP='tab',LM=lm_registri_iva)
             setattr(bagVatRegister,"SEQUENCE",sequenceName)
             setattr(bagVatRegister,"YEAR",fiscalyearName)
             setattr(bagVatRegister,"COMPANY_STRING",companyString)
@@ -79,67 +141,67 @@ def main(dirname):
             bagVatRegister.save(os.path.join(OUT_PATH, 'vat_register.pickle'))
         #vat summary
         elif reportType==2:
-            vatSummary=SDAIva.getVatSummary(vatDf, comNam, onlyValML, periodName=periodName, sequenceName=sequenceName)
-            bagVatSummary = Bag(DF=vatSummary,TIP='tab',LM=LMIva.lm_riepiloghi_iva,TITLE='Riepilogo IVA '+sequenceName)
+            vatSummary = getVatSummary(vatDf, comNam, onlyValML, periodName=periodName, sequenceName=sequenceName)
+            bagVatSummary = Bag(DF=vatSummary,TIP='tab',LM=lm_riepiloghi_iva,TITLE='Riepilogo IVA '+sequenceName)
             setattr(bagVatSummary,"PERIOD",periodName)
             setattr(bagVatSummary,"COMPANY_STRING",companyString)
             OUT_PATH = os.path.join(SRE_PATH, 'riepilogo_iva')
             bagVatSummary.save(os.path.join(OUT_PATH, 'vat_summary.pickle'))
         #vat detail
         elif reportType==3:
-            vatRegister = SDAIva.getVatRegister(vatDf, comNam, onlyValML, periodName=periodName, sequenceName=sequenceName)
-            bagVatRegister = Bag(DF=vatRegister,TIP='tab',LM=LMIva.lm_registri_iva,TITLE='Dettaglio IVA '+sequenceName)
+            vatRegister = getVatRegister(vatDf, comNam, onlyValML, periodName=periodName, sequenceName=sequenceName)
+            bagVatRegister = Bag(DF=vatRegister,TIP='tab',LM=lm_registri_iva,TITLE='Dettaglio IVA '+sequenceName)
             setattr(bagVatRegister,"PERIOD",periodName)
             setattr(bagVatRegister,"COMPANY_STRING",companyString)
-            vatSummary=SDAIva.getVatSummary(vatDf, comNam, onlyValML, periodName=periodName, sequenceName=sequenceName)
-            bagVatSummary = Bag(DF=vatSummary,TIP='tab',LM=LMIva.lm_riepiloghi_iva,TITLE='Riepilogo')
+            vatSummary=getVatSummary(vatDf, comNam, onlyValML, periodName=periodName, sequenceName=sequenceName)
+            bagVatSummary = Bag(DF=vatSummary,TIP='tab',LM=lm_riepiloghi_iva,TITLE='Riepilogo')
             OUT_PATH = os.path.join(SRE_PATH, 'dettaglio_iva')
             bagVatRegister.save(os.path.join(OUT_PATH, 'vat_register.pickle'))
             bagVatSummary.save(os.path.join(OUT_PATH, 'vat_summary.pickle'))
         #deferred vat detail
         elif reportType==4:            
-            payments = SDAIva.getDeferredVatDetailPayments(vatDf, comNam, onlyValML, paymentsPeriodName=periodName)
-            notPayed = SDAIva.getDeferredVatDetailNotPayed(vatDf, comNam, onlyValML, periodDf, paymentsPeriodName=periodName)
-            bagPayments = Bag(DF=payments,TIP='tab',LM=LMIva.lm_pagamenti_iva_differita,TITLE="Dettaglio IVA \nad esigibilita' differita")
+            payments = getDeferredVatDetailPayments(vatDf, comNam, onlyValML, paymentsPeriodName=periodName)
+            notPayed = getDeferredVatDetailNotPayed(vatDf, comNam, onlyValML, periodDf, paymentsPeriodName=periodName)
+            bagPayments = Bag(DF=payments,TIP='tab',LM=lm_pagamenti_iva_differita,TITLE="Dettaglio IVA \nad esigibilita' differita")
             setattr(bagPayments,"PERIOD",periodName)
             setattr(bagPayments,"COMPANY_STRING",companyString)
-            bagNotPayed = Bag(DF=notPayed,TIP='tab',LM=LMIva.lm_da_pagare_iva_differita)
+            bagNotPayed = Bag(DF=notPayed,TIP='tab',LM=lm_da_pagare_iva_differita)
             OUT_PATH = os.path.join(SRE_PATH, 'dettaglio_iva_differita')
             bagPayments.save(os.path.join(OUT_PATH, 'payments.pickle'))
             bagNotPayed.save(os.path.join(OUT_PATH, 'not_payed.pickle'))
         #deferred vat summary
         elif reportType==5:
-            deferredVatSummaryDf = SDAIva.getDeferredVatSummary(vatDf, comNam, onlyValML, 
+            deferredVatSummaryDf = getDeferredVatSummary(vatDf, comNam, onlyValML, 
                                                             periodDf, paymentsPeriodName=periodName)
-            bagSummary= Bag(DF=deferredVatSummaryDf['dfSummary'],TIP='tab',LM=LMIva.lm_riepilogo_differita,TITLE="Riepilogo")
+            bagSummary= Bag(DF=deferredVatSummaryDf['dfSummary'],TIP='tab',LM=lm_riepilogo_differita,TITLE="Riepilogo")
             setattr(bagSummary,"PERIOD",periodName)
             setattr(bagSummary,"COMPANY_STRING",companyString)
-            bagSynthesis= Bag(DF=deferredVatSummaryDf['dfSynthesis'],TIP='tab',LM=LMIva.lm_riepilogo_differita,TITLE="Sintesi")
+            bagSynthesis= Bag(DF=deferredVatSummaryDf['dfSynthesis'],TIP='tab',LM=lm_riepilogo_differita,TITLE="Sintesi")
             OUT_PATH = os.path.join(SRE_PATH, 'riepilogo_iva_differita')
             bagSummary.save(os.path.join(OUT_PATH, 'deferred_vat_summary.pickle'))
             bagSynthesis.save(os.path.join(OUT_PATH, 'deferred_vat_synthesis.pickle'))
         #vat liquidation
         elif reportType==6:
-            liquidationSummary = SDAIva.getVatLiquidationSummary(vatDf, periodDf,
+            liquidationSummary = getVatLiquidationSummary(vatDf, periodDf,
                                                                 comNam, onlyValML, treasuryVatAccountCode, periodName=periodName)
-            bagLiquidationSummary = Bag(DF=liquidationSummary,TIP='tab',LM=LMIva.lm_liquidazione_iva,TITLE='Prospetto liquidazione Iva')
+            bagLiquidationSummary = Bag(DF=liquidationSummary,TIP='tab',LM=lm_liquidazione_iva,TITLE='Prospetto liquidazione Iva')
             setattr(bagLiquidationSummary,"PERIOD",periodName)
             setattr(bagLiquidationSummary,"COMPANY_STRING",companyString)
             OUT_PATH = os.path.join(SRE_PATH, 'liquidazione_iva')
             bagLiquidationSummary.save(os.path.join(OUT_PATH, 'liquidation_summary.pickle'))
         #exercise control summary
         elif reportType==7:
-            vatSummary = SDAIva.getVatSummary(vatDf, comNam, onlyValML, fiscalyearName=fiscalyearName)
-            vatControlSummaryDf = SDAIva.getVatControlSummary(fiscalyearName, vatSummary, vatDf, 
+            vatSummary = getVatSummary(vatDf, comNam, onlyValML, fiscalyearName=fiscalyearName)
+            vatControlSummaryDf = getVatControlSummary(fiscalyearName, vatSummary, vatDf, 
                                                             periodDf, comNam, onlyValML, treasuryVatAccountCode)
             OUT_PATH = os.path.join(SRE_PATH, 'controllo_esercizio')
-            bagVatSummary = Bag(DF=vatSummary,TIP='tab',LM=LMIva.lm_riepiloghi_iva,TITLE='Riepilogo IVA')
+            bagVatSummary = Bag(DF=vatSummary,TIP='tab',LM=lm_riepiloghi_iva,TITLE='Riepilogo IVA')
             setattr(bagVatSummary,"YEAR",fiscalyearName)
             setattr(bagVatSummary,"COMPANY_STRING",companyString)
             bagVatSummary.save(os.path.join(OUT_PATH, 'vat_summary.pickle'))
-            bagSummary2 = Bag(DF=vatControlSummaryDf['summary'],TIP='tab',LM=LMIva.lm_controllo_esercizio,TITLE='Riepilogo con IVA diventata esigibile')
+            bagSummary2 = Bag(DF=vatControlSummaryDf['summary'],TIP='tab',LM=lm_controllo_esercizio,TITLE='Riepilogo con IVA diventata esigibile')
             bagSummary2.save(os.path.join(OUT_PATH, 'vat_summary_2.pickle'))
-            bagLiquidationSummary = Bag(DF=vatControlSummaryDf['liquidationSummary'],TIP='tab',LM=LMIva.lm_controllo_esercizio,TITLE='Liquidazione IVA')
+            bagLiquidationSummary = Bag(DF=vatControlSummaryDf['liquidationSummary'],TIP='tab',LM=lm_controllo_esercizio,TITLE='Liquidazione IVA')
             bagLiquidationSummary.save(os.path.join(OUT_PATH, 'liquidation_summary.pickle'))
     except:
         raise
@@ -487,11 +549,11 @@ def getDeferredVatDetailNotPayed(vatDf, companyName, onlyValidatedMoves, periodD
     if paymentsPeriodName:
         df10 = periodDf.ix[periodDf['NAM_PRD']==paymentsPeriodName]
         df10 = df10.reset_index()
-        dateStop = df10['P_DAT_STOP'][0]
+        dateStop = df10['P_DATE_STOP'][0]
     else:
         df10 = periodDf.ix[periodDf['NAM_FY']==paymentsFiscalyearName]
         df10 = df10.reset_index()
-        dateStop = df10[0:1]['FY_DAT_STOP'][0]
+        dateStop = df10[0:1]['FY_DATE_STOP'][0]
     if onlyValidatedMoves:
         vatDf = vatDf.ix[vatDf["STATE"]=='posted']
     #calcolo delle fatture ad esig. diff. non riconciliate e non parzialmente riconciliate entro il periodo d'interesse
@@ -589,7 +651,7 @@ def getDeferredVatSummary(vatDf, companyName, onlyValidatedMoves, periodDf,
     payments['PAYM'] = True
     notPayed['PAYM'] = False
     
-    dfToPrint1 = pandas.DataFrame()
+    dfToPrint1 = pandas.DataFrame(columns=['T_NAME','TEXT','AMOUNT','T_CRED','PAYM'])
     dfToPrint2 = pandas.DataFrame()
     
     def getTotalRow(dataDf,payments,credit,tName=False):
@@ -746,13 +808,14 @@ def getDeferredVatSummary(vatDf, companyName, onlyValidatedMoves, periodDf,
     ###
     #ultime formattazioni
     ###
-    dfToPrint1['T_NAME'].ix[dfToPrint1['T_NAME'].isnull()] = ''
-    dfToPrint1['TEXT'].ix[dfToPrint1['TEXT'].isnull()] = ''
-    dfToPrint1['PAYM'].ix[dfToPrint1['PAYM'].isnull()] = ''
-    dfToPrint1['T_CRED'].ix[dfToPrint1['T_CRED'].isnull()] = ''
-    dfToPrint1['AMOUNT'].ix[dfToPrint1['AMOUNT'].isnull()] = -1
-    dfToPrint1['AMOUNT']=dfToPrint1['AMOUNT'].map(str)
-    dfToPrint1['AMOUNT'].ix[dfToPrint1['AMOUNT']=='-1.0'] = ''
+    if len(dfToPrint1)>0:
+        dfToPrint1['T_NAME'].ix[dfToPrint1['T_NAME'].isnull()] = ''
+        dfToPrint1['TEXT'].ix[dfToPrint1['TEXT'].isnull()] = ''
+        dfToPrint1['PAYM'].ix[dfToPrint1['PAYM'].isnull()] = ''
+        dfToPrint1['T_CRED'].ix[dfToPrint1['T_CRED'].isnull()] = ''
+        dfToPrint1['AMOUNT'].ix[dfToPrint1['AMOUNT'].isnull()] = -1
+        dfToPrint1['AMOUNT']=dfToPrint1['AMOUNT'].map(str)
+        dfToPrint1['AMOUNT'].ix[dfToPrint1['AMOUNT']=='-1.0'] = ''
     dfToPrint1 = dfToPrint1[['T_NAME','TEXT','AMOUNT','T_CRED','PAYM']]
     
     dfToPrint2['T_NAME'].ix[dfToPrint2['T_NAME'].isnull()] = ''
@@ -818,8 +881,8 @@ def addLiquidationSummaryFinalResults(vatDf, periodDf, debitVat, creditVat,
     #aggiunta riga "Debito (non superiore a 25,82 Euro) o credito da periodo precedente + acconti IVA"
     if periodName:
         df1 = periodDf.ix[periodDf['NAM_PRD']==periodName].reset_index()
-        dateStart = df1[0:1]['FY_DAT_STR'][0]
-        dateStop = df1[0:1]['P_DAT_STOP'][0]
+        dateStart = df1[0:1]['FY_DATE_START'][0]
+        dateStop = df1[0:1]['P_DATE_STOP'][0]
         df0 = df0.ix[(df0['DATE']>=dateStart) & (df0['DATE']<=dateStop)]
     else:
         df0 = df0.ix[df0['ESER']==fiscalyearName]
@@ -977,12 +1040,12 @@ def getVatControlSummary(fiscalyearName, vatSummary, vatDf, periodDf, companyNam
     #calcolo iva differita divenuta esigibile dall'esercizio precedente
     previousDeferredVatCredit = 0
     previousDeferredVatDebit = 0
-    dfPeriods1 = periodDf[['FY_DAT_STR','NAM_FY']]
+    dfPeriods1 = periodDf[['FY_DATE_START','NAM_FY']]
     dfPeriods1 = dfPeriods1.drop_duplicates()
     df0 = dfPeriods1.ix[dfPeriods1['NAM_FY']==fiscalyearName].reset_index()
-    fiscalyearDateStart = df0[0:1]['FY_DAT_STR'][0]
+    fiscalyearDateStart = df0[0:1]['FY_DATE_START'][0]
     previousFiscalyearDateStart = date(fiscalyearDateStart.year-1,fiscalyearDateStart.month,fiscalyearDateStart.day)
-    df0 = dfPeriods1.ix[dfPeriods1['FY_DAT_STR']==previousFiscalyearDateStart].reset_index()
+    df0 = dfPeriods1.ix[dfPeriods1['FY_DATE_START']==previousFiscalyearDateStart].reset_index()
     if len(df0) > 0:
         previousFiscalyearName = df0['NAM_FY'][0]
         deferredSummary = getDeferredVatSummary(vatDf, companyName, onlyValidatedMoves, periodDf,

@@ -275,6 +275,7 @@ class AccountVoucher(Base):
     company_id = Column(Integer, ForeignKey('res_company.id'))
     period_id = Column(Integer, ForeignKey('account_period.id'))
     move_id = Column(Integer, ForeignKey('account_move.id'))
+    journal_id = Column(Integer, ForeignKey('account_journal.id'), nullable=False)
     partner_id = Column(Integer, ForeignKey('res_partner.id'), nullable=False)
     date = Column(Date)
     date_due = Column(Date)
@@ -286,9 +287,8 @@ class AccountVoucher(Base):
     partner = relationship("ResPartner",  uselist=False)
     move = relationship("AccountMove",  uselist=False)
     company = relationship("ResCompany")
-
-
-
+    period = relationship("AccountPeriod")
+    journal = relationship("AccountJournal")
 
 
 class AccountInvoice(Base):
@@ -313,6 +313,7 @@ class AccountInvoice(Base):
     company_id = Column(Integer, ForeignKey('res_company.id'))
     period_id = Column(Integer, ForeignKey('account_period.id'))
     move_id = Column(Integer, ForeignKey('account_move.id'))
+    journal_id = Column(Integer, ForeignKey('account_journal.id'), nullable=False)
     partner_id = Column(Integer, ForeignKey('res_partner.id'), nullable=False)
     date_document = Column(Date, nullable=False)
     date_invoice = Column(Date)  #inserito da Luigi il 11/7/2011
@@ -325,6 +326,8 @@ class AccountInvoice(Base):
     move = relationship("AccountMove",  uselist=False)
     partner = relationship("ResPartner",  uselist=False)
     company = relationship("ResCompany")
+    period = relationship("AccountPeriod")
+    journal = relationship("AccountJournal")
 
     
 class AccountMove(Base):
