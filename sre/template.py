@@ -33,7 +33,7 @@ sys.path.append(BASEPATH)
 sys.path = list(set(sys.path))
 
 from share import Bag
-from longtable import TexTable
+from table import TexTable
 
 __all__ = ['HTMLSreTemplate', 'TexSreTemplate']
 

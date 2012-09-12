@@ -50,7 +50,7 @@ def _load_config(src_path, confpath=None):
         return {}
     config = Config(confpath)
     config.parse()
-    logging.warning('%s', config)
+    logging.debug('%s', config)
     return config.options
 
 def sre(src_path, config=None, **kwargs):
@@ -103,4 +103,4 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         logging.error("Specify a path containing report files")
         sys.exit(1)
-    sys.exit(sre(sys.argv[1]))
+    sys.exit(sre(sys.argv.pop(1)))
