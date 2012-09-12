@@ -17,6 +17,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
 #
 ##############################################################################
-import ReportIva
-import Scadenziario
+import SDAIva
+import TranspIva
+import CreateLMIva
 

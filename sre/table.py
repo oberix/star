@@ -25,7 +25,7 @@ import logging
 
 __author__ = "Marco Pattaro <marco.pattaro@servabit.it>"
 __version__ = "1.0"
-__all__ = ['TexTable', 'unique_list', 'escape_latex']
+__all__ = ['TexTable', 'unique_list', 'escape']
 
 OPEN_TEX_TAB = """\\begin{longtabu} to \\linewidth"""
 CLOSE_TEX_TAB = """\\end{longtabu}"""
@@ -67,7 +67,7 @@ def unique_list(list_):
             list_.remove(elem)
             i += 1
 
-def escape_latex(string, patterns=TEX_ESCAPE):
+def escape(string, patterns=TEX_ESCAPE):
     ''' Escape string to work with LaTeX.
     The function calls TEX_ESCAPE dictionary to metch regexp with their escaped
     version.
@@ -99,7 +99,7 @@ class Table(object):
 
         _ncols: number of table columns
         _align: columns alignment, relative size and separators
-        _keys: dataframe coluns keys
+        _keys: DataFrame coluns keys
         _heading: list of lists containing headings elements
 
         '''
@@ -132,6 +132,10 @@ class Table(object):
         self._logger.debug('_heading = %s', self._heading)
 
     def out(self):
+        ''' You have to extend this class and override this method in order to
+        generate a different report format.
+
+        '''
         raise NotImplementedError
 
 class TexTable(Table):
@@ -161,7 +165,7 @@ class TexTable(Table):
         part = s.partition(title)
         ret = {'sep1': part[0], 
                'span': span, 
-               'title': escape_latex(part[1]), 
+               'title': escape(part[1]), 
                'sep2': part[2],
                }
         if title.strip().strip('|').startswith('@v'):
@@ -263,23 +267,21 @@ class TexTable(Table):
                     out_record.append(str())
                 else:
                     try:
-                        out_record.append(escape_latex(elem.encode('utf-8')))
+                        out_record.append(escape(elem.encode('utf-8')))
                     except AttributeError:
                         # element is not a string
-                        out_record.append(escape_latex(str(elem).encode('utf-8')))
+                        out_record.append(escape(str(elem).encode('utf-8')))
             out += rowstart + """ & """.join(out_record) + " \\\ %s \n" % self._hsep
         return out
     
     # Public
 
     def out(self):
-
         """ Return a string that contains valid LaTeX code for a table.
         
         @ return: str
 
         """
-        
         headers = str()
         for heading in self._heading:
             headers += self._make_header(heading)
