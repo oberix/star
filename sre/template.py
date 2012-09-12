@@ -33,7 +33,8 @@ sys.path.append(BASEPATH)
 sys.path = list(set(sys.path))
 
 from share import Bag
-from table import TexTable
+from table import TexTable, HTMLTable
+from graph import TexGraph, HTMLGraph
 
 __all__ = ['HTMLSreTemplate', 'TexSreTemplate']
 
@@ -128,6 +129,8 @@ class TexSreTemplate(string.Template):
             else: # just use DF/LM 
                 if bags[base].TIP == 'tab':
                     ret[ph] = TexTable(bags[base], **kwargs).out()
+                elif bags[base].TIP == 'graph':
+                    ret[ph] = TexGraph(bags[base], **kwargs).out()
                 else: # TODO: handle other types
                     self._logger.debug('bags = %s', bags)
                     self._logger.warning("Unhandled bag TIP '%s' found in %s, skipping...", bags[base].TIP, base)
