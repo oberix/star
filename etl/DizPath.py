@@ -419,12 +419,13 @@ def CreateDWComp(companyName):
             vatDatasDf['AMOUNT'][i:i+1] = -amount
         else:
             vatDatasDf['AMOUNT'][i:i+1] = amount
+    
     vatDatasDf['T_CRED'] = None
     vatDatasDf['T_CRED'].ix[vatDatasDf['T_TAX']==True] = False
     vatDatasDf['T_CRED'].ix[(vatDatasDf['T_TAX']==True) & 
                              (vatDatasDf['T_ACC'].isin([immediateVatCreditAccountCode,deferredVatCreditAccountCode]))
                              ]= True
-    vatDatasDf['T_CRED'].ix[(vatDatasDf['T_TAX']==True) & (vatDatasDf['DBT_MVL']>0) &
+    vatDatasDf['T_CRED'].ix[(vatDatasDf['T_TAX']==True) & ((vatDatasDf['DBT_MVL']>0) | (vatDatasDf['TAX_AMO']<0)) &
                              (vatDatasDf['T_ACC']!=immediateVatDebitAccountCode) &
                              (vatDatasDf['T_ACC']!=deferredVatDebitAccountCode)
                              ]= True                       
