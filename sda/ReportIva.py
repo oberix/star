@@ -87,6 +87,7 @@ import os
 import getopt
 import pandas
 import numpy
+from datetime import date
 
 # Servabit libraries
 BASEPATH = os.path.abspath(os.path.join(
@@ -809,6 +810,8 @@ def getDeferredVatSummary(vatDf, companyName, onlyValidatedMoves, periodDf,
     #ultime formattazioni
     ###
     if len(dfToPrint1)>0:
+        dfToPrint1['PAYM']=dfToPrint1['PAYM'].map(str)
+        dfToPrint1['T_CRED']=dfToPrint1['T_CRED'].map(str)
         dfToPrint1['T_NAME'].ix[dfToPrint1['T_NAME'].isnull()] = ''
         dfToPrint1['TEXT'].ix[dfToPrint1['TEXT'].isnull()] = ''
         dfToPrint1['PAYM'].ix[dfToPrint1['PAYM'].isnull()] = ''
@@ -887,6 +890,7 @@ def addLiquidationSummaryFinalResults(vatDf, periodDf, debitVat, creditVat,
     else:
         df0 = df0.ix[df0['ESER']==fiscalyearName]
     df0 = df0.ix[df0["T_ACC"]==treasuryVatAccountCode].reset_index(drop=True)
+    print df0[["M_NAME","T_ACC","AMOUNT"]]
     df0 = df0[['CRED','AMOUNT']]
     df0 = df0.groupby('CRED').sum()[['AMOUNT']].reset_index()
     df1 = df0.ix[df0['CRED']==True].reset_index()
