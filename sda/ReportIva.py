@@ -890,7 +890,6 @@ def addLiquidationSummaryFinalResults(vatDf, periodDf, debitVat, creditVat,
     else:
         df0 = df0.ix[df0['ESER']==fiscalyearName]
     df0 = df0.ix[df0["T_ACC"]==treasuryVatAccountCode].reset_index(drop=True)
-    print df0[["M_NAME","T_ACC","AMOUNT"]]
     df0 = df0[['CRED','AMOUNT']]
     df0 = df0.groupby('CRED').sum()[['AMOUNT']].reset_index()
     df1 = df0.ix[df0['CRED']==True].reset_index()
