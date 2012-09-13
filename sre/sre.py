@@ -50,7 +50,7 @@ def _load_config(src_path, confpath=None):
         return {}
     config = Config(confpath)
     config.parse()
-    logging.debug('%s', config)
+    logging.debug(config)
     return config.options
 
 def sre(src_path, config=None, **kwargs):
@@ -82,10 +82,6 @@ def sre(src_path, config=None, **kwargs):
 	elif os.path.isfile(os.path.join(src_path, 'main.html')):
             templ_path = os.path.join(src_path, 'main.html')
     
-    if not os.path.isfile(templ_path):
-         logging.error('File not found %s', templ_path)
-	 return 1
-
     # Identify type just from filename
     if templ_path.endswith('.tex'):
         templ = template.TexSreTemplate(src_path, config=config)
