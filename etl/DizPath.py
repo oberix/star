@@ -252,10 +252,10 @@ def CreateDWComp(companyName):
     ############################################################################################
     PERIOD_D = {
                 'NAM_PRD' : ('name', None),
-                'P_DAT_STR' : ('date_start', None),
-                'P_DAT_STOP' : ('date_stop', None),
-                'FY_DAT_STR' : ('fiscalyear', ('date_start', None)),
-                'FY_DAT_STOP' : ('fiscalyear', ('date_stop', None)),
+                'P_DATE_STR' : ('date_start', None),
+                'P_DATE_STOP' : ('date_stop', None),
+                'FY_DATE_START' : ('fiscalyear', ('date_start', None)),
+                'FY_DATE_STOP' : ('fiscalyear', ('date_stop', None)),
                 'NAM_FY' : ('fiscalyear', ('name', None)),
                 'NAM_IMP'  : ('company', ('name', None)),
                 }
@@ -270,10 +270,10 @@ def CreateDWComp(companyName):
     #del periodDf['TYP_CON']
     PERIOD = Stark(periodDf,TYPE='elab',COD='PERIOD')
     #effettuo il primo abbellimento di Stark
-    PERIOD.DES['P_DAT_STR']['DESVAR']=unicode("data di inizio del periodo",'utf-8')
-    PERIOD.DES['P_DAT_STOP']['DESVAR']=unicode("data di fine del periodo",'utf-8')
-    PERIOD.DES['FY_DAT_STR']['DESVAR']=unicode("data di inizio dell'anno fiscale",'utf-8')
-    PERIOD.DES['FY_DAT_STOP']['DESVAR']=unicode("data di fine dell'anno fiscale",'utf-8')
+    PERIOD.DES['P_DATE_STR']['DESVAR']=unicode("data di inizio del periodo",'utf-8')
+    PERIOD.DES['P_DATE_STOP']['DESVAR']=unicode("data di fine del periodo",'utf-8')
+    PERIOD.DES['FY_DATE_START']['DESVAR']=unicode("data di inizio dell'anno fiscale",'utf-8')
+    PERIOD.DES['FY_DATE_STOP']['DESVAR']=unicode("data di fine dell'anno fiscale",'utf-8')
     PERIOD.DES['NAM_FY']['DESVAR']=unicode("nome dell'anno fiscale relativo al periodo",'utf-8')
 #    PERIOD.DefPathPkl(path)
     PERIOD.save(os.path.join(path, 'PERIOD.pickle'))
@@ -408,23 +408,24 @@ def CreateDWComp(companyName):
         row = vatDatasDf[i:i+1]
         debit = row['DBT_MVL'][i]
         credit = row['CRT_MVL'][i]
+        taxAmount = row['TAX_AMO'][i]
         journalType = row['TYP_JRN'][i]
-        if debit>0:
-            if journalType in ['sale_refund','purchase_refund']:
-                vatDatasDf['AMOUNT'][i:i+1] = -debit
-            else:
-                vatDatasDf['AMOUNT'][i:i+1] = debit
-        elif credit>0:
-            if journalType in ['sale_refund','purchase_refund']:
-                vatDatasDf['AMOUNT'][i:i+1] = -credit
-            else:
-                vatDatasDf['AMOUNT'][i:i+1] = credit
+        amount = None
+        if taxAmount != 0:
+            amount = taxAmount
+        else:
+            amount = max(debit,credit)
+        if journalType in ['sale_refund','purchase_refund']:
+            vatDatasDf['AMOUNT'][i:i+1] = -amount
+        else:
+            vatDatasDf['AMOUNT'][i:i+1] = amount
+    
     vatDatasDf['T_CRED'] = None
     vatDatasDf['T_CRED'].ix[vatDatasDf['T_TAX']==True] = False
     vatDatasDf['T_CRED'].ix[(vatDatasDf['T_TAX']==True) & 
                              (vatDatasDf['T_ACC'].isin([immediateVatCreditAccountCode,deferredVatCreditAccountCode]))
                              ]= True
-    vatDatasDf['T_CRED'].ix[(vatDatasDf['T_TAX']==True) & (vatDatasDf['DBT_MVL']>0) &
+    vatDatasDf['T_CRED'].ix[(vatDatasDf['T_TAX']==True) & ((vatDatasDf['DBT_MVL']>0) | (vatDatasDf['TAX_AMO']<0)) &
                              (vatDatasDf['T_ACC']!=immediateVatDebitAccountCode) &
                              (vatDatasDf['T_ACC']!=deferredVatDebitAccountCode)
                              ]= True                       
@@ -508,3 +509,67 @@ def CreateDWComp(companyName):
     ResCompanyStark.DES['ZIP']['DESVAR']=unicode("cap",'utf-8')
     ResCompanyStark.DES['PHONE']['DESVAR']=unicode("telefono",'utf-8')
     ResCompanyStark.save(os.path.join(path, 'COMP.pickle'))
+    
+    ############################################################################################
+    #  importazione dei dati della classe AccountInvoice
+    #  contenente le informazioni sulle fatture
+    ############################################################################################
+    invoiceDict = {
+             'NAME' : ('name', None),
+             'DATE_INV' : ('date_invoice', None),
+             'DATE_DUE' : ('date_due', None),
+             'PERIOD' : ('period', ('name', None)),
+             'ESER' : ('period', ('fiscalyear', ('name', None))),
+             'JOURNAL' : ('journal', ('name', None)),
+             'TYPE' : ('type', None),
+             'STATE' : ('state', None),
+             'NUM' : ('number', None),
+             'PARTNER' : ('partner', ('name', None)),
+             'TOTAL' : ('amount_total', None),
+             'NAM_MOV': ('move', ('name', None)),
+             }
+
+    #assegno a ACC la classe AccountAccount
+    invoiceClass = DBmap2.AccountInvoice
+    #costruisco il dizionario con le variabili selezionata
+    invoiceDict = create_dict.create_dict(invoiceClass, invoiceDict, companyName)
+    invoiceDf = pandas.DataFrame(invoiceDict)
+    #invoiceDf=invoiceDf[invoiceDf['NAM_IMP']==companyName]
+    invoiceStark = Stark(invoiceDf,TYPE='elab',COD='INV')
+    #effettuo il primo abbellimento di Stark
+    invoiceStark.DES['NUM']['DESVAR']=unicode('numero fattura','utf-8')
+    invoiceStark.DES['ESER']['DESVAR']=unicode("nome dell'anno fiscale",'utf-8')
+    invoiceStark.DES['NAM_MOV']['DESVAR']=unicode("nome della scrittura contabile associata",'utf-8')
+    invoiceStark.save(os.path.join(path, 'INV.pickle'))
+    
+    ############################################################################################
+    #  importazione dei dati della classe AccountVoucher
+    #  contenente le informazioni sulle fatture
+    ############################################################################################
+    voucherDict = {
+             'NAME' : ('name', None),
+             'DATE' : ('date', None),
+             'DATE_DUE' : ('date_due', None),
+             'PERIOD' : ('period', ('name', None)),
+             'ESER' : ('period', ('fiscalyear', ('name', None))),
+             'JOURNAL' : ('journal', ('name', None)),
+             'TYPE' : ('type', None),
+             'STATE' : ('state', None),
+             'NUM' : ('number', None),
+             'PARTNER' : ('partner', ('name', None)),
+             'AMOUNT' : ('amount', None),
+             'NAM_MOV': ('move', ('name', None)),
+             }
+
+    #assegno a ACC la classe AccountAccount
+    voucherClass = DBmap2.AccountVoucher
+    #costruisco il dizionario con le variabili selezionata
+    voucherDict = create_dict.create_dict(voucherClass, voucherDict, companyName)
+    voucherDf = pandas.DataFrame(voucherDict)
+    #voucherDf=voucherDf[voucherDf['NAM_IMP']==companyName]
+    voucherStark = Stark(voucherDf,TYPE='elab',COD='VOU')
+    #effettuo il primo abbellimento di Stark
+    voucherStark.DES['NUM']['DESVAR']=unicode('numero voucher','utf-8')
+    voucherStark.DES['ESER']['DESVAR']=unicode("nome dell'anno fiscale",'utf-8')
+    voucherStark.DES['NAM_MOV']['DESVAR']=unicode("nome della scrittura contabile associata",'utf-8')
+    voucherStark.save(os.path.join(path, 'VOU.pickle'))
