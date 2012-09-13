@@ -409,13 +409,13 @@ def CreateDWComp(companyName):
         debit = row['DBT_MVL'][i]
         credit = row['CRT_MVL'][i]
         taxAmount = row['TAX_AMO'][i]
-        journalType = row['TYP_JRN'][i]        
+        journalType = row['TYP_JRN'][i]
         amount = None
         if taxAmount and taxAmount != 0:
             amount = taxAmount
         else:
             amount = max(debit,credit)
-        if journalType in ['sale_refund','purchase_refund'] and taxAmount==0:
+        if journalType in ['sale_refund','purchase_refund'] and (taxAmount==0 or not taxAmount):
             vatDatasDf['AMOUNT'][i:i+1] = -amount
         else:
             vatDatasDf['AMOUNT'][i:i+1] = amount
