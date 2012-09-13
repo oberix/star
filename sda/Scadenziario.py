@@ -119,18 +119,15 @@ def computeExpiries(invoiceDf , voucherDf , periodDf , moveLineDf, fiscalyearNam
         ####
         voucherDf['DATE_DUE'].ix[voucherDf['DATE_DUE'].isnull()] = voucherDf['DATE']
         df1 = voucherDf.ix[(voucherDf["DATE_DUE"]<=fiscalyearDateStop) & (voucherDf["DATE_DUE"]>=fiscalyearDateStart)]
-        df2 = df1.ix[df1["STATE"]!='cancel'].reset_index()
+        df2 = df1.ix[df1["STATE"]!='cancel']
+        df3 = df2.ix[(df2["TYPE"]=='sale') | (df2["TYPE"]=='purchase')].reset_index()
         #calcolo delle liquidazioni pagate
-        df3 = pandas.merge(df2,moveLineDf,on="NAM_MOV")
-        df4 = df3.ix[df3["NAM_REC"].notnull()].reset_index()
+        df4 = pandas.merge(df3,moveLineDf,on="NAM_MOV")
+        df5 = df4.ix[df4["NAM_REC"].notnull()].reset_index()
         #esclusione delle liquidazioni pagate
-        df5 = df2["NAME"]
-        df8 = set(df5)
-        print df5
-        df6 = df4["NAME"]
+        df6 = pandas.DataFrame({'NAM_MOV':list(set(df3['NAM_MOV']) - set(df5['NAM_MOV']))})
         print df6
-        df7 = set(df5) - set(df6)
-        print df7
+        #print df5
 
         #df3 = df2[['DATE_DUE','TYPE','NUM','STATE','PARTNER','TOTAL']]
         #df3['TOTAL']=df3['TOTAL'].map(float)
