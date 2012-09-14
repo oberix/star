@@ -83,7 +83,6 @@ def CreateDWComp(companyName):
     #Seleziono i dati per l'impresa Servabit
     #accountsDf=accountsDf[accountsDf['NAM_IMP']==companyName]
     del accountsDf['NAM_IMP']
-    del accountsDf['TYP_CON']
     ACC = Stark(accountsDf,TYPE='elab',COD='ACC')
     #effettuo il primo abbellimento di Stark
     ACC.DES['ID0_CON']['DESVAR']=unicode('ID identificativo del conto','utf-8')
@@ -92,6 +91,7 @@ def CreateDWComp(companyName):
     ACC.DES['GOV_CON']['DESVAR']=unicode('Tipologia che governa la gestione del conto','utf-8')
     ACC.DES['PAN_CON']['DESVAR']=unicode('Nome descrittivo del conto padre','utf-8')
     ACC.DES['PAC_CON']['DESVAR']=unicode('Codice menorico del conto padre','utf-8')
+    ACC.DES['TYP_CON']['DESVAR']=unicode('Tipo interno','utf-8')
 #    ACC.DefPathPkl(path)
     ACC.save(os.path.join(path, 'ACC.pickle'))
 
