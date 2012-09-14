@@ -24,20 +24,20 @@
 \pagestyle{fancy}
 
 \setlength{\topmargin}{-1cm}
-\setlength{\headheight}{20pt}
+\setlength{\headheight}{30pt}
 
 %% left part of the head
-\fancyhead[l]{\input{company}}
+\fancyhead[l]{\SRE{payments.COMPANY_STRING}}
 %% center of the head
 %\fancyhead[c]{\textit{ArCO Barletta\\Guida Tecnica}}
 %% right part of the head
-\fancyhead[r]{\color{DarkRed}\textbf{\Large{\SRE{payments.TITLE}}}} %\\\textit{Data: }\today}
+\fancyhead[r]{\color{DarkRed}\textbf{\Large{Dettaglio IVA ad esigibilità differita}\linebreak Periodo: \SRE{payments.PERIOD}}}
 %% left part of the foot
 %\fancyfoot[l]{Servabit Srl}
 %% center of the foot
 \fancyfoot[c]{}
 %% right part of the foot
-\fancyfoot[r]{Pagina \thepage}
+\fancyfoot[r]{}
 %% line of the head
 \renewcommand{\headrulewidth}{0.5pt}
 %% line of the foot
@@ -45,18 +45,12 @@
 
 
 \begin{document}
-% Periodo: \SRE{payments.PERIOD}
 \begin{centering}
 \tabulinesep=1.5mm
 %%\input{table0}
-\begin{flushleft}
-Incassati e pagati nel periodo
-\end{flushleft}
-\SRE{payments}
-\begin{flushleft}
-Da incassare o pagare
-\end{flushleft}
-\SRE{not_payed}
+\large{Incassati e pagati nel periodo}
+\normalsize{\SRE{payments}}
+\large{Da incassare o pagare}
+\normalsize{\SRE{not_payed}}
 \end {centering}
-
 \end{document}

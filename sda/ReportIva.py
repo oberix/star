@@ -45,7 +45,7 @@ lm_riepiloghi_iva = {
         
 lm_pagamenti_iva_differita = {
         'DAT_PAY': [0, 'c', 'Data incasso',"o pagamento"],
-        'SEQUENCE': [1, 'c', 'Registro IVA',"@v1"],
+        'SEQUENCE': [1, '1.5c', 'Registro IVA',"@v1"],
         'M_NUM': [2, 'c', "Numero","protocollo"],
         'DATE': [3, 'c', "Data", "registrazione"],
         'PARTNER': [4, 'c', 'Controparte',"@v2"],
@@ -54,7 +54,7 @@ lm_pagamenti_iva_differita = {
         }
         
 lm_da_pagare_iva_differita = {
-        'SEQUENCE': [0, 'c', 'Registro IVA',"@v1"],
+        'SEQUENCE': [0, '1.5c', 'Registro IVA',"@v1"],
         'M_NUM': [1, 'c', 'Numero', 'protocollo'],
         'DATE': [2, 'c', 'Data', 'registrazione'],
         'PARTNER': [3, 'c', 'Controparte',"@v2"],
@@ -63,7 +63,7 @@ lm_da_pagare_iva_differita = {
         }
         
 lm_riepilogo_differita = {
-        'T_NAME': [0, '3l', "@v1"],
+        'T_NAME': [0, '2.5l', "@v1"],
         'TEXT': [1, 'l', "@v2"],
         'AMOUNT': [2, '0.5r', 'Imposta'],
         }
@@ -128,7 +128,7 @@ def main(dirname):
     periodDf = periodStarK.DF
     companyStarK = Stark.load(os.path.join(companyPathPkl,"COMP.pickle"))
     companyDf = companyStarK.DF
-    companyString = companyDf['NAME'][0]+" \linebreak "+companyDf['ADDRESS'][0]+" \linebreak "+companyDf['ZIP'][0]+" "+companyDf['CITY'][0]+"\linebreak P.IVA "+companyDf['VAT'][0]
+    companyString = companyDf['NAME'][0]+" - "+companyDf['ADDRESS'][0]+" \linebreak "+companyDf['ZIP'][0]+" "+companyDf['CITY'][0]+" P.IVA "+companyDf['VAT'][0]
     #in  base al tipo di report scelto dall'utente, il programma lancia la funzione corrispondente
     try:
         #vat registers
@@ -143,7 +143,8 @@ def main(dirname):
         #vat summary
         elif reportType==2:
             vatSummary = getVatSummary(vatDf, comNam, onlyValML, periodName=periodName, sequenceName=sequenceName)
-            bagVatSummary = Bag(DF=vatSummary,TIP='tab',LM=lm_riepiloghi_iva,TITLE='Riepilogo IVA '+sequenceName)
+            bagVatSummary = Bag(DF=vatSummary,TIP='tab',LM=lm_riepiloghi_iva)
+            setattr(bagVatSummary,"SEQUENCE",sequenceName)
             setattr(bagVatSummary,"PERIOD",periodName)
             setattr(bagVatSummary,"COMPANY_STRING",companyString)
             OUT_PATH = os.path.join(SRE_PATH, 'riepilogo_iva')
@@ -151,7 +152,8 @@ def main(dirname):
         #vat detail
         elif reportType==3:
             vatRegister = getVatRegister(vatDf, comNam, onlyValML, periodName=periodName, sequenceName=sequenceName)
-            bagVatRegister = Bag(DF=vatRegister,TIP='tab',LM=lm_registri_iva,TITLE='Dettaglio IVA '+sequenceName)
+            bagVatRegister = Bag(DF=vatRegister,TIP='tab',LM=lm_registri_iva)
+            setattr(bagVatRegister,"SEQUENCE",sequenceName)
             setattr(bagVatRegister,"PERIOD",periodName)
             setattr(bagVatRegister,"COMPANY_STRING",companyString)
             vatSummary=getVatSummary(vatDf, comNam, onlyValML, periodName=periodName, sequenceName=sequenceName)
@@ -163,7 +165,7 @@ def main(dirname):
         elif reportType==4:            
             payments = getDeferredVatDetailPayments(vatDf, comNam, onlyValML, paymentsPeriodName=periodName)
             notPayed = getDeferredVatDetailNotPayed(vatDf, comNam, onlyValML, periodDf, paymentsPeriodName=periodName)
-            bagPayments = Bag(DF=payments,TIP='tab',LM=lm_pagamenti_iva_differita,TITLE="Dettaglio IVA \nad esigibilita' differita")
+            bagPayments = Bag(DF=payments,TIP='tab',LM=lm_pagamenti_iva_differita)
             setattr(bagPayments,"PERIOD",periodName)
             setattr(bagPayments,"COMPANY_STRING",companyString)
             bagNotPayed = Bag(DF=notPayed,TIP='tab',LM=lm_da_pagare_iva_differita)

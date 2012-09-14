@@ -14,7 +14,7 @@
 \usepackage[utf8]{inputenc}              % utf-8 charset encoding
 \usepackage{moreverb}
 \usepackage{float}
-\usepackage[cm]{fullpage}
+\usepackage{fullpage}
 
 \newcommand{\SRE}{inserisci}
 
@@ -24,20 +24,20 @@
 \pagestyle{fancy}
 
 \setlength{\topmargin}{-1cm}
-\setlength{\headheight}{20pt}
+\setlength{\headheight}{28pt}
 
 %% left part of the head
-\fancyhead[l]{\input{company}}
+\fancyhead[l]{\SRE{deferred_vat_summary.COMPANY_STRING}}
 %% center of the head
 %\fancyhead[c]{\textit{ArCO Barletta\\Guida Tecnica}}
 %% right part of the head
-\fancyhead[r]{\color{DarkRed}\textbf{\Large{Riepilogo IVA ad esigibilita’ differita}}}
+\fancyhead[r]{\color{DarkRed}\textbf{\Large{Riepilogo IVA ad esigibilità differita}\linebreak Periodo: \SRE{deferred_vat_summary.PERIOD}}}
 %% left part of the foot
 %\fancyfoot[l]{Servabit Srl}
 %% center of the foot
 \fancyfoot[c]{}
 %% right part of the foot
-\fancyfoot[r]{Pagina \thepage}
+\fancyfoot[r]{}
 %% line of the head
 \renewcommand{\headrulewidth}{0.5pt}
 %% line of the foot
@@ -45,17 +45,12 @@
 
 
 \begin{document}
-% Periodo: \SRE{deferred_vat_summary.PERIOD}
 \begin{centering}
 \tabulinesep=1.5mm
 %%\input{table0}
-\begin{flushleft}
-Riepilogo
-\end{flushleft}
-\SRE{deferred_vat_summary}
-\begin{flushleft}
-Sintesi
-\end{flushleft}
-\SRE{deferred_vat_synthesis}
+\large{Riepilogo}
+\normalsize{\SRE{deferred_vat_summary}}
+\large{Sintesi}
+\normalsize{\SRE{deferred_vat_synthesis}}
 \end {centering}
 \end{document}
