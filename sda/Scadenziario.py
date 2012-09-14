@@ -24,15 +24,22 @@
 ######definizione degli lm
 #################
 
-lm_registri_iva = {
-        'DATE': [0, 'c', 'Data','registrazione'],
-        'M_NUM': [1, '0.5c', 'Numero','protocollo'],
-        'DATE_DOC': [2, 'c', 'Data ','documento'],
-        'M_REF': [3, 'c', 'Numero ','documento '],
-        'PARTNER': [4, '1.3c', 'Controparte',"@v3"],
-        'T_NAME': [5, '1.5c', 'Tipo','imposta'],
-        'BASE': [6, '0.5r', 'Imponibile',"@v1"],
-        'TAX': [7, '0.5r', 'Imposta',"@v2"],
+lm_fatture = {
+        'DATE_DUE': [0, 'c', 'Data','scadenza'],
+        'NUM': [1, 'c', 'Numero','@v1'],
+        'STATE': [2, 'c', 'Stato ','@v2'],
+        'PARTNER': [3, '2c', 'Controparte',"@v3"],
+        'out_invoice': [4, '0.5r', 'Entrata',"@v4"],
+        'in_invoice': [5, '0.5c', 'Uscita','@v5'],
+        }
+        
+lm_liquidazioni = {
+        'DATE_DUE': [0, 'c', 'Data','scadenza'],
+        'NUM': [1, 'c', 'Numero','@v1'],
+        'STATE': [2, 'c', 'Stato ','@v2'],
+        'PARTNER': [3, '2c', 'Controparte',"@v3"],
+        'sale': [4, '0.5r', 'Entrata',"@v4"],
+        'purchase': [5, '0.5c', 'Uscita','@v5'],
         }
 
 
@@ -61,24 +68,29 @@ def main(dirname):
     config = Config(configFilePath)
     config.parse()
     #assegna ai parametri di interesse il valore letto in config
-    comNam=config.options.get('company',False)
+    companyName = config.options.get('company',False)
     picklesPath = config.options.get('pickles_path',False)
     fiscalyearName=config.options.get('fiscalyear',False)
     #lettura degli oggetti stark di interesse
-    companyPathPkl = os.path.join(picklesPath,comNam)
+    companyPathPkl = os.path.join(picklesPath,companyName)
     invoiceStark = Stark.load(os.path.join(companyPathPkl,"INV.pickle"))
     voucherStark = Stark.load(os.path.join(companyPathPkl,"VOU.pickle"))
     periodStark = Stark.load(os.path.join(companyPathPkl,"PERIOD.pickle"))
     moveLineStark = Stark.load(os.path.join(companyPathPkl,"MVL.pickle"))
+    companyStarK = Stark.load(os.path.join(companyPathPkl,"COMP.pickle"))
+    companyDf = companyStarK.DF
+    companyString = companyDf['NAME'][0]+" - "+companyDf['ADDRESS'][0]+" \linebreak "+companyDf['ZIP'][0]+" "+companyDf['CITY'][0]+" P.IVA "+companyDf['VAT'][0]
     #calcolo
     expiries = computeExpiries(invoiceStark.DF,voucherStark.DF,periodStark.DF,moveLineStark.DF,fiscalyearName)
-    #vatRegister = SDAIva.getVatRegister(vatDf, comNam, onlyValML, fiscalyearName=fiscalyearName, sequenceName=sequenceName)
-    #bagVatRegister = Bag(DF=vatRegister,TIP='tab',LM=LMIva.lm_registri_iva)
-    #setattr(bagVatRegister,"SEQUENCE",sequenceName)
-    #setattr(bagVatRegister,"YEAR",fiscalyearName)
-    #setattr(bagVatRegister,"COMPANY_STRING",companyString)
-    #OUT_PATH = os.path.join(SRE_PATH, 'registro_iva')
-    #bagVatRegister.save(os.path.join(OUT_PATH, 'vat_register.pickle'))
+    #generazione e salvataggio bag
+    bagInvoices = Bag(DF=expiries['invoiceDf'],TIP='tab',LM=lm_fatture,TITLE="Fatture")
+    bagVouchers = Bag(DF=expiries['voucherDf'],TIP='tab',LM=lm_liquidazioni,TITLE="Liquidazioni")
+    setattr(bagInvoices,"YEAR",fiscalyearName)
+    setattr(bagInvoices,"COMPANY",companyName)
+    setattr(bagInvoices,"COMPANY_STRING",companyString)
+    OUT_PATH = os.path.join(SRE_PATH, 'scadenziario')
+    bagInvoices.save(os.path.join(OUT_PATH, 'invoices.pickle'))
+    bagVouchers.save(os.path.join(OUT_PATH, 'vouchers.pickle'))
     return 0
     
 def computeExpiries(invoiceDf , voucherDf , periodDf , moveLineDf, fiscalyearName):
@@ -91,14 +103,16 @@ def computeExpiries(invoiceDf , voucherDf , periodDf , moveLineDf, fiscalyearNam
         fiscalyearDateStart = df2["FY_DATE_START"][0]
         fiscalyearDateStop = df2["FY_DATE_STOP"][0]
     
-    invoiceColumns = ["TYPE","DATE_DUE","NUM","STATE","PARTNER","in_invoice","out_invoice"]
+    invoiceColumns = ["DATE_DUE","NUM","STATE","PARTNER","in_invoice","out_invoice"]
     invoiceResultDf = pandas.DataFrame(columns=invoiceColumns)
+    voucherColumns = ["DATE_DUE","NUM","STATE","PARTNER","sale","purchase"]
+    voucherResultDf = pandas.DataFrame(columns=voucherColumns)
     
     if fiscalyearDateStart and fiscalyearDateStop:
         ####
         #calcolo fatture in scadenza ancora non pagate
         ####
-        invoiceDf['DATE_DUE'].ix[invoiceDf['DATE_DUE'].isnull()] = invoiceDf['DATE_INV']
+        invoiceDf['DATE_DUE'].ix[invoiceDf['DATE_DUE'].isnull()] = invoiceDf.ix[invoiceDf['DATE_DUE'].isnull()]['DATE_INV']
         df1 = invoiceDf.ix[(invoiceDf["DATE_DUE"]<=fiscalyearDateStop) & (invoiceDf["DATE_DUE"]>=fiscalyearDateStart)]
         df2 = df1.ix[(df1["STATE"]!='paid') & (df1["STATE"]!='cancel')].reset_index()
         df3 = df2[['DATE_DUE','TYPE','NUM','STATE','PARTNER','TOTAL']]
@@ -107,42 +121,56 @@ def computeExpiries(invoiceDf , voucherDf , periodDf , moveLineDf, fiscalyearNam
                         rows=['DATE_DUE','NUM','STATE','PARTNER'])
         df4 = df4.reset_index()
         #formattazione finale
-        df4['in_invoice']=df4['in_invoice'].map(str)
-        df4['out_invoice']=df4['out_invoice'].map(str)
+        columnsList = list(df4.columns)
+        if columnsList.count("in_invoice")==0:
+            df4["in_invoice"] = ""
+        if columnsList.count("out_invoice")==0:
+            df4["in_invoice"] = ""
+        df4['in_invoice'] = df4['in_invoice'].map(str)
+        df4['out_invoice'] = df4['out_invoice'].map(str)
         df4['in_invoice'].ix[df4['in_invoice']=='nan'] = ''
+        df4['out_invoice'].ix[df4['out_invoice']=='nan'] = ''
         df4['STATE'].ix[df4['STATE']=='open'] = 'validata'
         df4['STATE'].ix[df4['STATE']=='draft'] = 'in bozza'
-        invoiceDf = df4
+        df4 = df4[invoiceColumns]
+        invoiceResultDf = df4
         
         ####
         #calcolo liquidazioni in scadenza ancora non pagate
         ####
-        voucherDf['DATE_DUE'].ix[voucherDf['DATE_DUE'].isnull()] = voucherDf['DATE']
+        voucherDf['DATE_DUE'].ix[voucherDf['DATE_DUE'].isnull()] = voucherDf.ix[voucherDf['DATE_DUE'].isnull()]['DATE']
         df1 = voucherDf.ix[(voucherDf["DATE_DUE"]<=fiscalyearDateStop) & (voucherDf["DATE_DUE"]>=fiscalyearDateStart)]
         df2 = df1.ix[df1["STATE"]!='cancel']
-        df3 = df2.ix[(df2["TYPE"]=='sale') | (df2["TYPE"]=='purchase')].reset_index()
+        df3 = df2.ix[(df2["TYPE"]=='sale') | (df2["TYPE"]=='purchase')].reset_index(drop=True)
         #calcolo delle liquidazioni pagate
         df4 = pandas.merge(df3,moveLineDf,on="NAM_MOV")
         df5 = df4.ix[df4["NAM_REC"].notnull()].reset_index()
         #esclusione delle liquidazioni pagate
         df6 = pandas.DataFrame({'NAM_MOV':list(set(df3['NAM_MOV']) - set(df5['NAM_MOV']))})
-        print df6
-        #print df5
-
-        #df3 = df2[['DATE_DUE','TYPE','NUM','STATE','PARTNER','TOTAL']]
-        #df3['TOTAL']=df3['TOTAL'].map(float)
-        #df4 = pandas.pivot_table(df3,values='TOTAL', cols=['TYPE'], 
-                        #rows=['DATE_DUE','NUM','STATE','PARTNER'])
-        #df4 = df4.reset_index()
+        df7 = pandas.merge(df3,df6,on="NAM_MOV")
+        df7['AMOUNT']=df7['AMOUNT'].map(float)
+        df8 = pandas.pivot_table(df7,values='AMOUNT', cols=['TYPE'], 
+                        rows=['DATE_DUE','NUM','STATE','PARTNER'])
+        df8 = df8.reset_index()
         #formattazione finale
-        #df4['in_invoice']=df4['in_invoice'].map(str)
-        #df4['out_invoice']=df4['out_invoice'].map(str)
-        #df4['in_invoice'].ix[df4['in_invoice']=='nan'] = ''
-        #df4['STATE'].ix[df4['STATE']=='open'] = 'validata'
-        #df4['STATE'].ix[df4['STATE']=='draft'] = 'in bozza'
-        #voucherDf = df4
-        
-    return 0
+        columnsList = list(df8.columns)
+        if columnsList.count("purchase")==0:
+            df8["purchase"] = ""
+        if columnsList.count("sale")==0:
+            df8["sale"] = ""
+        df8['purchase'] = df8['purchase'].map(str)
+        df8['sale'] = df8['sale'].map(str)
+        df8['purchase'].ix[df8['purchase']=='nan'] = ''
+        df8['sale'].ix[df8['sale']=='nan'] = ''
+        df8['STATE'].ix[df8['STATE']=='posted'] = 'validata'
+        df8['STATE'].ix[df8['STATE']=='draft'] = 'in bozza'
+        df8 = df8[voucherColumns]
+        voucherResultDf = df8
+    
+    return {
+        'invoiceDf' : invoiceResultDf,
+        'voucherDf' : voucherResultDf,
+        }
     
     
 if __name__ == "__main__":
