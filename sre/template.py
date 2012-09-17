@@ -90,14 +90,12 @@ class TexSreTemplate(string.Template):
         try:
             fd = codecs.open(path, mode='r', encoding='utf-8')
             templ = fd.read()
-            templ = re.sub("\\\\newcommand\{\\\\\\SRE\}\{.*?\}", "", templ)
             super(TexSreTemplate, self).__init__(templ)
         except IOError, err:
             self._logger.error(err)
             sys.exit(err.errno)
         finally:
-            if fd > 0:
-                fd.close()
+            fd.close()
 
     def _load_bags(self, path, **kwargs):
         ''' Load bag files and generates TeX code from them.
@@ -113,7 +111,7 @@ class TexSreTemplate(string.Template):
         # Make a placeholders list to fetch only needed files and to let access to
         # single Pickle attributes.
         ph_list = [ph[2] for ph in self.pattern.findall(self.template)]
-
+        ph_list.remove(str()) # Remove placeholder command definition.
         self._logger.info("Reading pickles.")
         bags = dict() # Pickle file's cache (never load twice the same file!)
         for ph in ph_list:
