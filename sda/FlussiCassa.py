@@ -48,6 +48,8 @@ import os
 import getopt
 import pandas
 import numpy
+import calendar
+from datetime import date
 
 # Servabit libraries
 BASEPATH = os.path.abspath(os.path.join(
@@ -77,8 +79,13 @@ def main(dirname):
     totalExpensesFlowLineCode = config.options.get('total_expenses_flow_line',False)
     linesCsvFilePath = config.options.get('lines_csv_file_path',False)
     matchingsCsvFilePath = config.options.get('matchings_csv_file_path',False)
-    incomingAccountsCsvFilePath = config.options.get('incoming_accounts_csv_file_path',False)
-    costAccountsCsvFilePath = config.options.get('cost_accounts_csv_file_path',False)
+    #incomingAccountsCsvFilePath = config.options.get('incoming_accounts_csv_file_path',False)
+    #costAccountsCsvFilePath = config.options.get('cost_accounts_csv_file_path',False)
+    #verifica che la stringa associata al parametro only_validated_moves inserita in config
+    #sia effettivamente un valore boleano 
+    onlyValidatedMoves = True
+    if str(config.options.get('only_validated_moves',True))=='False':
+        onlyValidatedMoves = False
     #lettura degli oggetti stark di interesse
     companyPathPkl = os.path.join(picklesPath,companyName)
     accountStark = Stark.load(os.path.join(companyPathPkl,"ACC.pickle"))
@@ -90,12 +97,12 @@ def main(dirname):
     #lettura csv
     linesDf = pandas.read_csv(linesCsvFilePath, sep=";", header=0)
     matchingsDf = pandas.read_csv(matchingsCsvFilePath, sep=";", header=0)
-    incomingsDf = pandas.read_csv(incomingAccountsCsvFilePath, sep=";", header=0)
-    costsDf = pandas.read_csv(costAccountsCsvFilePath, sep=";", header=0)
+    #incomingsDf = pandas.read_csv(incomingAccountsCsvFilePath, sep=";", header=0)
+    #costsDf = pandas.read_csv(costAccountsCsvFilePath, sep=";", header=0)
     #controllo conti
     checkAccounts(matchingsDf,accountStark.DF)
-    #calcolo entrate e uscite
-    
+    #calcolo flussi
+    computeCashFlows(fiscalyearName,moveLineStark.DF,accountStark.DF,periodStark.DF,matchingsDf,onlyValidatedMoves,defaultIncomingsFlowLineCode,defaultExpensesFlowLineCode,printWarnings=True)
     #calcolo
     #expiries = computeExpiries(invoiceStark.DF,voucherStark.DF,periodStark.DF,moveLineStark.DF,fiscalyearName)
     #generazione e salvataggio bag
@@ -130,9 +137,30 @@ def checkAccounts(matchingsDf, accountsDf):
         code = row['COD_CON'][i]
         print "Warning: il conto "+code.encode('utf8')+" è presente nel db ma non nel file csv delle corrispondenze"
         
-def computeIncomingAndCosts(session, fiscalyearName, incomingsDf, costsDf, onlyValidatedMoves=True):
-    
-
+def computeCashFlows(fiscalyearName, moveLineDf, accountDf, periodDf,
+                    matchingsDf, onlyValidatedMoves, defaultIncomingsFlowLineCode,
+                    defaultExpensesFlowLineCode, printWarnings=True):
+    #recupero conti di liquidità
+    liquidityAccountsDf = accountDf[accountDf["TYP_CON"]=='liquidity'].reset_index(drop=True)
+    #calcolo intero relativo all'anno fiscale
+    df0 = periodDf[periodDf["NAM_FY"]==fiscalyearName]
+    df1 = df0[["FY_DATE_START"]].drop_duplicates().reset_index()
+    year = (df1["FY_DATE_START"][0]).year
+    #calcolo dei risultati per ogni mese
+    if onlyValidatedMoves:
+        moveLineDf = moveLineDf[moveLineDf["STA_MOV"]=='posted'].reset_index(drop=True)
+    for month in range(12):
+        month += 1
+        if printWarnings:
+            print month
+        lastDay = calendar.monthrange(year,month)[1]
+        dateStart = date(year,month,1)
+        dateEnd = date(year,month,lastDay)
+        df0 = liquidityAccountsDf[["COD_CON"]]
+        df1 = pandas.merge(moveLineDf,df0,on="COD_CON")
+        df2 = df1[(df1["DAT_MVL"]>=dateStart) & (df1["DAT_MVL"]<=dateEnd)].reset_index(drop=True)
+        if len(df2) > 0:
+            
     
 if __name__ == "__main__":
     abspath=os.path.abspath(sys.argv[0])

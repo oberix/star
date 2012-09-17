@@ -115,7 +115,7 @@ def main(dirname):
     periodName=config.options.get('period',False)
     sequenceName=config.options.get('sequence',False)
     treasuryVatAccountCode=config.options.get('treasury_vat_account_code',False)
-    #verifica che la stringa associata al parametro only_validated_moves inserita in configù
+    #verifica che la stringa associata al parametro only_validated_moves inserita in config
     #sia effettivamente un valore boleano 
     onlyValML=True
     if str(config.options.get('only_validated_moves',True))=='False':
