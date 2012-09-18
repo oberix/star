@@ -26,6 +26,7 @@ __AUTHOR__ = 'Luigi Cirillo (<luigi.cirillo@servabit.it>)'
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.engine.url import URL
 from datetime import datetime
 from decimal import Decimal
 
@@ -450,14 +451,16 @@ def open_session():
     '''
     global conf, logger
     logger.debug('Opening session')
-    #import ipdb; ipdb.set_trace()
-    Session = sessionmaker(bind = create_engine( \
-        conf.options.get('dbtype') + '+' + \
-        conf.options.get('driver') + '://' + \
-        conf.options.get('user') + ':' + \
-        conf.options.get('pwd') + '@' + \
-        conf.options.get('host') + '/' + \
-        conf.options.get('dbname')))
+    url = URL(
+        '+'.join([conf.options.get('dbtype', 'postgresql'), conf.options.get('driver', 'psycopg2')]),
+        username = conf.options.get('user', None),
+        password = conf.options.get('pwd', None),
+        host = conf.options.get('host', None),
+        port = conf.options.get('port', None),
+        database = conf.options.get('dbname', None),
+        )
+    engine = create_engine(url)
+    Session = sessionmaker(bind=engine)
     return Session()
 
 def close_session(session,):
