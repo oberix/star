@@ -106,14 +106,14 @@ def main(dirname):
     #calcolo
     #expiries = computeExpiries(invoiceStark.DF,voucherStark.DF,periodStark.DF,moveLineStark.DF,fiscalyearName)
     #generazione e salvataggio bag
-    #bagInvoices = Bag(DF=expiries['invoiceDf'],TIP='tab',LM=lm_fatture,TITLE="Fatture")
-    #bagVouchers = Bag(DF=expiries['voucherDf'],TIP='tab',LM=lm_liquidazioni,TITLE="Liquidazioni")
+    #bagInvoices = Bag(expiries['invoiceDf'], os.path.join(OUT_PATH, 'invoices.pickle'), TI='tab',LM=lm_fatture,TITLE="Fatture")
+    #bagVouchers = Bag(expiries['voucherDf'], os.path.join(OUT_PATH, 'vouchers.pickle'), TI='tab',LM=lm_liquidazioni,TITLE="Liquidazioni")
     #setattr(bagInvoices,"YEAR",fiscalyearName)
     #setattr(bagInvoices,"COMPANY",companyName)
     #setattr(bagInvoices,"COMPANY_STRING",companyString)
     #OUT_PATH = os.path.join(SRE_PATH, 'scadenziario')
-    #bagInvoices.save(os.path.join(OUT_PATH, 'invoices.pickle'))
-    #bagVouchers.save(os.path.join(OUT_PATH, 'vouchers.pickle'))
+    #bagInvoices.save()
+    #bagVouchers.save()
     return 0
 
 ###########

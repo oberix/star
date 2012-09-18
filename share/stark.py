@@ -22,12 +22,13 @@
     Stark Class select and rename fields from Goal2df Move Line
     dataframe and hold a description about
 .'''
-__VERSION__ = '0.1'
-__AUTHOR__ = 'Luigi Cirillo (<luigi.cirillo@servabit.it>)'
+__version__ = '0.1'
+__author__ = 'Luigi Cirillo (<luigi.cirillo@servabit.it>)'
 __all__ = ['Stark']
 
 import sys
 import os 
+import logging
 
 BASEPATH = os.path.abspath(os.path.join(
         os.path.dirname(__file__),
@@ -36,28 +37,48 @@ sys.path.append(BASEPATH)
 sys.path = list(set(sys.path))
 from share import GenericPickler
 
+TI_VALS = (
+    'elab'
+)
+
 class Stark(GenericPickler):
+    ''' This is the artifact that outputs mainly from etl procedures. It is a
+    collection of meta-information around datas inside a pandas DataFrame.
+
+    Stark has the following attributes:
+        DF: a pandas DataFrame
+        LD: the path where the object will be saved as pickle
+        TI: type (just 'elab' for now)
+        VD: a a dictionary of various info for the user; keys are DF columns
+        names, each key contain a dictionary with the following keys.
+            TIP: data use, one of (D|N|S|R), that stands for:
+                Dimension: can be used in aggregation (like groupby)
+                Numeric: a numeric data type
+                String: a string data type
+                Calculated: (Ricavato in Italian)
+            DES: a short description
+            MIS: unit of measure
+            ELA: elaboration that ptocuced the data (if TIP == 'R')
+
     '''
-    Stark Class 
-    '''
-    
-    def __init__(self, DF, TYPE, COD = None, TITLE = None, FOOTNOTE = None):
-        '''
-        Initialize:
-        '''
+
+    def __init__(self, DF, LD, TI='elab', VD=None):
+        self._logger = logging.getLogger(type(self).__name__)
         self.DF = DF
-        self.TYPE = TYPE
-        self.COD = COD
-        self.FOOTNOTE = FOOTNOTE
-        self.DES = {}
-        self.TITLE = str
-        self.__path = str
-        if TYPE == 'elab':
-            for e in self.DF.columns:
-                self.DES[e] = {'VARTYPE' : None, 'DASTR' : None, 'DESVAR' : None, 'MUNIT' : None, 'DATYP' : None, }
-        if TYPE == 'tab':
-            for e in self.DF.columns:
-                self.DES[e] = {'ORD' : None, 'H1' : None, 'H2' : None, 'H3' : None, 'POS' : None, }
-        if TYPE == 'graph':
-            for e in self.DF.columns:
-                self.DES[e] = {'WUSE' : None, 'AXES' : None, 'LEG' : None}
+        self.LD = LD
+        if TI not in TI_VALS:
+            raise ValueError("TI must be one of %s" % TI_VALS)
+        self.TI = TI
+        if VD is None:
+            VD = dict()
+        if not set(VD.keys()).issubset(set(DF.columns.tolist())):
+            raise ValueError("VD.keys() must be a subset of DF.columns")
+        self.VD = VD
+
+    def save(self, file_=None):
+        if file_ is None:
+            file_ = self.LD
+        if not os.path.exists(os.path.dirname(file_)):
+            os.makedirs(os.path.dirname(file_))
+        super(Stark, self).save(file_)
+

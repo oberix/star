@@ -69,13 +69,11 @@ class GenericPickler(object):
     Every class that need to be saved as a pickle should subclass this.
     """
     
-    def save(self, file):
+    def save(self, file_):
         """ Save objet as a pickle """
-        save(self, file)
-#        pickle.dump(self, file)
+        save(self, file_)
 
     @staticmethod
-    def load(file):
+    def load(file_):
         """ Load object from a pickle """
-        return load(file)
-#        return pickle.load(file)
+        return load(file_)

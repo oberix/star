@@ -25,11 +25,6 @@ __AUTHOR__ = 'Luigi Cirillo (<luigi.cirillo@servabit.it>)'
 import sys
 import os
 import pandas
-import MySQLdb
-try:
-    import cPickle
-except ImportError:
-    import Pickle as cPickle
 
 # Servabit libraries
 BASEPATH = os.path.abspath(os.path.join(
@@ -83,17 +78,17 @@ def CreateDWComp(companyName):
     #Seleziono i dati per l'impresa Servabit
     #accountsDf=accountsDf[accountsDf['NAM_IMP']==companyName]
     del accountsDf['NAM_IMP']
-    ACC = Stark(accountsDf,TYPE='elab',COD='ACC')
+    ACC = Stark(accountsDf,os.path.join(path, 'ACC.pickle'))
     #effettuo il primo abbellimento di Stark
-    ACC.DES['ID0_CON']['DESVAR']=unicode('ID identificativo del conto','utf-8')
-    ACC.DES['NAM_CON']['DESVAR']=unicode('Nome descrittivo del conto','utf-8')
-    ACC.DES['COD_CON']['DESVAR']=unicode('Codice menorico identificativo del conto','utf-8')
-    ACC.DES['GOV_CON']['DESVAR']=unicode('Tipologia che governa la gestione del conto','utf-8')
-    ACC.DES['PAN_CON']['DESVAR']=unicode('Nome descrittivo del conto padre','utf-8')
-    ACC.DES['PAC_CON']['DESVAR']=unicode('Codice menorico del conto padre','utf-8')
-    ACC.DES['TYP_CON']['DESVAR']=unicode('Tipo interno','utf-8')
+    ACC.VD['ID0_CON']['DES']=unicode('ID identificativo del conto','utf-8')
+    ACC.VD['NAM_CON']['DES']=unicode('Nome descrittivo del conto','utf-8')
+    ACC.VD['COD_CON']['DES']=unicode('Codice menorico identificativo del conto','utf-8')
+    ACC.VD['GOV_CON']['DES']=unicode('Tipologia che governa la gestione del conto','utf-8')
+    ACC.VD['PAN_CON']['DES']=unicode('Nome descrittivo del conto padre','utf-8')
+    ACC.VD['PAC_CON']['DES']=unicode('Codice menorico del conto padre','utf-8')
+    ACC.VD['TYP_CON']['DES']=unicode('Tipo interno','utf-8')
 #    ACC.DefPathPkl(path)
-    ACC.save(os.path.join(path, 'ACC.pickle'))
+    ACC.save()
 
     ############################################################################################
     #  importazione dei dati della classe Account Move Line
@@ -136,21 +131,19 @@ def CreateDWComp(companyName):
     #movelineDf=movelineDf[movelineDf['NAM_IMP']==companyName]
     del movelineDf['NAM_IMP']
     #del movelineDf['TYP_CON']
-    MVL = Stark(movelineDf,TYPE='elab',COD='MVL')
+    MVL = Stark(movelineDf, os.path.join(path, 'MVL.pickle'), TI='elab')
     #effettuo il primo abbellimento di Stark
-    MVL.DES['ID0_MVL']['DESVAR']=unicode('ID identificativo della move line','utf-8')
-    MVL.DES['NAM_MVL']['DESVAR']=unicode('Nome descrittivo della move line','utf-8')
-    MVL.DES['COD_CON']['DESVAR']=unicode('Codice mnemonico identificativo del conto','utf-8')
-    MVL.DES['DAT_MVL']['DESVAR']=unicode('data di registrazione','utf-8')
-    MVL.DES['DAT_DUE']['DESVAR']=unicode('data di scadenza','utf-8')
-    MVL.DES['STA_MOV']['DESVAR']=unicode('stato della move in termini di validazione','utf-8')
-    MVL.DES['DBT_MVL']['DESVAR']=unicode('colonna DARE della partita doppia','utf-8')
-    MVL.DES['CRT_MVL']['DESVAR']=unicode('colonna AVERE della partita doppia','utf-8')
-    MVL.DES['TAX_COD']['DESVAR']=unicode("identificativo relativo al tax_code",'utf-8')
-    MVL.DES['TAX_AMO']['DESVAR']=unicode("ammontare di tassa o imponibile",'utf-8')
-    MVL.DES['DAT_DOC']['DESVAR']=unicode("la data della fattura",'utf-8')
-    MVL.save(os.path.join(path, 'MVL.pickle'))
-
+    MVL.VD['ID0_MVL']['DES']=unicode('ID identificativo della move line','utf-8')
+    MVL.VD['NAM_MVL']['DES']=unicode('Nome descrittivo della move line','utf-8')
+    MVL.VD['COD_CON']['DES']=unicode('Codice mnemonico identificativo del conto','utf-8')
+    MVL.VD['DAT_MVL']['DES']=unicode('data di registrazione','utf-8')
+    MVL.VD['STA_MOV']['DES']=unicode('stato della move in termini di validazione','utf-8')
+    MVL.VD['DBT_MVL']['DES']=unicode('colonna DARE della partita doppia','utf-8')
+    MVL.VD['CRT_MVL']['DES']=unicode('colonna AVERE della partita doppia','utf-8')
+    MVL.VD['TAX_COD']['DES']=unicode("identificativo relativo al tax_code",'utf-8')
+    MVL.VD['TAX_AMO']['DES']=unicode("ammontare di tassa o imponibile",'utf-8')
+    MVL.VD['DAT_DOC']['DES']=unicode("la data della fattura",'utf-8')
+    MVL.save()
 
 ############################################################################################
     #  importazione dei dati della classe Account Move 
@@ -208,14 +201,14 @@ def CreateDWComp(companyName):
     #partnerDf=partnerDf[partnerDf['NAM_IMP']==companyName]
     del partnerDf['NAM_IMP']
     #del partnerDf['TYP_CON']
-    PAR = Stark(partnerDf,TYPE='elab',COD='PAR')
+    PAR = Stark(partnerDf, os.path.join(path, 'PAR.pickle'), TI='elab')
     #effettuo il primo abbellimento di Stark
-    PAR.DES['ID0_PAR']['DESVAR']=unicode('ID identificativo del partner','utf-8')
-    PAR.DES['NAM_PAR']['DESVAR']=unicode('Nome descrittivo del partner','utf-8')
-    PAR.DES['CFS_PAR']['DESVAR']=unicode('Codice fiscale del partner','utf-8')
-    PAR.DES['IVA_PAR']['DESVAR']=unicode('Partita IVA del partner','utf-8')
+    PAR.VD['ID0_PAR']['DES']=unicode('ID identificativo del partner','utf-8')
+    PAR.VD['NAM_PAR']['DES']=unicode('Nome descrittivo del partner','utf-8')
+    PAR.VD['CFS_PAR']['DES']=unicode('Codice fiscale del partner','utf-8')
+    PAR.VD['IVA_PAR']['DES']=unicode('Partita IVA del partner','utf-8')
     # PAR.DefPathPkl(path)
-    PAR.save(os.path.join(path, 'PAR.pickle'))
+    PAR.save()
     
     
     ############################################################################################
@@ -239,14 +232,14 @@ def CreateDWComp(companyName):
     #taxDf=taxDf[taxDf['NAM_IMP']==companyName]
     del taxDf['NAM_IMP']
     #del taxDf['TYP_CON']
-    TAX = Stark(taxDf,TYPE='elab',COD='TAX')
+    TAX = Stark(taxDf, os.path.join(path, 'TAX.pickle'), TI='elab')
     #effettuo il primo abbellimento di Stark
-    TAX.DES['NAM_TAX']['DESVAR']=unicode("nome della tassa",'utf-8')
-    TAX.DES['TAX_CODE']['DESVAR']=unicode("identificativo del tax_code di tassa",'utf-8')
-    TAX.DES['BASE_CODE']['DESVAR']=unicode("identificativo del tax_code di imponibile",'utf-8')
-    TAX.DES['REF_TAX_CODE']['DESVAR']=unicode("identificativo del tax_code di tassa (per le note di credito)",'utf-8')
-    TAX.DES['REF_BASE_CODE']['DESVAR']=unicode("identificativo del tax_code di imponibile (per le note di credito)",'utf-8')
-    TAX.save(os.path.join(path, 'TAX.pickle'))
+    TAX.VD['NAM_TAX']['DES']=unicode("nome della tassa",'utf-8')
+    TAX.VD['TAX_CODE']['DES']=unicode("identificativo del tax_code di tassa",'utf-8')
+    TAX.VD['BASE_CODE']['DES']=unicode("identificativo del tax_code di imponibile",'utf-8')
+    TAX.VD['REF_TAX_CODE']['DES']=unicode("identificativo del tax_code di tassa (per le note di credito)",'utf-8')
+    TAX.VD['REF_BASE_CODE']['DES']=unicode("identificativo del tax_code di imponibile (per le note di credito)",'utf-8')
+    TAX.save()
     
     ############################################################################################
     #  importazione dei dati della classe AccountPeriod
@@ -270,15 +263,15 @@ def CreateDWComp(companyName):
     #periodDf=periodDf[periodDf['NAM_IMP']==companyName]
     del periodDf['NAM_IMP']
     #del periodDf['TYP_CON']
-    PERIOD = Stark(periodDf,TYPE='elab',COD='PERIOD')
+    PERIOD = Stark(periodDf, os.path.join(path, 'PERIOD.pickle'), TI='elab')
     #effettuo il primo abbellimento di Stark
-    PERIOD.DES['P_DATE_STR']['DESVAR']=unicode("data di inizio del periodo",'utf-8')
-    PERIOD.DES['P_DATE_STOP']['DESVAR']=unicode("data di fine del periodo",'utf-8')
-    PERIOD.DES['FY_DATE_START']['DESVAR']=unicode("data di inizio dell'anno fiscale",'utf-8')
-    PERIOD.DES['FY_DATE_STOP']['DESVAR']=unicode("data di fine dell'anno fiscale",'utf-8')
-    PERIOD.DES['NAM_FY']['DESVAR']=unicode("nome dell'anno fiscale relativo al periodo",'utf-8')
+    PERIOD.VD['P_DATE_STR']['DES']=unicode("data di inizio del periodo",'utf-8')
+    PERIOD.VD['P_DATE_STOP']['DES']=unicode("data di fine del periodo",'utf-8')
+    PERIOD.VD['FY_DATE_START']['DES']=unicode("data di inizio dell'anno fiscale",'utf-8')
+    PERIOD.VD['FY_DATE_STOP']['DES']=unicode("data di fine dell'anno fiscale",'utf-8')
+    PERIOD.VD['NAM_FY']['DES']=unicode("nome dell'anno fiscale relativo al periodo",'utf-8')
 #    PERIOD.DefPathPkl(path)
-    PERIOD.save(os.path.join(path, 'PERIOD.pickle'))
+    PERIOD.save()
 
     ############################################################################################
     #  importazione dei dati della classe IrSequence
@@ -433,8 +426,8 @@ def CreateDWComp(companyName):
                              ]= True                       
     
     vatDatasDf['T_DET'] = None
-    vatDatasDf['T_DET'].ix[vatDatasDf['T_TAX']==True] = False
-    vatDatasDf['T_DET'].ix[(vatDatasDf['T_TAX']==True) & 
+    vatDatasDf['T_DET'].ix[vatDatasDf['T_TAX'] == True] = False
+    vatDatasDf['T_DET'].ix[(vatDatasDf['T_TAX'] == True) & 
                             vatDatasDf['T_ACC'].isin([
                                     immediateVatCreditAccountCode,immediateVatDebitAccountCode,
                                     deferredVatCreditAccountCode,deferredVatDebitAccountCode])] = True
@@ -453,31 +446,31 @@ def CreateDWComp(companyName):
                             'T_ACC','T_TAX','T_CRED','T_DET','T_IMM','T_EXI','AMOUNT'
                             ]]
     vatDatasDf = vatDatasDf.sort(columns=['M_NAME'])
-    vatDatasStark = Stark(vatDatasDf,TYPE='elab',COD='VAT')
-    vatDatasStark.DES['ESER']['DESVAR']=unicode("anno fiscale",'utf-8')
-    vatDatasStark.DES['M_NUM']['DESVAR']=unicode("numero di protocollo",'utf-8')
-    vatDatasStark.DES['M_NAME']['DESVAR']=unicode("name della move",'utf-8')
-    vatDatasStark.DES['M_REF']['DESVAR']=unicode("riferimento della move",'utf-8')
-    vatDatasStark.DES['CASH']['DESVAR']=unicode("booleano che indica se è un pagamento",'utf-8')
-    vatDatasStark.DES['T_NAME']['DESVAR']=unicode("nome dell'imposta",'utf-8')
-    vatDatasStark.DES['T_ACC']['DESVAR']=unicode("codice del conto",'utf-8')
-    vatDatasStark.DES['T_TAX']['DESVAR']=unicode("booleano che indica se è un'imposta (oppure un imponibile)",'utf-8')
-    vatDatasStark.DES['T_CRED']['DESVAR']=unicode("booleano che indica se l'imposta è a credito",'utf-8')
-    vatDatasStark.DES['T_DET']['DESVAR']=unicode("booleano che indica se l'imposta è detraibile",'utf-8')
-    vatDatasStark.DES['T_IMM']['DESVAR']=unicode("booleano che indica se l'imposta è ad esigibilità immediata",'utf-8')
-    vatDatasStark.DES['T_EXI']['DESVAR']=unicode("booleano che indica se l'imposta è esigibile nel periodo",'utf-8')
-    vatDatasStark.DES['STATE']['DESVAR']=unicode("stato della scrittura contabile",'utf-8')
-    vatDatasStark.DES['PERIOD']['DESVAR']=unicode("nome del periodo",'utf-8')
-    vatDatasStark.DES['JOURNAL']['DESVAR']=unicode("nome del journal",'utf-8')
-    vatDatasStark.DES['DATE_DOC']['DESVAR']=unicode("data della fattura",'utf-8')
-    vatDatasStark.DES['DATE']['DESVAR']=unicode("data di registrazione",'utf-8')
-    vatDatasStark.DES['PARTNER']['DESVAR']=unicode("nome del partner",'utf-8')
-    vatDatasStark.DES['RECON']['DESVAR']=unicode("nome della riconciliazione",'utf-8')
-    vatDatasStark.DES['RECON_P']['DESVAR']=unicode("nome della riconciliazione parziale",'utf-8')
-    vatDatasStark.DES['AMOUNT']['DESVAR']=unicode("importo (di imponibile o imposta o pagamento)",'utf-8')
-    vatDatasStark.DES['CRED']['DESVAR']=unicode("booleano che indica se l'importo originario era in dare o in avere",'utf-8')
-    vatDatasStark.DES['SEQUENCE']['DESVAR']=unicode("nome della sequenza",'utf-8')
-    vatDatasStark.save(os.path.join(path, 'VAT.pickle'))
+    vatDatasStark = Stark(vatDatasDf, os.path.join(path, 'VAT.pickle'), TI='elab')
+    vatDatasStark.VD['ESER']['DES']=unicode("anno fiscale",'utf-8')
+    vatDatasStark.VD['M_NUM']['DES']=unicode("numero di protocollo",'utf-8')
+    vatDatasStark.VD['M_NAME']['DES']=unicode("name della move",'utf-8')
+    vatDatasStark.VD['M_REF']['DES']=unicode("riferimento della move",'utf-8')
+    vatDatasStark.VD['CASH']['DES']=unicode("booleano che indica se è un pagamento",'utf-8')
+    vatDatasStark.VD['T_NAME']['DES']=unicode("nome dell'imposta",'utf-8')
+    vatDatasStark.VD['T_ACC']['DES']=unicode("codice del conto",'utf-8')
+    vatDatasStark.VD['T_TAX']['DES']=unicode("booleano che indica se è un'imposta (oppure un imponibile)",'utf-8')
+    vatDatasStark.VD['T_CRED']['DES']=unicode("booleano che indica se l'imposta è a credito",'utf-8')
+    vatDatasStark.VD['T_DET']['DES']=unicode("booleano che indica se l'imposta è detraibile",'utf-8')
+    vatDatasStark.VD['T_IMM']['DES']=unicode("booleano che indica se l'imposta è ad esigibilità immediata",'utf-8')
+    vatDatasStark.VD['T_EXI']['DES']=unicode("booleano che indica se l'imposta è esigibile nel periodo",'utf-8')
+    vatDatasStark.VD['STATE']['DES']=unicode("stato della scrittura contabile",'utf-8')
+    vatDatasStark.VD['PERIOD']['DES']=unicode("nome del periodo",'utf-8')
+    vatDatasStark.VD['JOURNAL']['DES']=unicode("nome del journal",'utf-8')
+    vatDatasStark.VD['DATE_DOC']['DES']=unicode("data della fattura",'utf-8')
+    vatDatasStark.VD['DATE']['DES']=unicode("data di registrazione",'utf-8')
+    vatDatasStark.VD['PARTNER']['DES']=unicode("nome del partner",'utf-8')
+    vatDatasStark.VD['RECON']['DES']=unicode("nome della riconciliazione",'utf-8')
+    vatDatasStark.VD['RECON_P']['DES']=unicode("nome della riconciliazione parziale",'utf-8')
+    vatDatasStark.VD['AMOUNT']['DES']=unicode("importo (di imponibile o imposta o pagamento)",'utf-8')
+    vatDatasStark.VD['CRED']['DES']=unicode("booleano che indica se l'importo originario era in dare o in avere",'utf-8')
+    vatDatasStark.VD['SEQUENCE']['DES']=unicode("nome della sequenza",'utf-8')
+    vatDatasStark.save()
     #vatDatasDf.to_csv("df"+companyName+".csv",sep=";",encoding="utf-8")
     
     ############################################################################################
@@ -501,16 +494,16 @@ def CreateDWComp(companyName):
     #Seleziono i dati per l'impresa Servabit
     companyDf = companyDf[companyDf['NAME']==companyName]
     companyDf = companyDf.reset_index(drop=True)
-    ResCompanyStark = Stark(companyDf,TYPE='elab',COD='COM')
+    ResCompanyStark = Stark(companyDf, os.path.join(path, 'COMP.pickle'), TI='elab')
     #effettuo il primo abbellimento di Stark
-    ResCompanyStark.DES['NAME']['DESVAR']=unicode("nome dell'azienda",'utf-8')
-    ResCompanyStark.DES['TAX']['DESVAR']=unicode("codice fiscale",'utf-8')
-    ResCompanyStark.DES['VAT']['DESVAR']=unicode("partita iva",'utf-8')
-    ResCompanyStark.DES['ADDRESS']['DESVAR']=unicode("indirizzo",'utf-8')
-    ResCompanyStark.DES['CITY']['DESVAR']=unicode("città",'utf-8')
-    ResCompanyStark.DES['ZIP']['DESVAR']=unicode("cap",'utf-8')
-    ResCompanyStark.DES['PHONE']['DESVAR']=unicode("telefono",'utf-8')
-    ResCompanyStark.save(os.path.join(path, 'COMP.pickle'))
+    ResCompanyStark.VD['NAME']['DES']=unicode("nome dell'azienda",'utf-8')
+    ResCompanyStark.VD['TAX']['DES']=unicode("codice fiscale",'utf-8')
+    ResCompanyStark.VD['VAT']['DES']=unicode("partita iva",'utf-8')
+    ResCompanyStark.VD['ADDRESS']['DES']=unicode("indirizzo",'utf-8')
+    ResCompanyStark.VD['CITY']['DES']=unicode("città",'utf-8')
+    ResCompanyStark.VD['ZIP']['DES']=unicode("cap",'utf-8')
+    ResCompanyStark.VD['PHONE']['DES']=unicode("telefono",'utf-8')
+    ResCompanyStark.save()
     
     ############################################################################################
     #  importazione dei dati della classe AccountInvoice
@@ -537,12 +530,12 @@ def CreateDWComp(companyName):
     invoiceDict = create_dict.create_dict(invoiceClass, invoiceDict, companyName)
     invoiceDf = pandas.DataFrame(invoiceDict)
     #invoiceDf=invoiceDf[invoiceDf['NAM_IMP']==companyName]
-    invoiceStark = Stark(invoiceDf,TYPE='elab',COD='INV')
+    invoiceStark = Stark(invoiceDf,os.path.join(path, 'INV.pickle'), TI='elab')
     #effettuo il primo abbellimento di Stark
-    invoiceStark.DES['NUM']['DESVAR']=unicode('numero fattura','utf-8')
-    invoiceStark.DES['ESER']['DESVAR']=unicode("nome dell'anno fiscale",'utf-8')
-    invoiceStark.DES['NAM_MOV']['DESVAR']=unicode("nome della scrittura contabile associata",'utf-8')
-    invoiceStark.save(os.path.join(path, 'INV.pickle'))
+    invoiceStark.VD['NUM']['DES']=unicode('numero fattura','utf-8')
+    invoiceStark.VD['ESER']['DES']=unicode("nome dell'anno fiscale",'utf-8')
+    invoiceStark.VD['NAM_MOV']['DES']=unicode("nome della scrittura contabile associata",'utf-8')
+    invoiceStark.save()
     
     ############################################################################################
     #  importazione dei dati della classe AccountVoucher
@@ -569,9 +562,9 @@ def CreateDWComp(companyName):
     voucherDict = create_dict.create_dict(voucherClass, voucherDict, companyName)
     voucherDf = pandas.DataFrame(voucherDict)
     #voucherDf=voucherDf[voucherDf['NAM_IMP']==companyName]
-    voucherStark = Stark(voucherDf,TYPE='elab',COD='VOU')
+    voucherStark = Stark(voucherDf,os.path.join(path, 'VOU.pickle'), TI='elab')
     #effettuo il primo abbellimento di Stark
-    voucherStark.DES['NUM']['DESVAR']=unicode('numero voucher','utf-8')
-    voucherStark.DES['ESER']['DESVAR']=unicode("nome dell'anno fiscale",'utf-8')
-    voucherStark.DES['NAM_MOV']['DESVAR']=unicode("nome della scrittura contabile associata",'utf-8')
-    voucherStark.save(os.path.join(path, 'VOU.pickle'))
+    voucherStark.VD['NUM']['DES']=unicode('numero voucher','utf-8')
+    voucherStark.VD['ESER']['DES']=unicode("nome dell'anno fiscale",'utf-8')
+    voucherStark.VD['NAM_MOV']['DES']=unicode("nome della scrittura contabile associata",'utf-8')
+    voucherStark.save()

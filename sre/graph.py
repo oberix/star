@@ -53,7 +53,7 @@ if __name__ == '__main__':
         }
 
     df = Bag.load('/home/mpattaro/workspace/star/trunk/sre/esempio/table0.pickle').DF
-    graph_bag = Bag(LM=lm, DF=df, TIP="graph")
+#    graph_bag = Bag(LM=lm, DF=df, TIP="graph")
     graph_bag.save('/home/mpattaro/workspace/star/trunk/sre/esempio/graph0.pickle')
     
     

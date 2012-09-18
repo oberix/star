@@ -86,10 +86,11 @@ lm = {
 # Giornale'. Il parametro TIP='tab' indica al sistama che si intende generare
 # una tabella da questi dati, presto sarà supportato anche TIP='graph' per
 # generare un grafico.
-BG01 = Bag(DF=DF01, LM=lm, TITLE='Libro Giornale', TIP='tab')
+BG01 = Bag(DF01, os.path.join(OUT_PATH, 'table0.pickle'), 
+           LM=lm, TITLE='Libro Giornale', TI='tab')
 
 # Infine salvo l'oggetto bag in un file pickle
-BG01.save(os.path.join(OUT_PATH, 'table0.pickle'))
+BG01.save()
 
 # Rimane solamente da generare il report con SRE :) 
 # Per farlo, andate nella cartella sre ed eseguite  
