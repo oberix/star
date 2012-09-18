@@ -111,7 +111,7 @@ def CreateDWComp(companyName):
              'NAM_IMP'  : ('company', ('name', None)),
              'REF_MVL'  : ('ref', None),
              'DAT_MVL'  : ('date', None),
-             'DAT_DUE'  : ('date_due', None),
+             'DAT_DUE'  : ('date_maturity', None),
              'NAM_PRD'  : ('period', ('name', None)),
              'NAM_FY'  : ('period', ('fiscalyear', ('name', None))),
              'NAM_PAR'  : ('partner', ('name', None)),
