@@ -71,7 +71,7 @@ class Stark(GenericPickler):
             VD = {}
         if not set(VD.keys()).issubset(set(DF.columns.tolist())):
             raise ValueError("VD.keys() must be a subset of DF.columns")
-        self.VD = VD
+        self._VD = VD
 
     def save(self, file_=None):
         if file_ is None:
@@ -80,3 +80,14 @@ class Stark(GenericPickler):
             os.makedirs(os.path.dirname(file_))
         super(Stark, self).save(file_)
 
+    @property
+    def VD(self):
+        return self._VD
+
+    @VD.setter
+    def VD(self, vd):
+        if vd is None:
+            vd = {}
+        if not set(vd.keys()).issubset(set(self.DF.columns.tolist())):
+            raise ValueError("vd.keys() must be a subset of DF.columns")
+        self._VD = vd

@@ -98,7 +98,7 @@ class Bag(GenericPickler):
             LM = {}
         if not set(LM.keys()).issubset(set(DF.columns.tolist())):
             raise ValueError("LD.keys() must be a subset of DF.columns")
-        self.LM = LM
+        self._LM = LM
         self.TITLE = TITLE
         self.FOOTNOTE = FOOTNOTE
         for key, val in kwargs:
@@ -196,3 +196,15 @@ class Bag(GenericPickler):
         # aggiorno la colonna _OR_
         if "_OR_" in self.DF.columns:
             self.DF["_OR_"] = range(len(self.DF))
+
+    @property
+    def LM(self):
+        return self._LM
+
+    @LM.setter
+    def LM(self, lm):
+        if lm is None:
+            lm = {}
+        if not set(lm.keys()).issubset(set(self.DF.columns.tolist())):
+            raise ValueError("LD.keys() must be a subset of DF.columns")
+        self._LM = lm
