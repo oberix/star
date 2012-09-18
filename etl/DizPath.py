@@ -111,6 +111,7 @@ def CreateDWComp(companyName):
              'NAM_IMP'  : ('company', ('name', None)),
              'REF_MVL'  : ('ref', None),
              'DAT_MVL'  : ('date', None),
+             'DAT_DUE'  : ('date_due', None),
              'NAM_PRD'  : ('period', ('name', None)),
              'NAM_FY'  : ('period', ('fiscalyear', ('name', None))),
              'NAM_PAR'  : ('partner', ('name', None)),
@@ -141,6 +142,7 @@ def CreateDWComp(companyName):
     MVL.DES['NAM_MVL']['DESVAR']=unicode('Nome descrittivo della move line','utf-8')
     MVL.DES['COD_CON']['DESVAR']=unicode('Codice mnemonico identificativo del conto','utf-8')
     MVL.DES['DAT_MVL']['DESVAR']=unicode('data di registrazione','utf-8')
+    MVL.DES['DAT_DUE']['DESVAR']=unicode('data di scadenza','utf-8')
     MVL.DES['STA_MOV']['DESVAR']=unicode('stato della move in termini di validazione','utf-8')
     MVL.DES['DBT_MVL']['DESVAR']=unicode('colonna DARE della partita doppia','utf-8')
     MVL.DES['CRT_MVL']['DESVAR']=unicode('colonna AVERE della partita doppia','utf-8')
