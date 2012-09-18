@@ -83,11 +83,11 @@ def CreateDWComp(companyName):
     ACC.VD = {
         'ID0_CON': {'DES': unicode('ID identificativo del conto','utf-8')},
         'NAM_CON': {'DES': unicode('Nome descrittivo del conto','utf-8')}, 
-        'COD_CON': {'DES':=unicode('Codice menorico identificativo del conto','utf-8')},
-        'GOV_CON': {'DES':=unicode('Tipologia che governa la gestione del conto','utf-8')},
-        'PAN_CON': {'DES':=unicode('Nome descrittivo del conto padre','utf-8')},
-        'PAC_CON': {'DES':=unicode('Codice menorico del conto padre','utf-8')},
-        'TYP_CON': {'DES':=unicode('Tipo interno','utf-8')},
+        'COD_CON': {'DES': unicode('Codice menorico identificativo del conto','utf-8')},
+        'GOV_CON': {'DES': unicode('Tipologia che governa la gestione del conto','utf-8')},
+        'PAN_CON': {'DES': unicode('Nome descrittivo del conto padre','utf-8')},
+        'PAC_CON': {'DES': unicode('Codice menorico del conto padre','utf-8')},
+        'TYP_CON': {'DES': unicode('Tipo interno','utf-8')},
         }
 #    ACC.DefPathPkl(path)
     ACC.save()
