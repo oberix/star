@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # -*- coding: utf-8 -*-
 ##############################################################################
 #    
@@ -78,7 +77,7 @@ def CreateDWComp(companyName):
     #Seleziono i dati per l'impresa Servabit
     #accountsDf=accountsDf[accountsDf['NAM_IMP']==companyName]
     del accountsDf['NAM_IMP']
-    ACC = Stark(accountsDf,os.path.join(path, 'ACC.pickle'))
+    ACC = Stark(accountsDf, os.path.join(path, 'ACC.pickle'))
     #effettuo il primo abbellimento di Stark
     ACC.VD = {
         'ID0_CON': {'DES': unicode('ID identificativo del conto','utf-8')},

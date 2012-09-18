@@ -127,9 +127,9 @@ class TexSreTemplate(string.Template):
             if len(ph_parts) > 1: # extract attribute
                 ret[ph] = eval('.'.join(['bags[base]'] + ph_parts[1:]))
             else: # just use DF/LM 
-                if bags[base].TIP == 'tab':
+                if bags[base].TI == 'tab':
                     ret[ph] = TexTable(bags[base], **kwargs).out()
-                elif bags[base].TIP == 'graph':
+                elif bags[base].TI == 'graph':
                     ret[ph] = TexGraph(bags[base], **kwargs).out()
                 else: # TODO: handle other types
                     self._logger.debug('bags = %s', bags)
@@ -259,8 +259,10 @@ class HTMLSreTemplate(string.Template):
             if len(ph_parts) > 1: # extract attribute
                 ret[ph] = eval('.'.join(['bags[base]'] + ph_parts[1:]))
             else: # just use DF/LM 
-                if bags[base].TIP == 'tab':
+                if bags[base].TI == 'tab':
                     ret[ph] = HTMLTable(bags[base], **kwargs).out()
+                elif bags[base].TI == 'graph':
+                    ret[ph] = HTMLGraph(bags[base], **kwargs).out()
                 else: # TODO: handle other types
                     self._logger.debug('bags = %s', bags)
                     self._logger.warning("Unhandled bag TIP '%s' found in %s, skipping...", bags[base].TIP, base)

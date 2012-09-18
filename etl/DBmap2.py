@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # -*- coding: utf-8 -*-
 ##############################################################################
 #    
@@ -21,7 +20,6 @@
 
 __VERSION__ = '0.1'
 __AUTHOR__ = 'Luigi Cirillo (<luigi.cirillo@servabit.it>)'
-
 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship

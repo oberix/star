@@ -18,6 +18,6 @@
 #
 ##############################################################################
 
-import create_dict
-import DBmap2
-import DizPath
+# import create_dict
+# import DBmap2
+# import DizPath

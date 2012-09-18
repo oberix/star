@@ -22,10 +22,10 @@
 __VERSION__ = '0.1'
 __AUTHOR__ = 'Luigi Cirillo (<luigi.cirillo@servabit.it>)'
 
-import sys
 import DizPath
 
-DizPath.CreateDWComp('Servabit')
-DizPath.CreateDWComp('Aderit')
-DizPath.CreateDWComp('Vicem')
-DizPath.CreateDWComp('Studiabo')
+if __name__ == '__main__':
+    DizPath.CreateDWComp('Servabit')
+    DizPath.CreateDWComp('Aderit')
+    DizPath.CreateDWComp('Vicem')
+    DizPath.CreateDWComp('Studiabo')

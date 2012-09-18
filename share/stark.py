@@ -28,7 +28,6 @@ __all__ = ['Stark']
 
 import sys
 import os 
-import logging
 
 BASEPATH = os.path.abspath(os.path.join(
         os.path.dirname(__file__),
@@ -63,14 +62,13 @@ class Stark(GenericPickler):
     '''
 
     def __init__(self, DF, LD, TI='elab', VD=None):
-        self._logger = logging.getLogger(type(self).__name__)
         self.DF = DF
         self.LD = LD
         if TI not in TI_VALS:
             raise ValueError("TI must be one of %s" % TI_VALS)
         self.TI = TI
         if VD is None:
-            VD = dict()
+            VD = {}
         if not set(VD.keys()).issubset(set(DF.columns.tolist())):
             raise ValueError("VD.keys() must be a subset of DF.columns")
         self.VD = VD

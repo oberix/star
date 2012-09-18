@@ -40,6 +40,7 @@ def save(obj, path):
     """
     f = open(path, 'wb')
     try:
+        
         pickle.dump(obj, f, protocol=pickle.HIGHEST_PROTOCOL)
     finally:
         f.close()

@@ -89,16 +89,16 @@ class Bag(GenericPickler):
     
     #definisco la funzione __init__ 
     def __init__(self, DF, LD, TI='tab', LM=None, TITLE=None, FOOTNOTE=None, **kwargs):
-        self._logger = logging.getLogger(type(self).__name__)
         self.DF = DF
         self.LD = LD
         if TI not in TI_VALS:
             raise ValueError("TI must be one of %s" % TI_VALS)
-        self.TI = TI
+        self.TI = TI        
         if LM is None:
-            LM = dict()
-        if not set(LD.keys()).issubset(set(DF.columns.tolist())):
+            LM = {}
+        if not set(LM.keys()).issubset(set(DF.columns.tolist())):
             raise ValueError("LD.keys() must be a subset of DF.columns")
+        self.LM = LM
         self.TITLE = TITLE
         self.FOOTNOTE = FOOTNOTE
         for key, val in kwargs:
@@ -158,7 +158,7 @@ class Bag(GenericPickler):
                     return +1
                 elif (not a in ("@b", "@i") and not b in ("@b", "@i")) or \
                         (a in ("@b", "@i") and b in ("@b", "@i")):
-                    self._logger.warning(
+                    logging.warning(
                         "'_OR_' column, check modifiers for row {0}\
                          e row {1}".format(x[0], y[0]))
                     return 0                    
