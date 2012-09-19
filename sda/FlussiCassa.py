@@ -102,7 +102,10 @@ def main(dirname):
     #controllo conti
     checkAccounts(matchingsDf,accountStark.DF)
     #calcolo flussi
-    computeCashFlows(fiscalyearName,moveLineStark.DF,accountStark.DF,periodStark.DF,matchingsDf,onlyValidatedMoves,defaultIncomingsFlowLineCode,defaultExpensesFlowLineCode,printWarnings=True)
+    computeCashFlows(fiscalyearName,moveLineStark.DF,accountStark.DF,
+                    periodStark.DF,matchingsDf,onlyValidatedMoves,
+                    defaultIncomingsFlowLineCode,defaultExpensesFlowLineCode,
+                    printWarnings=True)
     #calcolo
     #expiries = computeExpiries(invoiceStark.DF,voucherStark.DF,periodStark.DF,moveLineStark.DF,fiscalyearName)
     #generazione e salvataggio bag
@@ -159,8 +162,25 @@ def computeCashFlows(fiscalyearName, moveLineDf, accountDf, periodDf,
         df0 = liquidityAccountsDf[["COD_CON"]]
         df1 = pandas.merge(moveLineDf,df0,on="COD_CON")
         df2 = df1[(df1["DAT_MVL"]>=dateStart) & (df1["DAT_MVL"]<=dateEnd)].reset_index(drop=True)
+        df2['DBT_MVL'] = df2['DBT_MVL'].map(float)
+        df2['CRT_MVL'] = df2['CRT_MVL'].map(float)
         if len(df2) > 0:
-            
+            #calcolo flussi per journal
+            df3 = df2.groupby("NAM_JRN").sum()[['DBT_MVL','CRT_MVL']].reset_index()
+            #calcolo flussi suddivisi in voci
+            df4 = df2[["NAM_MOV","NAM_FY"]]
+            if len(df4) > 0:
+                df5 = pandas.merge(moveLineDf,df4,on=["NAM_MOV","NAM_FY"])
+                df6 = df5[df5["TYP_CON"]!='liquidity'].reset_index(drop=True)
+                #flussi per conti 'payable'
+                df7 = df6[df6["TYP_CON"]=='payable'].reset_index(drop=True)
+                df8 = df7[df7["NAM_REC"].notnull()]
+                df8 = df8[["DBT_MVL","CRT_MVL","NAM_REC"]]
+                df9 = pandas.merge(moveLineDf,df8,on="NAM_REC")
+                print df9[["NAM_MOV","DBT_MVL.x","DBT_MVL.y","CRT_MVL.x","CRT_MVL.y"]]
+                #df9 = df9[df9["TYP_CON"]!='payable'].reset_index(drop=True)
+                #print df9[["DBT_MVL.x","CRT_MVL.x","NAM_REC","TYP_CON"]]
+                
     
 if __name__ == "__main__":
     abspath=os.path.abspath(sys.argv[0])
