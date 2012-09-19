@@ -104,6 +104,7 @@ def CreateDWComp(companyName):
              'DAT_DOC' : ('move', ('invoice', ('date_document', None))),
              'NAM_MVL' : ('name', None),
              'COD_CON' : ('account', ('code', None)),
+             'TYP_CON' : ('account', ('type', None)),
              'NAM_IMP'  : ('company', ('name', None)),
              'REF_MVL'  : ('ref', None),
              'DAT_MVL'  : ('date', None),
@@ -144,6 +145,7 @@ def CreateDWComp(companyName):
         'CRT_MVL': {'DES': unicode('colonna AVERE della partita doppia','utf-8')},
         'TAX_COD': {'DES': unicode("identificativo relativo al tax_code",'utf-8')},
         'TAX_AMO': {'DES': unicode("ammontare di tassa o imponibile",'utf-8')},
+        'TYP_CON': {'DES': unicode("è il tipo interno del conto associato alla move line",'utf-8')},
         'DAT_DOC': {'DES': unicode("la data della fattura",'utf-8')},
         }
     MVL.save()
