@@ -83,6 +83,7 @@ def main(dirname):
     #calcolo
     expiries = computeExpiries(invoiceStark.DF,voucherStark.DF,periodStark.DF,moveLineStark.DF,fiscalyearName)
     #generazione e salvataggio bag
+    OUT_PATH = os.path.join(SRE_PATH, 'scadenziario')
     bagInvoices = Bag(expiries['invoiceDf'],
                       os.path.join(OUT_PATH, 'invoices.pickle'),
                       TI='tab',LM=lm_fatture,TITLE="Fatture")
@@ -92,7 +93,6 @@ def main(dirname):
     setattr(bagInvoices,"YEAR",fiscalyearName)
     setattr(bagInvoices,"COMPANY",companyName)
     setattr(bagInvoices,"COMPANY_STRING",companyString)
-    OUT_PATH = os.path.join(SRE_PATH, 'scadenziario')
     bagInvoices.save()
     bagVouchers.save()
     return 0
@@ -148,28 +148,29 @@ def computeExpiries(invoiceDf , voucherDf , periodDf , moveLineDf, fiscalyearNam
         df3 = df2.ix[(df2["TYPE"]=='sale') | (df2["TYPE"]=='purchase')].reset_index(drop=True)
         #calcolo delle liquidazioni pagate
         df4 = pandas.merge(df3,moveLineDf,on="NAM_MOV")
-        df5 = df4.ix[df4["NAM_REC"].notnull()].reset_index()
+        df5 = df4.ix[df4["ID_REC"].notnull()].reset_index()
         #esclusione delle liquidazioni pagate
         df6 = pandas.DataFrame({'NAM_MOV':list(set(df3['NAM_MOV']) - set(df5['NAM_MOV']))})
         df7 = pandas.merge(df3,df6,on="NAM_MOV")
         df7['AMOUNT']=df7['AMOUNT'].map(float)
-        df8 = pandas.pivot_table(df7,values='AMOUNT', cols=['TYPE'], 
-                        rows=['DATE_DUE','NUM','STATE','PARTNER'])
-        df8 = df8.reset_index()
-        #formattazione finale
-        columnsList = list(df8.columns)
-        if columnsList.count("purchase")==0:
-            df8["purchase"] = ""
-        if columnsList.count("sale")==0:
-            df8["sale"] = ""
-        df8['purchase'] = df8['purchase'].map(str)
-        df8['sale'] = df8['sale'].map(str)
-        df8['purchase'].ix[df8['purchase']=='nan'] = ''
-        df8['sale'].ix[df8['sale']=='nan'] = ''
-        df8['STATE'].ix[df8['STATE']=='posted'] = 'validata'
-        df8['STATE'].ix[df8['STATE']=='draft'] = 'in bozza'
-        df8 = df8[voucherColumns]
-        voucherResultDf = df8
+        if len(df7) > 0:
+            df8 = pandas.pivot_table(df7,values='AMOUNT', cols=['TYPE'], 
+                            rows=['DATE_DUE','NUM','STATE','PARTNER'])
+            df8 = df8.reset_index()
+            #formattazione finale
+            columnsList = list(df8.columns)
+            if columnsList.count("purchase")==0:
+                df8["purchase"] = ""
+            if columnsList.count("sale")==0:
+                df8["sale"] = ""
+            df8['purchase'] = df8['purchase'].map(str)
+            df8['sale'] = df8['sale'].map(str)
+            df8['purchase'].ix[df8['purchase']=='nan'] = ''
+            df8['sale'].ix[df8['sale']=='nan'] = ''
+            df8['STATE'].ix[df8['STATE']=='posted'] = 'validata'
+            df8['STATE'].ix[df8['STATE']=='draft'] = 'in bozza'
+            df8 = df8[voucherColumns]
+            voucherResultDf = df8
     
     return {
         'invoiceDf' : invoiceResultDf,

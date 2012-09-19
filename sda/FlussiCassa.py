@@ -174,12 +174,12 @@ def computeCashFlows(fiscalyearName, moveLineDf, accountDf, periodDf,
                 df6 = df5[df5["TYP_CON"]!='liquidity'].reset_index(drop=True)
                 #flussi per conti 'payable'
                 df7 = df6[df6["TYP_CON"]=='payable'].reset_index(drop=True)
-                df8 = df7[df7["NAM_REC"].notnull()]
-                df8 = df8[["DBT_MVL","CRT_MVL","NAM_REC"]]
-                df9 = pandas.merge(moveLineDf,df8,on="NAM_REC")
+                df8 = df7[df7["ID_REC"].notnull()]
+                df8 = df8[["DBT_MVL","CRT_MVL","ID_REC"]]
+                df9 = pandas.merge(moveLineDf,df8,on="ID_REC")
                 print df9[["NAM_MOV","DBT_MVL.x","DBT_MVL.y","CRT_MVL.x","CRT_MVL.y"]]
                 #df9 = df9[df9["TYP_CON"]!='payable'].reset_index(drop=True)
-                #print df9[["DBT_MVL.x","CRT_MVL.x","NAM_REC","TYP_CON"]]
+                #print df9[["DBT_MVL.x","CRT_MVL.x","ID_REC","TYP_CON"]]
                 
     
 if __name__ == "__main__":

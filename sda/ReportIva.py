@@ -134,26 +134,27 @@ def main(dirname):
         #vat registers
         if reportType==1:
             vatRegister = getVatRegister(vatDf, comNam, onlyValML, fiscalyearName=fiscalyearName, sequenceName=sequenceName)
+            OUT_PATH = os.path.join(SRE_PATH, 'registro_iva')
             bagVatRegister = Bag(vatRegister, os.path.join(OUT_PATH, 'vat_register.pickle'), 
                                  TI='tab',LM=lm_registri_iva)
             setattr(bagVatRegister,"SEQUENCE",sequenceName)
             setattr(bagVatRegister,"YEAR",fiscalyearName)
             setattr(bagVatRegister,"COMPANY_STRING",companyString)
-            OUT_PATH = os.path.join(SRE_PATH, 'registro_iva')
             bagVatRegister.save()
         #vat summary
         elif reportType==2:
             vatSummary = getVatSummary(vatDf, comNam, onlyValML,
                                        periodName=periodName, sequenceName=sequenceName)
+            OUT_PATH = os.path.join(SRE_PATH, 'riepilogo_iva')
             bagVatSummary = Bag(vatSummary,os.path.join(OUT_PATH, 'vat_summary.pickle'), 
                                 TI='tab',LM=lm_riepiloghi_iva)
             setattr(bagVatSummary,"SEQUENCE",sequenceName)
             setattr(bagVatSummary,"PERIOD",periodName)
             setattr(bagVatSummary,"COMPANY_STRING",companyString)
-            OUT_PATH = os.path.join(SRE_PATH, 'riepilogo_iva')
             bagVatSummary.save()
         #vat detail
         elif reportType==3:
+            OUT_PATH = os.path.join(SRE_PATH, 'dettaglio_iva')
             vatRegister = getVatRegister(vatDf, comNam, onlyValML, periodName=periodName, sequenceName=sequenceName)
             bagVatRegister = Bag(vatRegister, os.path.join(OUT_PATH, 'vat_register.pickle'),
                                  TI='tab', LM=lm_registri_iva)
@@ -163,24 +164,24 @@ def main(dirname):
             vatSummary=getVatSummary(vatDf, comNam, onlyValML, periodName=periodName, sequenceName=sequenceName)
             bagVatSummary = Bag(vatSummary, os.path.join(OUT_PATH, 'vat_summary.pickle'),
                                 TI='tab',LM=lm_riepiloghi_iva,TITLE='Riepilogo')
-            OUT_PATH = os.path.join(SRE_PATH, 'dettaglio_iva')
             bagVatRegister.save()
             bagVatSummary.save()
         #deferred vat detail
         elif reportType==4:            
             payments = getDeferredVatDetailPayments(vatDf, comNam, onlyValML, paymentsPeriodName=periodName)
             notPayed = getDeferredVatDetailNotPayed(vatDf, comNam, onlyValML, periodDf, paymentsPeriodName=periodName)
+            OUT_PATH = os.path.join(SRE_PATH, 'dettaglio_iva_differita')
             bagPayments = Bag(payments, os.path.join(OUT_PATH, 'payments.pickle'),
                               TI='tab', LM=lm_pagamenti_iva_differita)
             setattr(bagPayments,"PERIOD",periodName)
             setattr(bagPayments,"COMPANY_STRING",companyString)
             bagNotPayed = Bag(notPayed, os.path.join(OUT_PATH, 'not_payed.pickle'),
                               TI='tab',LM=lm_da_pagare_iva_differita)
-            OUT_PATH = os.path.join(SRE_PATH, 'dettaglio_iva_differita')
             bagPayments.save()
             bagNotPayed.save()
         #deferred vat summary
         elif reportType==5:
+            OUT_PATH = os.path.join(SRE_PATH, 'riepilogo_iva_differita')
             deferredVatSummaryDf = getDeferredVatSummary(vatDf, comNam, onlyValML, 
                                                             periodDf, paymentsPeriodName=periodName)
             bagSummary= Bag(deferredVatSummaryDf['dfSummary'], 
@@ -191,11 +192,11 @@ def main(dirname):
             bagSynthesis= Bag(deferredVatSummaryDf['dfSynthesis'],
                               os.path.join(OUT_PATH, 'deferred_vat_synthesis.pickle'),
                               TI='tab',LM=lm_riepilogo_differita,TITLE="Sintesi")
-            OUT_PATH = os.path.join(SRE_PATH, 'riepilogo_iva_differita')
             bagSummary.save()
             bagSynthesis.save()
         #vat liquidation
         elif reportType==6:
+            OUT_PATH = os.path.join(SRE_PATH, 'liquidazione_iva')
             liquidationSummary = getVatLiquidationSummary(vatDf, periodDf,
                                                                 comNam, onlyValML, treasuryVatAccountCode, periodName=periodName)
             bagLiquidationSummary = Bag(liquidationSummary, 
@@ -203,7 +204,6 @@ def main(dirname):
                                         TI='tab',LM=lm_liquidazione_iva,TITLE='Prospetto liquidazione Iva')
             setattr(bagLiquidationSummary,"PERIOD",periodName)
             setattr(bagLiquidationSummary,"COMPANY_STRING",companyString)
-            OUT_PATH = os.path.join(SRE_PATH, 'liquidazione_iva')
             bagLiquidationSummary.save()
         #exercise control summary
         elif reportType==7:
