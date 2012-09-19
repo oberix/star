@@ -117,8 +117,8 @@ def CreateDWComp(companyName):
              'TYP_JRN' : ('journal', ('type', None)), 
              'DBT_MVL'  : ('debit', None),
              'CRT_MVL'  : ('credit', None),
-             'NAM_REC'  : ('reconcile', ('name', None)),
-             'NAM_REC_P'  : ('reconcile_partial', ('name', None)),
+             'ID_REC'  : ('reconcile_id',  None),
+             'ID_REC_P'  : ('reconcile_partial_id', None),
              'TAX_COD'  : ('tax_code_id', None), 
              'TAX_AMO'  : ('tax_amount', None), 
              'NAM_SEQ'  : ('journal', ('sequence', ('name', None))), 
@@ -147,6 +147,8 @@ def CreateDWComp(companyName):
         'TAX_AMO': {'DES': unicode("ammontare di tassa o imponibile",'utf-8')},
         'TYP_CON': {'DES': unicode("è il tipo interno del conto associato alla move line",'utf-8')},
         'DAT_DOC': {'DES': unicode("la data della fattura",'utf-8')},
+        'ID_REC': {'DES': unicode("id della riconciliazione",'utf-8')},
+        'ID_REC_P': {'DES': unicode("id della riconciliazione parziale",'utf-8')},
         }
     MVL.save()
 
@@ -320,8 +322,8 @@ def CreateDWComp(companyName):
                                             'NAM_FY' : 'ESER',
                                             'NAM_PAR' : 'PARTNER',
                                             'NAM_JRN' : 'JOURNAL',
-                                            'NAM_REC' : 'RECON',
-                                            'NAM_REC_P' : 'RECON_P',
+                                            'ID_REC' : 'RECON',
+                                            'ID_REC_P' : 'RECON_P',
                                             'NAM_SEQ' : 'SEQUENCE',
                                             'COD_CON' : 'T_ACC',
                                             })
