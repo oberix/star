@@ -22,7 +22,6 @@
 from copy import copy
 import logging
 import re
-import logging
 
 __author__ = "Marco Pattaro <marco.pattaro@servabit.it>"
 __version__ = "1.0"
@@ -54,6 +53,8 @@ TEX_ESCAPE = {
     re.compile("\^"): "\textasciicircum",
     re.compile("~"): "\normaltilde",
     }
+
+HTML_ESCAPE = {}
 
 def unique_list(list_):
     """ Remove all duplicate elements from a list inplace, keeping the order

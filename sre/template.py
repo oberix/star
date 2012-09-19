@@ -133,7 +133,7 @@ class TexSreTemplate(string.Template):
                     ret[ph] = TexGraph(bags[base], **kwargs).out()
                 else: # TODO: handle other types
                     self._logger.debug('bags = %s', bags)
-                    self._logger.warning("Unhandled bag TIP '%s' found in %s, skipping...", bags[base].TIP, base)
+                    self._logger.warning("Unhandled bag TI '%s' found in %s, skipping...", bags[base].TIP, base)
                     continue
         return ret
 
