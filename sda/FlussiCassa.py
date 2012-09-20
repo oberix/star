@@ -139,7 +139,143 @@ def checkAccounts(matchingsDf, accountsDf):
         row = df5[i:i+1]
         code = row['COD_CON'][i]
         print "Warning: il conto "+code.encode('utf8')+" è presente nel db ma non nel file csv delle corrispondenze"
+
+#########
+###funzioni private utilizzate per il calcolo dei flussi
+#########
+def _computeCashFlowFromPayableAccounts(cashFlowsDf, month, defaultExpensesFlowLineCode, payableMoveLineDf, moveLineDf, matchingsDf, totalReconcile ,printWarnings=False):
+    '''
+    funzione per il calcolo dei flussi di cassa da pagamenti su conti payable
+    @param cashFlowsDf: è il dataframe con tutti i risultati dei flussi di cassa
+    @param month: è un intero (da 1 a 12) che indica il mese dei flussi da calcolare
+    @param defaultExpensesFlowLineCode: è il codice della voce dei flussi di default per le uscite
+    @param payableMoveLineDf: è il df che contiene le move line relative ai pagamenti sui conti payable
+    @param moveLineDf: è il df contenente tutte le move line
+    @param matchingsDf: è il df contenente le mappature tra conti servabit e le voci dei flussi di cassa ("in entrata" e "in uscita")
+    @param totalReconcile: è un booleano che indica se considerare i pagamenti con riconciliazione totale (=True) oppure parziale (=False)
+    @param printWarnigns: è un booleano che indica se stampare o meno i messaggi di warning
+    '''
+    recParam = totalReconcile and "ID_REC" or "ID_REC_P"
+    df8 = payableMoveLineDf.rename(columns={'CRT_MVL' : 'CRT_PAYED', 'DBT_MVL' : 'DBT_PAYED'})
+    df8 = df8[["CRT_PAYED","DBT_PAYED",recParam,"ID0_MVL"]]
+    df15 = moveLineDf.rename(columns={'CRT_MVL' : 'CRT_REC', 'DBT_MVL' : 'DBT_REC'})
+    df9 = pandas.merge(df15,df8,on=recParam)
+    df9 = df9[df9["ID0_MVL.x"]!=df9["ID0_MVL.y"]].reset_index(drop=True)
+    del df9["ID0_MVL.y"]
+    df9 = df9.rename(columns={'ID0_MVL.x' : 'ID_MVL'})
+    df10 = df9[df9["CRT_REC"]>0].reset_index(drop=True)
+    df11 = df9[(df9["CRT_REC"]==0) & (df9["DBT_REC"]==df9["CRT_PAYED"])].reset_index(drop=True)
+    if len(df11)>0 and printWarnings:
+        print "Errore c: le seguenti move line hanno importo di dare >0."+\
+                "Verranno scartate dai flussi di cassa in quanto non possono rifersi ad un pagamento su un conto payable"
+        print df11[["ID_MVL","DAT_MVL","NAM_MOV"]]
+    if len(df10)>0:
+        #calcolo percentuale riconciliata
+        df10["percentage"] = df10["DBT_PAYED"]/df10["CRT_REC"]
+        df10['percentage'] = numpy.where(df10['percentage']>1,1,df10['percentage'])
+        _computeCashFlowFromReconcileFinalStep(cashFlowsDf,month,defaultExpensesFlowLineCode,df10,moveLineDf,matchingsDf,False,printWarnings=printWarnings)
         
+def _computeCashFlowFromReceivableAccounts(cashFlowsDf, month, defaultIncomingsFlowLineCode, receivableMoveLineDf, moveLineDf, matchingsDf, totalReconcile ,printWarnings=False):
+    '''
+    funzione per il calcolo dei flussi di cassa da pagamenti su conti receivable
+    @param cashFlowsDf: è il dataframe con tutti i risultati dei flussi di cassa
+    @param month: è un intero (da 1 a 12) che indica il mese dei flussi da calcolare
+    @param defaultIncomingsFlowLineCode: è il codice della voce dei flussi di default per le entrate
+    @param receivableMoveLineDf: è il df che contiene le move line relative ai pagamenti sui conti receivable
+    @param moveLineDf: è il df contenente tutte le move line
+    @param matchingsDf: è il df contenente le mappature tra conti servabit e le voci dei flussi di cassa ("in entrata" e "in uscita")
+    @param totalReconcile: è un booleano che indica se considerare i pagamenti con riconciliazione totale (=True) oppure parziale (=False)
+    @param printWarnigns: è un booleano che indica se stampare o meno i messaggi di warning
+    '''
+    recParam = totalReconcile and "ID_REC" or "ID_REC_P"
+    df8 = receivableMoveLineDf.rename(columns={'CRT_MVL' : 'CRT_PAYED', 'DBT_MVL' : 'DBT_PAYED'})
+    df8 = df8[["CRT_PAYED","DBT_PAYED",recParam,"ID0_MVL"]]
+    df15 = moveLineDf.rename(columns={'CRT_MVL' : 'CRT_REC', 'DBT_MVL' : 'DBT_REC'})
+    df9 = pandas.merge(df15,df8,on=recParam)
+    df9 = df9[df9["ID0_MVL.x"]!=df9["ID0_MVL.y"]].reset_index(drop=True)
+    del df9["ID0_MVL.y"]
+    df9 = df9.rename(columns={'ID0_MVL.x' : 'ID_MVL'})
+    df10 = df9[df9["DBT_REC"]>0].reset_index(drop=True)
+    df11 = df9[(df9["DBT_REC"]==0) & (df9["CRT_REC"]==df9["DBT_PAYED"])].reset_index(drop=True)
+    if len(df11)>0 and printWarnings:
+        print "Errore e: le seguenti move line hanno importo di avere >0."+\
+                "Verranno scartate dai flussi di cassa in quanto non possono rifersi ad un pagamento su un conto receivable"
+        print df11[["ID_MVL","DAT_MVL","NAM_MOV"]]
+    if len(df10)>0:
+        #calcolo percentuale riconciliata
+        df10["percentage"] = df10["CRT_PAYED"]/df10["DBT_REC"]
+        df10['percentage'] = numpy.where(df10['percentage']>1,1,df10['percentage'])
+        _computeCashFlowFromReconcileFinalStep(cashFlowsDf,month,defaultIncomingsFlowLineCode,df10,moveLineDf,matchingsDf,True,printWarnings=printWarnings)
+    
+def _computeCashFlowFromReconcileFinalStep(cashFlowsDf, month, defaultFlowLine, reconcilesDf, moveLineDf, matchingsDf, amountInCredit, printWarnings=False):
+    '''
+    funzione dello step finale nel calcolo dei flussi di cassa provenienti da pagamenti su conti payable o receivable
+    @param cashFlowsDf: è il dataframe con tutti i risultati dei flussi di cassa
+    @param month: è un intero (da 1 a 12) che indica il mese dei flussi da calcolare
+    @param defaultFlowLine: è il codice della voce dei flussi di default
+    @param reconcilesDf: è il df che contiene le move line con le informazioni di riconciliazione
+    @param moveLineDf: è il df contenente tutte le move line
+    @param matchingsDf: è il df contenente le mappature tra conti servabit e le voci dei flussi di cassa ("in entrata" e "in uscita")
+    @param amountInCredit: è un boolean. se True -> amount = credit - debit , se False -> viceversa
+    @param printWarnigns: è un booleano che indica se stampare o meno i messaggi di warning
+    '''
+    reconcilesDf = reconcilesDf[["ID_MVL","DBT_REC","CRT_REC","NAM_MOV","NAM_FY","NAM_JRN","percentage"]]
+    df1 = moveLineDf.rename(columns={'CRT_MVL' : 'CRT_INV', 'DBT_MVL' : 'DBT_INV'})
+    df2 = pandas.merge(reconcilesDf,df1,on=["NAM_MOV","NAM_FY","NAM_JRN"])
+    df2 = df2[df2["ID_MVL"]!=df2["ID0_MVL"]].reset_index(drop=True)
+    if amountInCredit:
+        df2["AMOUNT"] = df2["CRT_INV"]-df2["DBT_INV"]
+        df2["REC_AMOUNT"] = df2["DBT_REC"]-df2["CRT_REC"]
+    else:
+        df2["AMOUNT"] = df2["DBT_INV"]-df2["CRT_INV"]
+        df2["REC_AMOUNT"] = df2["CRT_REC"]-df2["DBT_REC"]
+    #calcolo errori nelle scritture contabili
+    df3 = df2[df2["AMOUNT"]>df2["REC_AMOUNT"]].reset_index(drop=True)
+    if len(df3)>0 and printWarnings:
+        print "Errore a: le seguenti move line hanno importo maggiore della move.line riconciliata. Verranno scartate dai flussi di cassa"
+        print df3[["ID0_MVL","DAT_MVL","NAM_MOV","NAM_MVL"]]
+    #calcolo flussi
+    df4 = df2[df2["AMOUNT"]<=df2["REC_AMOUNT"]].reset_index(drop=True)
+    df4["AMOUNT"] = df4["AMOUNT"] * df4["percentage"]
+    df5 = pandas.merge(df4,matchingsDf,left_on="COD_CON",right_on="servabit_code")
+    df6 = None
+    if amountInCredit:
+        df6 = df5[["entrata_code","AMOUNT"]]
+        df6 = df6.rename(columns={'entrata_code' : 'code'})
+    else:
+        df6 = df5[["uscita_code","AMOUNT"]]
+        df6 = df6.rename(columns={'uscita_code' : 'code'})
+    df7 = df6.groupby("code").sum()[['AMOUNT']].reset_index()
+    for i in range(len(df7)):
+        row = df7[i:i+1]
+        code = row["code"][i]
+        amount = row["AMOUNT"][i]
+        cashFlowsDf[code][month-1] += amount
+        
+def _computeCashFlowFromMoveLine(cashFlowsDf, month, moveLineDf, matchingsDf, defaultIncomingsFlowLineCode, defaultExpensesFlowLineCode, printWarnings=False):
+    df1 = pandas.merge(moveLineDf,matchingsDf,left_on="COD_CON",right_on="servabit_code")
+    df2 = df1[df1["CRT_MVL"]>0].reset_index()
+    for i in range(len(df2)):
+        row = df2[i:i+1]
+        code = row["entrata_code"][i]
+        amount = row["CRT_MVL"][i]
+        cashFlowsDf[code][month-1] += amount
+        if printWarnings and code==defaultIncomingsFlowLineCode:
+            print "Warning: la move.line "+row["NAM_MVL"][i].encode("utf8")+" sul conto="+\
+                row["COD_CON"][i].encode("utf8")+", della move "+row["NAM_MOV"][i].encode("utf8")+\
+                " non è riconciliata. L'importo è finito in altre entrate operative con importo "+str(row["CRT_MVL"][i])
+    df3 = df1[df1["DBT_MVL"]>0].reset_index()
+    for i in range(len(df3)):
+        row = df3[i:i+1]
+        code = row["uscita_code"][i]
+        amount = row["DBT_MVL"][i]
+        cashFlowsDf[code][month-1] += amount
+        if printWarnings and code==defaultExpensesFlowLineCode:
+            print "Warning: la move.line "+row["NAM_MVL"][i].encode("utf8")+" sul conto="+\
+                row["COD_CON"][i].encode("utf8")+", della move "+row["NAM_MOV"][i].encode("utf8")+\
+                " non è riconciliata. L'importo è finito in altre uscite operative con importo "+str(row["DBT_MVL"][i])
+        
+
 def computeCashFlows(fiscalyearName, moveLineDf, accountDf, periodDf,
                     matchingsDf, onlyValidatedMoves, defaultIncomingsFlowLineCode,
                     defaultExpensesFlowLineCode, printWarnings=True):
@@ -155,7 +291,11 @@ def computeCashFlows(fiscalyearName, moveLineDf, accountDf, periodDf,
     exitCodesDf = matchingsDf[["uscita_code"]].drop_duplicates().reset_index(drop=True)
     exitCodesList = list(exitCodesDf["uscita_code"])
     incomingCodesList.extend(exitCodesList)
-    cashFlowsDf = pandas.DataFrame(columns=incomingCodesList)
+    itemsList = []
+    for el in incomingCodesList:
+        t = (el,[0,0,0,0,0,0,0,0,0,0,0,0,0])
+        itemsList.append(t)
+    cashFlowsDf = pandas.DataFrame.from_items(itemsList)
     #calcolo dei risultati per ogni mese
     if onlyValidatedMoves:
         moveLineDf = moveLineDf[moveLineDf["STA_MOV"]=='posted'].reset_index(drop=True)
@@ -174,73 +314,54 @@ def computeCashFlows(fiscalyearName, moveLineDf, accountDf, periodDf,
         if len(df2) > 0:
             #calcolo flussi per journal
             df3 = df2.groupby("NAM_JRN").sum()[['DBT_MVL','CRT_MVL']].reset_index()
-           
-            #funzione interna utilizzata solo in questo contesto
-            def computeCashFlowFromReconcile(cashFlowsDf, defaultFlowLine, reconcilesDf, moveLineDf, amountInCredit):
-                '''
-                @param amountInCredit: è un boolean. se True -> amount = credit - debit , se False -> viceversa
-                '''
-                reconcilesDf = reconcilesDf[["ID_MVL","DBT_REC","CRT_REC","NAM_MOV","NAM_FY","NAM_JRN","percentage"]]
-                df1 = moveLineDf.rename(columns={'CRT_MVL' : 'CRT_INV', 'DBT_MVL' : 'DBT_INV'})
-                df2 = pandas.merge(reconcilesDf,df1,on=["NAM_MOV","NAM_FY","NAM_JRN"])
-                df2 = df2[df2["ID_MVL"]!=df2["ID0_MVL"]].reset_index(drop=True)
-                if amountInCredit:
-                    df2["AMOUNT"] = df2["CRT_INV"]-df2["DBT_INV"]
-                    df2["REC_AMOUNT"] = df2["DBT_REC"]-df2["CRT_REC"]
-                else:
-                    df2["AMOUNT"] = df2["DBT_INV"]-df2["CRT_INV"]
-                    df2["REC_AMOUNT"] = df2["CRT_REC"]-df2["DBT_REC"]
-                #calcolo errori nelle scritture contabili
-                df3 = df2[df2["AMOUNT"]>df2["REC_AMOUNT"]].reset_index(drop=True)
-                if len(df3)>0 and printWarnings:
-                    print "Errore a: le seguenti move line hanno importo maggiore della move.line riconciliata. Verranno scartate dai flussi di cassa"
-                    print df3[["ID0_MVL","DAT_MVL","NAM_MOV","NAM_MVL"]]
-                #calcolo flussi
-                df4 = df2[df2["AMOUNT"]<=df2["REC_AMOUNT"]].reset_index(drop=True)
-                df4["AMOUNT"] = df4["AMOUNT"] * df4["percentage"]
-                df5 = pandas.merge(df4,matchingsDf,left_on="COD_CON",right_on="servabit_code")
-                df6 = None
-                if amountInCredit:
-                    df6 = df5[["entrata_code","AMOUNT"]]
-                    df6 = df6.rename(columns={'entrata_code' : 'code'})
-                else:
-                    df6 = df5[["uscita_code","AMOUNT"]]
-                    df6 = df6.rename(columns={'uscita_code' : 'code'})
-                df7 = df6.groupby("code").sum()[['AMOUNT']].reset_index()
-                for i in range(len(df7)):
-                    row = df7[i:i+1]
-                    code = row["code"][i]
-                    amount = row["AMOUNT"][i]
-                    cashFlowsDf[code] += amount
-
-                print cashFlowsDf
-            
             #calcolo flussi suddivisi in voci
             df4 = df2[["NAM_MOV","NAM_FY","NAM_JRN"]]
             if len(df4) > 0:
                 df5 = pandas.merge(moveLineDf,df4,on=["NAM_MOV","NAM_FY","NAM_JRN"])
                 df6 = df5[df5["TYP_CON"]!='liquidity'].reset_index(drop=True)
-                #flussi per conti 'payable'
+                ######
+                ##flussi per conti 'payable'
+                ######
                 df7 = df6[df6["TYP_CON"]=='payable'].reset_index(drop=True)
+                #con riconciliazione totale
                 df8 = df7[df7["ID_REC"].notnull()]
-                df8 = df8.rename(columns={'CRT_MVL' : 'CRT_PAYED', 'DBT_MVL' : 'DBT_PAYED'})
-                df8 = df8[["CRT_PAYED","DBT_PAYED","ID_REC","ID0_MVL"]]
-                df15 = moveLineDf.rename(columns={'CRT_MVL' : 'CRT_REC', 'DBT_MVL' : 'DBT_REC'})
-                df9 = pandas.merge(df15,df8,on="ID_REC")
-                df9 = df9[df9["ID0_MVL.x"]!=df9["ID0_MVL.y"]].reset_index(drop=True)
-                del df9["ID0_MVL.y"]
-                df9 = df9.rename(columns={'ID0_MVL.x' : 'ID_MVL'})
-                df10 = df9[df9["CRT_REC"]>0].reset_index(drop=True)
-                df11 = df9[(df9["CRT_REC"]==0) & (df9["DBT_REC"]==df9["CRT_PAYED"])].reset_index(drop=True)
-                if len(df11)>0 and printWarnings:
-                    print "Errore c: le seguenti move line hanno importo di dare >0."+\
-                            "Verranno scartata dai flussi di cassa in quanto non possono rifersi ad un pagamento su un conto payable"
-                    print df11[["ID_MVL","DAT_MVL","NAM_MOV"]]
-                if len(df10)>0:
-                    #compute reconcile percentage
-                    df10["percentage"] = df10["DBT_PAYED"]/df10["CRT_REC"]
-                    df10['percentage'] = numpy.where(df10['percentage']>1,1,df10['percentage'])
-                    computeCashFlowFromReconcile(cashFlowsDf,defaultExpensesFlowLineCode,df10,moveLineDf,False)
+                if len(df8) > 0:
+                    _computeCashFlowFromPayableAccounts(cashFlowsDf,month,defaultExpensesFlowLineCode,
+                                                        df8,moveLineDf,matchingsDf,True,printWarnings=printWarnings)
+                #con riconciliazione parziale
+                df8 = df7[df7["ID_REC_P"].notnull()]
+                if len(df8) > 0:
+                    _computeCashFlowFromPayableAccounts(cashFlowsDf,month,defaultExpensesFlowLineCode,
+                                                        df8,moveLineDf,matchingsDf,False,printWarnings=printWarnings)
+                #senza riconciliazione
+                df8 = df7[(df7["ID_REC_P"].isnull()) & (df7["ID_REC"].isnull())]
+                _computeCashFlowFromMoveLine(cashFlowsDf, month, df8, matchingsDf, 
+                                            defaultIncomingsFlowLineCode, defaultExpensesFlowLineCode,printWarnings=printWarnings)
+                ######
+                ##flussi per conti 'receivable'
+                ######
+                df7 = df6[df6["TYP_CON"]=='receivable'].reset_index(drop=True)
+                #con riconciliazione totale
+                df8 = df7[df7["ID_REC"].notnull()]
+                if len(df8) > 0:
+                    _computeCashFlowFromReceivableAccounts(cashFlowsDf,month,defaultIncomingsFlowLineCode, 
+                                                            df8, moveLineDf, matchingsDf, True ,printWarnings=printWarnings)
+                #con riconciliazione parziale
+                df8 = df7[df7["ID_REC_P"].notnull()]
+                if len(df8) > 0:
+                    _computeCashFlowFromReceivableAccounts(cashFlowsDf, month, defaultIncomingsFlowLineCode, 
+                                                            df8, moveLineDf, matchingsDf, False ,printWarnings=printWarnings)
+                #senza riconciliazione
+                df8 = df7[(df7["ID_REC_P"].isnull()) & (df7["ID_REC"].isnull())]
+                _computeCashFlowFromMoveLine(cashFlowsDf, month, df8, matchingsDf, 
+                                            defaultIncomingsFlowLineCode, defaultExpensesFlowLineCode,printWarnings=printWarnings)
+                ######
+                ##flussi per conti non 'payable' nè receivable
+                ######
+                df7 = df6[(df6["TYP_CON"]!='receivable') & (df6["TYP_CON"]!='payable')].reset_index(drop=True)
+                _computeCashFlowFromMoveLine(cashFlowsDf, month, df7, matchingsDf, 
+                                            defaultIncomingsFlowLineCode, defaultExpensesFlowLineCode,printWarnings=printWarnings)
+    print cashFlowsDf.transpose()
                 
     
 if __name__ == "__main__":
