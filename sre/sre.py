@@ -54,30 +54,38 @@ def _load_config(src_path, confpath=None):
     logging.debug(config)
     return config.options
 
-def _compile_tex(file_, template, dest):
-    pdf_out = os.path.basename(template).replace('.tex', '')
+def _compile_tex(file_, template, dest, fds):
+    ''' 
+    '''
+    pdf_out = os.path.basename(template).replace('.tex', '.pdf')
     if not os.path.exists(os.path.dirname(dest)):
         os.makedirs(os.path.dirname(dest))
     command = [
-        "texi2pdf",
-        "--quiet",
+        "texi2dvi",
+        "--pdf",
         "--batch",
-        "--tidy", 
-        "--build-dir=%s" % os.path.join(os.environ['HOME'], '.t2d'),
-        "-c", file_, # main input file
         "-o", os.path.join(dest, pdf_out), # output file
         "-I", os.path.dirname(template), # input path (where other files resides)
+        file_, # main input file
         ]
     logging.info("Compiling into PDF.")
-    ret = subprocess.call(command)
+    logging.debug(" ".join(command))
+    logfd = open(template.replace('.tex', '.log'), 'w')
+    try:
+        ret = subprocess.call(command, stdout=logfd, stderr=logfd)
+    except IOError, err:
+        logger.error(err)
+        return err.errno
+    finally:
+        logfd.close()
+    map(lambda fd: fd.close(), fds) # close tmp file's file descriptors
     if ret > 0:
         logging.warning(
             "texi2pdf exited with bad exit status, you can inspect what went wrong in %s", 
             os.path.join(dest, file_.replace('.tex', '.log')))
         return ret
     logging.info("Done.")
-    return ret
-                       
+    return ret                  
 
 def sre(src_path, config=None, **kwargs):
     ''' Main procedure to generate a report. 
@@ -111,11 +119,13 @@ def sre(src_path, config=None, **kwargs):
     # Identify type just from filename suffix
     if templ_path.endswith('.tex'):
         templ = template.TexSreTemplate(src_path, config=config)
-        report = templ.report()
+        report, fd_list = templ.report()
         if not isinstance(report, str):
             # Error, return errno
             return report
-        return _compile_tex(report, templ_path, config.get('dest_path', templ_path))
+        return _compile_tex(report, templ_path, 
+                            config.get('dest_path', os.path.dirname(templ_path)), 
+                            fd_list)
     elif templ_path.endswith('.html'):
         templ = template.HTMLSreTemplate(src_path, config=config)
         report = templ.report()

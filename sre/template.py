@@ -61,6 +61,7 @@ class TexSreTemplate(string.Template):
     def __init__(self, src_path, config=None):
         self._src_path = os.path.abspath(src_path)
 	self._logger = logging.getLogger(type(self).__name__)
+        self._fds = list() # list of opened file descriptors
 	# load template
 	try:
 	    self._templ_path = config['template']
@@ -78,6 +79,7 @@ class TexSreTemplate(string.Template):
             self._dest_path = config['dest_path']
 	except KeyError:
             self._dest_path = self._src_path
+        
 
     def _load_template(self, path):
         ''' Read template from file and generate a TexSreTemplate object.
@@ -85,10 +87,9 @@ class TexSreTemplate(string.Template):
         @ return: SreTemplare instance
 
         '''
-        fd = 0
         self._logger.info("Loading template.")
+        fd = codecs.open(path, mode='r', encoding='utf-8')
         try:
-            fd = codecs.open(path, mode='r', encoding='utf-8')
             templ = fd.read()
             super(TexSreTemplate, self).__init__(templ)
         except IOError, err:
@@ -131,9 +132,10 @@ class TexSreTemplate(string.Template):
                     ret[ph] = TexTable(bags[base], **kwargs).out()
                 elif bags[base].TI == 'graph':
                     ret[ph], fd = TexGraph(bags[base], **kwargs).out()
+                    self._fds.append(fd)
                 else: # TODO: handle other types
                     self._logger.debug('bags = %s', bags)
-                    self._logger.warning("Unhandled bag TI '%s' found in %s, skipping...", bags[base].TIP, base)
+                    self._logger.warning("Unhandled bag TI '%s' found in %s, skipping...", bags[base].TI, base)
                     continue
         return ret
 
@@ -158,7 +160,7 @@ class TexSreTemplate(string.Template):
             return err.errno
         finally:
             fd.close()
-        return template_out
+        return template_out, self._fds
 
 class HTMLSreTemplate(string.Template):
     ''' 

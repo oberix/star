@@ -127,7 +127,7 @@ class TexGraph(Graph):
         fd = NamedTemporaryFile(suffix='.pdf')
         self._figure.savefig(fd, format='pdf')
         ret = "\\includegraphics[width=\\linewidth, keepaspectratio=True]{%s}" % fd.name
-        self._logger.debug("graph file name is '%s'", ret)
+        self._logger.debug("graph file name is '%s'", fd.name)
         return ret, fd
 
 class HTMLGraph(Graph):
