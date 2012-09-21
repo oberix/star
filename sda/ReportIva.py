@@ -903,14 +903,15 @@ def addLiquidationSummaryFinalResults(vatDf, periodDf, debitVat, creditVat,
     else:
         _appendLineToVatLiquidationDict(liquidationDict, "IVA a debito o credito per il periodo", "", 0, creditVat-debitVat)
     #aggiunta riga "Debito (non superiore a 25,82 Euro) o credito da periodo precedente + acconti IVA"
+    dateStop = None
     if periodName:
         df1 = periodDf.ix[periodDf['NAM_PRD']==periodName].reset_index()
-        dateStart = df1[0:1]['FY_DATE_START'][0]
         dateStop = df1[0:1]['P_DATE_STOP'][0]
-        df0 = df0.ix[(df0['DATE']>=dateStart) & (df0['DATE']<=dateStop)]
     else:
-        df0 = df0.ix[df0['ESER']==fiscalyearName]
-    df0 = df0.ix[df0["T_ACC"]==treasuryVatAccountCode].reset_index(drop=True)
+        df1 = periodDf.ix[periodDf['NAM_FY']==fiscalyearName]
+        df1 = df1[['FY_DATE_STOP']].drop_duplicates().reset_index()
+        dateStop = df1[0:1]['FY_DATE_STOP'][0]
+    df0 = df0.ix[(df0['DATE']<=dateStop) & (df0["T_ACC"]==treasuryVatAccountCode)].reset_index(drop=True)
     df0 = df0[['CRED','AMOUNT']]
     df0 = df0.groupby('CRED').sum()[['AMOUNT']].reset_index()
     df1 = df0.ix[df0['CRED']==True].reset_index()

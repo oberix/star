@@ -28,18 +28,18 @@ lm_fatture = {
         'DATE_DUE': [0, 'c', 'Data','scadenza'],
         'NUM': [1, 'c', 'Numero','@v1'],
         'STATE': [2, 'c', 'Stato ','@v2'],
-        'PARTNER': [3, '2c', 'Controparte',"@v3"],
+        'PARTNER': [3, '2l', 'Controparte',"@v3"],
         'out_invoice': [4, '0.5r', 'Entrata',"@v4"],
-        'in_invoice': [5, '0.5c', 'Uscita','@v5'],
+        'in_invoice': [5, '0.5r', 'Uscita','@v5'],
         }
         
 lm_liquidazioni = {
         'DATE_DUE': [0, 'c', 'Data','scadenza'],
         'NUM': [1, 'c', 'Numero','@v1'],
         'STATE': [2, 'c', 'Stato ','@v2'],
-        'PARTNER': [3, '2c', 'Controparte',"@v3"],
+        'PARTNER': [3, '2l', 'Controparte',"@v3"],
         'sale': [4, '0.5r', 'Entrata',"@v4"],
-        'purchase': [5, '0.5c', 'Uscita','@v5'],
+        'purchase': [5, '0.5r', 'Uscita','@v5'],
         }
 
 
