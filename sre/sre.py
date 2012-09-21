@@ -64,6 +64,7 @@ def _compile_tex(file_, template, dest, fds):
         "texi2dvi",
         "--pdf",
         "--batch",
+        "--clean",
         "-o", os.path.join(dest, pdf_out), # output file
         "-I", os.path.dirname(template), # input path (where other files resides)
         file_, # main input file

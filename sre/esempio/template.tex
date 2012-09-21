@@ -1,6 +1,6 @@
 \documentclass[a4paper]{article}
 
-\usepackage{graphicx}                    % used to import images
+\usepackage{graphicx, caption, subcaption}                    % used to import images
 \usepackage{fancyhdr}                    % used to make the header and footer in three parts
 \usepackage{lastpage}                    % used to print ``page x of N'' in the footer
 \usepackage{eurosym}
@@ -16,7 +16,7 @@
 \usepackage{float}
 \usepackage[cm]{fullpage}
 
-\newcommand{\SRE}[1]{#1 placeholder}
+\newcommand{\SRE}[1]{\textit{insert[#1]}}
 
 \definecolor{DarkGray}{RGB}{51,51,51}
 \definecolor{DarkRed}{RGB}{128,0,0}
@@ -25,31 +25,39 @@
 
 \setlength{\topmargin}{-1cm}
 \setlength{\headheight}{22pt}
+\setlength{\headsep}{10pt}
 
 %% left part of the head
-\fancyhead[l]{\input{company}}
+\fancyhead[l]{}
 %% center of the head
 \fancyhead[c]{}
 %% right part of the head
-\fancyhead[r]{\color{DarkRed}\textbf{\Large{\SRE{table0.TITLE}}}}
+\fancyhead[r]{}
 %% left part of the foot
-%\fancyfoot[l]{Servabit Srl}
+\fancyfoot[l]{}
 %% center of the foot
 \fancyfoot[c]{}
 %% right part of the foot
-\fancyfoot[r]{Pagina \thepage\ di \pageref{LastPage}}
+\fancyfoot[r]{}
 %% line of the head
 \renewcommand{\headrulewidth}{0.5pt}
 %% line of the foot
-\renewcommand{\footrulewidth}{0.5pt}
+\renewcommand{\footrulewidth}{0.0pt}
 
 
 \begin{document}
 Tanto testo in questa riga così che si possa vedere se effettivamente questo maledetto fa stare la tabelle entro i margini del testo.
-\begin{centering}
+
 \tabulinesep=1.5mm
-%%\input{table0}
-\SRE{table0}
-\end {centering}
+
+\begin{figure}[h!]
+  \begin{subfigure}[cm]{0.5\linewidth}
+    \SRE{table0}
+  \end{subfigure}
+  ~
+  \begin{subfigure}[cm]{0.5\linewidth}
+    \SRE{graph0}
+  \end{subfigure}
+\end{figure}
 
 \end{document}
