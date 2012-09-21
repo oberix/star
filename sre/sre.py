@@ -55,9 +55,18 @@ def _load_config(src_path, confpath=None):
     return config.options
 
 def _compile_tex(file_, template, dest, fds):
-    ''' 
+    ''' Compile LaTeX, calls texi2dvi via system(3)
+    
+    @ param file_: main .tex file path
+    @ param template: template file path, used to handle output names
+    @ param dest: output file path
+    @ params fds: list of temporary files'es file descriptors, we need to close
+        them in order to have them removed before terminating.
+    @ return: texi2dvi exit code.
+
     '''
     pdf_out = os.path.basename(template).replace('.tex', '.pdf')
+    # create output dir if it does not exist
     if not os.path.exists(os.path.dirname(dest)):
         os.makedirs(os.path.dirname(dest))
     command = [
@@ -71,6 +80,7 @@ def _compile_tex(file_, template, dest, fds):
         ]
     logging.info("Compiling into PDF.")
     logging.debug(" ".join(command))
+    # open log file
     logfd = open(template.replace('.tex', '.log'), 'w')
     try:
         ret = subprocess.call(command, stdout=logfd, stderr=logfd)
@@ -79,7 +89,8 @@ def _compile_tex(file_, template, dest, fds):
         return err.errno
     finally:
         logfd.close()
-    map(lambda fd: fd.close(), fds) # close tmp file's file descriptors
+    # close temporary files (those created by TexGraph), causing deletion.
+    map(lambda fd: fd.close(), fds)
     if ret > 0:
         logging.warning(
             "texi2pdf exited with bad exit status, you can inspect what went wrong in %s", 
