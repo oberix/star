@@ -18,12 +18,10 @@
 #
 ##############################################################################
 
-__VERSION__ = '0.1'
-__AUTHOR__ = 'Luigi Cirillo (<luigi.cirillo@servabit.it>)'
-
 import sys
 import os
 import pandas
+import sqlalchemy
 
 # Servabit libraries
 BASEPATH = os.path.abspath(os.path.join(
@@ -31,27 +29,65 @@ BASEPATH = os.path.abspath(os.path.join(
                 os.path.pardir))
 sys.path.append(BASEPATH)
 sys.path = list(set(sys.path))
-
 import DBmap2
 import create_dict
+import parallel_jobs
 from share import Stark
 from share.config import Config
 
-def CreateDWComp(companyName):
-    '''Questa funzione serve a generare per una Comoany i diversi file pickle che compongono il
+
+def create_dict(cl_dmap2, dict_path, company_name):
+    '''
+    crea un dizionario a partire dai dati contenuti nel db
+    @param cl_dmap2: classe contenuta in DBmap2
+    @param dict_path: dizionario strutturato come :
+                    { 'NAMEVAR' :
+                        ('name attribute cl_dmap2', (...., None))
+    return dictionary {
+                        'NAMEVAR' : [data, data, data, .....]
+                        }
+    '''
+    
+    def tuple2attr(obj, tpl):
+        el = tpl
+        while(el[1] != None):
+            obj = getattr(obj, el[0])
+            el = el[1]
+        if isinstance(obj,sqlalchemy.orm.collections.InstrumentedList):
+            obj = obj[0]
+        obj = getattr(obj, el[0])
+        return obj
+    
+    def get_obj(session, cl_dbmap2, company_name):
+        objs = None
+        try:
+            getattr(cl_dbmap2, 'company')
+            objs = session.query(cl_dbmap2).filter(cl_dbmap2.company.has(name=company_name)).all()
+        except AttributeError:    
+            objs = session.query(cl_dbmap2).all()
+        return objs
+    
+    session = DBmap2.open_session()
+    out_dict = {}    
+    objs = get_obj(session, cl_dmap2, company_name)
+    for key in dict_path.iterkeys():
+        out_dict[key] = []
+    for obj in objs:
+        for key in dict_path.iterkeys():
+            try:
+                out_dict[key].append(tuple2attr(obj, dict_path[key]))
+            except AttributeError:
+                out_dict[key].append(None)
+    DBmap2.close_session(session)
+    return out_dict
+
+
+def createDWComp(companyName,picklesPath,immediateVatCreditAccountCode,
+                immediateVatDebitAccountCode,deferredVatCreditAccountCode,
+                deferredVatDebitAccountCode,treasuryVatAccountCode):
+    '''Questa funzione serve a generare per una Company i diversi file pickle che compongono il
        Datawarehouse di quella impresa
     ''' 
-    configFilePath = os.path.join(BASEPATH,"config","goal2stark.cfg")
-    config = Config(configFilePath)
-    config.parse()
-    if not companyName:
-        companyName=config.options.get('company',False)
-    picklesPath = config.options.get('pickles_path',False)
-    immediateVatCreditAccountCode=config.options.get('immediate_credit_vat_account_code',False)
-    immediateVatDebitAccountCode=config.options.get('immediate_debit_vat_account_code',False)
-    deferredVatCreditAccountCode=config.options.get('deferred_credit_vat_account_code',False)
-    deferredVatDebitAccountCode=config.options.get('deferred_debit_vat_account_code',False)
-    treasuryVatAccountCode=config.options.get('treasury_vat_account_code',False)
     path = os.path.join(picklesPath,companyName)
     
     ############################################################################################
@@ -72,7 +108,7 @@ def CreateDWComp(companyName):
     #assegno a ACC la classe AccountAccount
     ACC = DBmap2.AccountAccount
     #costruisco il dizionario con le variabili selezionata
-    DIZ_ACC = create_dict.create_dict(ACC, ACCD, companyName)
+    DIZ_ACC = create_dict(ACC, ACCD, companyName)
     accountsDf = pandas.DataFrame(DIZ_ACC)
     #Seleziono i dati per l'impresa Servabit
     #accountsDf=accountsDf[accountsDf['NAM_IMP']==companyName]
@@ -127,7 +163,7 @@ def CreateDWComp(companyName):
     #assegno a MOVL la classe AccountMoveLine
     MVL = DBmap2.AccountMoveLine
     #costruisco il dizionario con le variabili selezionata
-    DIZ_MVL = create_dict.create_dict(MVL, MVLD, companyName)
+    DIZ_MVL = create_dict(MVL, MVLD, companyName)
     movelineDf = pandas.DataFrame(DIZ_MVL)
     #Seleziono i dati per l'impresa Servabit
     #movelineDf=movelineDf[movelineDf['NAM_IMP']==companyName]
@@ -173,7 +209,7 @@ def CreateDWComp(companyName):
     ##assegno a MOVL la classe AccountMoveLine
     #MOV = DBmap2.AccountMove
     ##costruisco il dizionario con le variabili selezionata
-    #DIZ_MOV = create_dict.create_dict(MOV, MOVD, companyName)
+    #DIZ_MOV = create_dict(MOV, MOVD, companyName)
     #moveDf=pandas.DataFrame(DIZ_MOV)
     ##Seleziono i dati per l'impresa Servabit
     ##moveDf=moveDf[moveDf['NAM_IMP']==companyName]
@@ -202,7 +238,7 @@ def CreateDWComp(companyName):
     #assegno a MOVL la classe AccountMoveLine
     PAR = DBmap2.ResPartner
     #costruisco il dizionario con le variabili selezionata
-    DIZ_PAR = create_dict.create_dict(PAR, PARD, companyName)
+    DIZ_PAR = create_dict(PAR, PARD, companyName)
     partnerDf=pandas.DataFrame(DIZ_PAR)
     #Seleziono i dati per l'impresa Servabit
     #partnerDf=partnerDf[partnerDf['NAM_IMP']==companyName]
@@ -235,7 +271,7 @@ def CreateDWComp(companyName):
     #assegno a MOVL la classe AccountMoveLine
     TAX = DBmap2.AccountTax
     #costruisco il dizionario con le variabili selezionata
-    DIZ_TAX = create_dict.create_dict(TAX, TAX_D, companyName)
+    DIZ_TAX = create_dict(TAX, TAX_D, companyName)
     taxDf=pandas.DataFrame(DIZ_TAX)
     #Seleziono i dati per l'impresa Servabit
     #taxDf=taxDf[taxDf['NAM_IMP']==companyName]
@@ -268,7 +304,7 @@ def CreateDWComp(companyName):
     #assegno a MOVL la classe AccountMoveLine
     PERIOD = DBmap2.AccountPeriod
     #costruisco il dizionario con le variabili selezionata
-    DIZ_PRD = create_dict.create_dict(PERIOD, PERIOD_D, companyName)
+    DIZ_PRD = create_dict(PERIOD, PERIOD_D, companyName)
     periodDf = pandas.DataFrame(DIZ_PRD)
     #Seleziono i dati per l'impresa Servabit
     #periodDf=periodDf[periodDf['NAM_IMP']==companyName]
@@ -297,7 +333,7 @@ def CreateDWComp(companyName):
     ##assegno a MOVL la classe AccountMoveLine
     #SEQUENCE = DBmap2.IrSequence
     ##costruisco il dizionario con le variabili selezionata
-    #DIZ_SEQ = create_dict.create_dict(SEQUENCE, SEQ_D, companyName)
+    #DIZ_SEQ = create_dict(SEQUENCE, SEQ_D, companyName)
     #sequenceDf=pandas.DataFrame(DIZ_SEQ)
     ##Seleziono i dati per l'impresa Servabit
     ##sequenceDf=sequenceDf[sequenceDf['NAM_IMP']==companyName]
@@ -364,26 +400,27 @@ def CreateDWComp(companyName):
     #aggiunta a vatDatasDf delle move.line relative ai pagamenti dell'iva differita
     df0 = vatDatasDf.ix[(vatDatasDf["T_ACC"]==deferredVatCreditAccountCode) | (vatDatasDf["T_ACC"]==deferredVatDebitAccountCode)].reset_index()
     reconcileDf = df0[["RECON","RECON_P"]].drop_duplicates().reset_index(drop=True)
-    reconcileDf['RECON'].ix[reconcileDf['RECON'].isnull()] = "NULL"
-    reconcileDf['RECON_P'].ix[reconcileDf['RECON_P'].isnull()] = "NULL"
-    df0 = moveLineDf.ix[moveLineDf["COD_SEQ"]!='RIVA'].reset_index()
-    df1 = pandas.DataFrame()
-    df2 = pandas.DataFrame()
-    try:
-        df1 = pandas.merge(df0,reconcileDf,on="RECON").reset_index(drop=True)
-    except IndexError:
-        pass
-    try:
-        df2 = pandas.merge(df0,reconcileDf,on="RECON_P").reset_index(drop=True)
-    except IndexError:
-        pass
-    df3 = pandas.concat([df1,df2]).reset_index(drop=True)
-    #del df3["RECON_P.x"]
-    #del df3["RECON_P.y"]
-    #del df3["RECON.x"]
-    #del df3["RECON.y"]
-    df3['T_TAX'] = True
-    vatDatasDf = pandas.concat([vatDatasDf,df3]).reset_index(drop=True)
+    if len(reconcileDf) > 0:
+        reconcileDf['RECON'].ix[reconcileDf['RECON'].isnull()] = "NULL"
+        reconcileDf['RECON_P'].ix[reconcileDf['RECON_P'].isnull()] = "NULL"
+        df0 = moveLineDf.ix[moveLineDf["COD_SEQ"]!='RIVA'].reset_index()
+        df1 = pandas.DataFrame()
+        df2 = pandas.DataFrame()
+        try:
+            df1 = pandas.merge(df0,reconcileDf,on="RECON").reset_index(drop=True)
+        except IndexError:
+            pass
+        try:
+            df2 = pandas.merge(df0,reconcileDf,on="RECON_P").reset_index(drop=True)
+        except IndexError:
+            pass
+        df3 = pandas.concat([df1,df2]).reset_index(drop=True)
+        #del df3["RECON_P.x"]
+        #del df3["RECON_P.y"]
+        #del df3["RECON.x"]
+        #del df3["RECON.y"]
+        df3['T_TAX'] = True
+        vatDatasDf = pandas.concat([vatDatasDf,df3]).reset_index(drop=True)
     #aggiunta a vatDatasDf delle move.line relative ai pagamenti dell'iva sul conto treasuryVatAccountCode
     df0 = moveLineDf.ix[moveLineDf["T_ACC"]==treasuryVatAccountCode].reset_index()
     vatDatasDf = pandas.concat([vatDatasDf,df0]).reset_index(drop=True)
@@ -503,7 +540,7 @@ def CreateDWComp(companyName):
     #assegno a MOVL la classe AccountMoveLine
     ResCompany = DBmap2.ResCompany
     #costruisco il dizionario con le variabili selezionata
-    companyDict = create_dict.create_dict(ResCompany, companyDict, companyName)
+    companyDict = create_dict(ResCompany, companyDict, companyName)
     companyDf = pandas.DataFrame(companyDict)
     #Seleziono i dati per l'impresa Servabit
     companyDf = companyDf[companyDf['NAME']==companyName]
@@ -543,7 +580,7 @@ def CreateDWComp(companyName):
     #assegno a ACC la classe AccountAccount
     invoiceClass = DBmap2.AccountInvoice
     #costruisco il dizionario con le variabili selezionata
-    invoiceDict = create_dict.create_dict(invoiceClass, invoiceDict, companyName)
+    invoiceDict = create_dict(invoiceClass, invoiceDict, companyName)
     invoiceDf = pandas.DataFrame(invoiceDict)
     #invoiceDf=invoiceDf[invoiceDf['NAM_IMP']==companyName]
     invoiceStark = Stark(invoiceDf,os.path.join(path, 'INV.pickle'), TI='elab')
@@ -577,7 +614,7 @@ def CreateDWComp(companyName):
     #assegno a ACC la classe AccountAccount
     voucherClass = DBmap2.AccountVoucher
     #costruisco il dizionario con le variabili selezionata
-    voucherDict = create_dict.create_dict(voucherClass, voucherDict, companyName)
+    voucherDict = create_dict(voucherClass, voucherDict, companyName)
     voucherDf = pandas.DataFrame(voucherDict)
     #voucherDf=voucherDf[voucherDf['NAM_IMP']==companyName]
     voucherStark = Stark(voucherDf,os.path.join(path, 'VOU.pickle'), TI='elab')
@@ -588,3 +625,37 @@ def CreateDWComp(companyName):
         'NAM_MOV': {'DES': unicode("nome della scrittura contabile associata",'utf-8')},
         }
     voucherStark.save()
+
+def main():
+    configFilePath = os.path.join(BASEPATH,"config","goal2stark.cfg")
+    config = Config(configFilePath)
+    config.parse()
+    companiesNames = config.options.get('companies',False)
+    assert(companiesNames)
+    companiesNames = companiesNames.split(",")
+    picklesPath = config.options.get('pickles_path',False)
+    assert(picklesPath)
+    immediateVatCreditAccountCode = config.options.get('immediate_credit_vat_account_code',False)
+    assert(immediateVatCreditAccountCode)
+    immediateVatDebitAccountCode = config.options.get('immediate_debit_vat_account_code',False)
+    assert(immediateVatDebitAccountCode)
+    deferredVatCreditAccountCode = config.options.get('deferred_credit_vat_account_code',False)
+    assert(deferredVatCreditAccountCode)
+    deferredVatDebitAccountCode = config.options.get('deferred_debit_vat_account_code',False)
+    assert(deferredVatDebitAccountCode)
+    treasuryVatAccountCode = config.options.get('treasury_vat_account_code',False)
+    assert(treasuryVatAccountCode)
+    
+    processes = []
+    for companyName in companiesNames:
+        companyName = companyName.replace(" ","")
+        companyProcess = (createDWComp,
+                [companyName,picklesPath,immediateVatCreditAccountCode,
+                immediateVatDebitAccountCode,deferredVatCreditAccountCode,
+                deferredVatDebitAccountCode,treasuryVatAccountCode])
+        processes.append(companyProcess)
+        
+    parallel_jobs.do_jobs_efficiently(processes)
+
+if __name__ == '__main__':
+    main()
