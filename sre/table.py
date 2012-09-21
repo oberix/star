@@ -27,7 +27,7 @@ __author__ = "Marco Pattaro <marco.pattaro@servabit.it>"
 __version__ = "1.0"
 __all__ = ['TexTable', 'unique_list', 'escape']
 
-OPEN_TEX_TAB = """\\begin{longtabu} to \\linewidth"""
+OPEN_TEX_TAB = """\\begin{longtabu} spread \\linewidth"""
 CLOSE_TEX_TAB = """\\end{longtabu}"""
 
 FORMATS = {
@@ -227,7 +227,7 @@ class TexTable(Table):
         @ return: str
 
         '''
-        ret = str()
+        ret = "\\tabucline- \\endfoot \n'"
         span = len(self._align)
         if self._data.FOOTNOTE is not None:
             ret = str().join([
@@ -275,6 +275,7 @@ class TexTable(Table):
                         # element is not a string
                         out_record.append(escape(str(elem).encode('utf-8')))
             out += rowstart + """ & """.join(out_record) + " \\\ %s \n" % self._hsep
+        out += "\\tabucline- \n"
         return out
     
     # Public

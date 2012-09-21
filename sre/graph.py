@@ -23,6 +23,7 @@ import matplotlib.pyplot as plt
 #from matplotlib.figure import Figure
 from matplotlib import rc
 import logging
+from tempfile import NamedTemporaryFile, TemporaryFile
 
 __author__ = "Marco Pattaro <marco.pattaro@servabit.it>"
 __version__ = "0.1"
@@ -53,7 +54,7 @@ class Graph(object):
         _graph: a subset of LM containing only variables we are going to plot.
 
         '''
-        # TODO: handle line styles
+        # TODO: handle line styles (see sftp://terra.devsite/home/studiabo/UlisseRep/Q20/Q20S2630/HS690790/MER_ARE)
         for key, val in lm.iteritems():
             if val[0] == 'lax':
                 self._lax = self._df[key]
@@ -73,8 +74,9 @@ class Graph(object):
     def make_graph(self):
         # TODO: handle legend position and layout
         fig = plt.figure()
-        ax = fig.add_subplot(1,1,1, axisbg='#eeefff', autoscale_on=True, 
-                                      adjustable="box")
+        ax = fig.add_subplot(1,1,1, axisbg='#eeefff', autoscale_on=True,
+                             adjustable="box")
+        ax.set_xlim(self._lax.min(), self._lax.max())
         ax.grid(True)
         lines = list()
         labels = list()
@@ -94,6 +96,7 @@ class Graph(object):
             if col['type'] == 'plot':
                 line = ax.plot(self._lax, self._df[col['key']], color=col['color'])
             elif col['type'] == 'bar':
+                # FIXME: Centered bars cause the plot to be much wider on the right
                 line = ax.bar(self._lax, self._df[col['key']], color=col['color'], align='center')
             elif col['type'] == 'scatter':
                 line = ax.scatter(self._df[col['key']])
@@ -121,7 +124,11 @@ class TexGraph(Graph):
         rc('text', usetex=True)
         
     def out(self):
-        pass
+        fd = NamedTemporaryFile(suffix='.pdf')
+        self._figure.savefig(fd, format='pdf')
+        ret = "\\includegraphics[width=\\linewidth, keepaspectratio=True]{%s}" % fd.name
+        self._logger.debug("graph file name is '%s'", ret)
+        return ret, fd
 
 class HTMLGraph(Graph):
 
@@ -159,9 +166,22 @@ if __name__ == '__main__':
     df['c'] = np.random.randn(10)
     df['d'] = np.random.randn(10)
 
-    path = '/tmp/pollo.pickle'
-    bag = Bag(df, path, LM=lm)
-    graph = TexGraph(bag)
-    graph._figure.show()
+    path = '/home/mpattaro/workspace/star/trunk/sre/esempio/graph0.pickle'
+    bag = Bag(df, path, LM=lm, TI='graph')
+    bag.save()
+
+    lm = {
+        'b': [0, '|c|', '|@v0|', '|Bau|'],
+        'c': [1, 'l|', '|@v0|', 'Ciao|'],
+        'd': [2, 'r|', '@v1|', 'Dau|'],
+        }
+    path = '/home/mpattaro/workspace/star/trunk/sre/esempio/table0.pickle'
+    bag = Bag(df, path, LM=lm, TITLE='Esempio')
+    bag.save()
+
+    # graph = TexGraph(bag)
+    # graph._figure.show()
+#    bag.save()
+#    graph._figure.savefig('/tmp/pollo.pdf', format='pdf')
     
     

@@ -23,7 +23,7 @@ import sys
 import re
 import codecs
 import os
-import subprocess
+#import subprocess
 import string
 import logging
 
@@ -130,7 +130,7 @@ class TexSreTemplate(string.Template):
                 if bags[base].TI == 'tab':
                     ret[ph] = TexTable(bags[base], **kwargs).out()
                 elif bags[base].TI == 'graph':
-                    ret[ph] = TexGraph(bags[base], **kwargs).out()
+                    ret[ph], fd = TexGraph(bags[base], **kwargs).out()
                 else: # TODO: handle other types
                     self._logger.debug('bags = %s', bags)
                     self._logger.warning("Unhandled bag TI '%s' found in %s, skipping...", bags[base].TIP, base)
@@ -145,40 +145,20 @@ class TexSreTemplate(string.Template):
         '''
         if not os.path.exists(os.path.dirname(self._dest_path)):
             os.makedirs(os.path.dirname(self._dest_path))
+
         # substitute placeholders
-        # FIXME: with safe_substitute, if a placeholder is missing, no exception is
-        # raised, but nothing is told to the user either.
         templ_out = self.safe_substitute(self.bags)
         # save final document
-        pdf_out = os.path.basename(self._templ_path).replace('.tex', '')
         template_out = self._templ_path.replace('.tex', '_out.tex')
+        fd = codecs.open(template_out, mode='w', encoding='utf-8')
         try:
-            fd = codecs.open(template_out, mode='w', encoding='utf-8')
             fd.write(templ_out)
         except IOError, err:
             self._logger.error(err)
             return err.errno
         finally:
             fd.close()
-        # Call LaTeX compiler
-        command = [
-            "texi2pdf",
-            "--batch",
-            "--tidy", 
-            "--build-dir=%s" % os.path.join(os.environ['HOME'], '.t2d'),
-            "-c", template_out, # main input file
-            "-o", os.path.join(self._dest_path, pdf_out), # output file
-            "-I", os.path.dirname(self._templ_path), # input path (where other files resides)
-            ]
-        if self._logger.getEffectiveLevel() >= logging.INFO:
-            command.insert(1, "--quiet")
-        self._logger.info("Compiling into PDF.")
-        self._logger.debug(" ".join(command))
-        ret = subprocess.call(command)
-        if ret == 0:
-            self._logger.info("Done")
-        return ret
-
+        return template_out
 
 class HTMLSreTemplate(string.Template):
     ''' 
@@ -218,16 +198,15 @@ class HTMLSreTemplate(string.Template):
         '''
         fd = 0
         self._logger.info("Loading template.")
+        fd = codecs.open(path, mode='r', encoding='utf-8')
         try:
-            fd = codecs.open(path, mode='r', encoding='utf-8')
             templ = fd.read()
             super(HTMLSreTemplate, self).__init__(templ)
         except IOError, err:
             self._logger.error(err)
             sys.exit(err.errno)
         finally:
-            if fd > 0:
-                fd.close()
+            fd.close()
 
     def _load_bags(self, path, **kwargs):
         ''' Load bag files and generates Html code from them.
@@ -278,21 +257,18 @@ class HTMLSreTemplate(string.Template):
         if not os.path.exists(os.path.dirname(self._dest_path)):
             os.makedirs(os.path.dirname(self._dest_path))
         # substitute placeholders
-        # FIXME: with safe_substitute, if a placeholder is missing, no exception is
-        # raised, but nothing is told to the user either.
         templ_out = self.safe_substitute(self.bags)
         # save final document
         self._logger.info("Creating HTML")
         ret = self._templ_path.replace('.html', '_out.html')
+        fd = codecs.open(ret, mode='w', encoding='utf-8')
         try:
-            fd = codecs.open(ret, mode='w', encoding='utf-8')
             fd.write(templ_out)
         except IOError, err:
             self._logger.error("%s", err)
             return err.errno
         finally:
             fd.close()
-        if not ret > 0:
-            self._logger.info("Done")
+        self._logger.info("Done")
         return ret
 

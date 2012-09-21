@@ -22,6 +22,7 @@
 
 import os
 import sys
+import subprocess
 import logging
 
 BASEPATH = os.path.abspath(os.path.join(
@@ -53,6 +54,31 @@ def _load_config(src_path, confpath=None):
     logging.debug(config)
     return config.options
 
+def _compile_tex(file_, template, dest):
+    pdf_out = os.path.basename(template).replace('.tex', '')
+    if not os.path.exists(os.path.dirname(dest)):
+        os.makedirs(os.path.dirname(dest))
+    command = [
+        "texi2pdf",
+        "--quiet",
+        "--batch",
+        "--tidy", 
+        "--build-dir=%s" % os.path.join(os.environ['HOME'], '.t2d'),
+        "-c", file_, # main input file
+        "-o", os.path.join(dest, pdf_out), # output file
+        "-I", os.path.dirname(template), # input path (where other files resides)
+        ]
+    logging.info("Compiling into PDF.")
+    ret = subprocess.call(command)
+    if ret > 0:
+        logging.warning(
+            "texi2pdf exited with bad exit status, you can inspect what went wrong in %s", 
+            os.path.join(dest, file_.replace('.tex', '.log')))
+        return ret
+    logging.info("Done.")
+    return ret
+                       
+
 def sre(src_path, config=None, **kwargs):
     ''' Main procedure to generate a report. 
     Besically the procedure is splitted into these steps:
@@ -82,15 +108,24 @@ def sre(src_path, config=None, **kwargs):
 	elif os.path.isfile(os.path.join(src_path, 'main.html')):
             templ_path = os.path.join(src_path, 'main.html')
     
-    # Identify type just from filename
+    # Identify type just from filename suffix
     if templ_path.endswith('.tex'):
         templ = template.TexSreTemplate(src_path, config=config)
+        report = templ.report()
+        if not isinstance(report, str):
+            # Error, return errno
+            return report
+        return _compile_tex(report, templ_path, config.get('dest_path', templ_path))
     elif templ_path.endswith('.html'):
         templ = template.HTMLSreTemplate(src_path, config=config)
-
-    # make report
-    return templ.report()
-
+        report = templ.report()
+        if not isinstance(report, str()):
+            # Error, return errno
+            return report
+    else:
+        logging.error("Could not find a valid template, exiting.")
+        return 1
+    return 0
 
 if __name__ == "__main__":
     ''' Procedure when executing file. A directory path is needed as first
