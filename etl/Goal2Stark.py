@@ -199,12 +199,12 @@ def createDWComp(companyName,picklesPath,immediateVatCreditAccountCode,
              #'DAT_MOV' : ('date', None),
              #'NAM_PRD'  : ('period', ('name', None)),
              #'NAM_JRN'  : ('journal', ('name', None)),
-             #'TYPE_JRN'  : ('journal', ('type', None)), #aggiunto da Nicola il 23/7/2012
+             #'TYPE_JRN'  : ('journal', ('type', None)),
              #'NAM_IMP'  : ('company', ('name', None)),
              #'NAM_PAR'  : ('partner', ('name', None)),
              #'CHK_MOV'  : ('to_check', None),
              #'STA_MOV'  : ('state', None),
-             #'DATE_DOC' : ('invoice', ('date_document', None)), #aggiunto da Nicola il 13/7/2012
+             #'DATE_DOC' : ('invoice', ('date_document', None)),
              #}
     ##assegno a MOVL la classe AccountMoveLine
     #MOV = DBmap2.AccountMove
