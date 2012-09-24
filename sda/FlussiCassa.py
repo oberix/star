@@ -103,7 +103,7 @@ def main(dirname):
     checkAccounts(matchingsDf,accountStark.DF)
     #calcolo flussi
     computeCashFlows(fiscalyearName,moveLineStark.DF,accountStark.DF,
-                    periodStark.DF,matchingsDf,onlyValidatedMoves,
+                    periodStark.DF,linesDf,matchingsDf,onlyValidatedMoves,
                     defaultIncomingsFlowLineCode,defaultExpensesFlowLineCode,
                     printWarnings=True)
     #calcolo
@@ -276,7 +276,7 @@ def _computeCashFlowFromMoveLine(cashFlowsDf, month, moveLineDf, matchingsDf, de
                 " non è riconciliata. L'importo è finito in altre uscite operative con importo "+str(row["DBT_MVL"][i])
         
 
-def computeCashFlows(fiscalyearName, moveLineDf, accountDf, periodDf,
+def computeCashFlows(fiscalyearName, moveLineDf, accountDf, periodDf, flowLinesDf,
                     matchingsDf, onlyValidatedMoves, defaultIncomingsFlowLineCode,
                     defaultExpensesFlowLineCode, printWarnings=True):
     #recupero conti di liquidità
@@ -296,6 +296,7 @@ def computeCashFlows(fiscalyearName, moveLineDf, accountDf, periodDf,
         t = (el,[0,0,0,0,0,0,0,0,0,0,0,0,0])
         itemsList.append(t)
     cashFlowsDf = pandas.DataFrame.from_items(itemsList)
+    journalsDf = pandas.DataFrame.from_items(itemsList)
     #calcolo dei risultati per ogni mese
     if onlyValidatedMoves:
         moveLineDf = moveLineDf[moveLineDf["STA_MOV"]=='posted'].reset_index(drop=True)
@@ -313,7 +314,7 @@ def computeCashFlows(fiscalyearName, moveLineDf, accountDf, periodDf,
         df2['CRT_MVL'] = df2['CRT_MVL'].map(float)
         if len(df2) > 0:
             #calcolo flussi per journal
-            df3 = df2.groupby("NAM_JRN").sum()[['DBT_MVL','CRT_MVL']].reset_index()
+            journalsDf = df2.groupby("NAM_JRN").sum()[['DBT_MVL','CRT_MVL']].reset_index()
             #calcolo flussi suddivisi in voci
             df4 = df2[["NAM_MOV","NAM_FY","NAM_JRN"]]
             if len(df4) > 0:
@@ -356,12 +357,61 @@ def computeCashFlows(fiscalyearName, moveLineDf, accountDf, periodDf,
                 _computeCashFlowFromMoveLine(cashFlowsDf, month, df8, matchingsDf, 
                                             defaultIncomingsFlowLineCode, defaultExpensesFlowLineCode,printWarnings=printWarnings)
                 ######
-                ##flussi per conti non 'payable' nè receivable
+                ##flussi per conti non 'payable' né 'receivable'
                 ######
                 df7 = df6[(df6["TYP_CON"]!='receivable') & (df6["TYP_CON"]!='payable')].reset_index(drop=True)
                 _computeCashFlowFromMoveLine(cashFlowsDf, month, df7, matchingsDf, 
                                             defaultIncomingsFlowLineCode, defaultExpensesFlowLineCode,printWarnings=printWarnings)
-    print cashFlowsDf.transpose()
+    #calcolo totali mensili
+    cashFlowsDf = cashFlowsDf.transpose()
+    columns = list(cashFlowsDf.columns)
+    cashFlowsDf["TOTAL"] = 0
+    for column in columns:
+        cashFlowsDf["TOTAL"] += cashFlowsDf[column]
+    columns = list(cashFlowsDf.columns)
+    cashFlowsDf = cashFlowsDf.reset_index()
+    #calcolo livello per ogni voce di flusso
+    compute = True
+    df1 = flowLinesDf[flowLinesDf["parent_id"].isnull()]
+    count = 0
+    df1["level"] = count
+    result = df1
+    while compute:
+        count += 1
+        df1 = df1[["Fl_Code"]]
+        df1 = df1.rename(columns={'Fl_Code' : 'code'})
+        df1 = pandas.merge(df1,flowLinesDf,left_on="code",right_on="parent_id")
+        if len(df1)>0:
+            df1["level"] = count
+            del df1["code"]
+            result = pandas.concat([result,df1]).reset_index(drop=True)
+        else:
+            compute=False
+    flowLinesDf = result
+    #calcolo totali
+    df3 = flowLinesDf[["Fl_Code","level"]]
+    cashFlowsDf = pandas.merge(cashFlowsDf,df3,left_on="index",right_on="Fl_Code")
+    del cashFlowsDf["Fl_Code"]
+    df2 = cashFlowsDf[["level"]].drop_duplicates()
+    maxLevel = int(max(list(df2["level"])))
+    cashFlowsDf["USED_FOR_CALC"] = False
+    for i in range(maxLevel):
+        print i
+        level = maxLevel - i
+        df10 = cashFlowsDf[(cashFlowsDf["USED_FOR_CALC"]==False) & (cashFlowsDf["level"]==level)]
+        df15 = cashFlowsDf[(cashFlowsDf["USED_FOR_CALC"]==True) | (cashFlowsDf["level"]!=level)]
+        if len(df10)>0:
+            df10["USED_FOR_CALC"] = True
+            df11 = pandas.merge(df10,flowLinesDf,left_on="index",right_on="Fl_Code")
+            #print "10=%s" % df10
+            df12 = df11.groupby("parent_id").sum()[columns].reset_index()
+            df12 = df12.rename(columns={'parent_id' : 'index'})
+            df12["USED_FOR_CALC"] = False
+            df12["level"] = level-1
+            #print "12=%s" % df12
+            #print "15=%s" % df15
+            cashFlowsDf = pandas.concat([df10,df12,df15]).reset_index(drop=True)
+    print cashFlowsDf    
                 
     
 if __name__ == "__main__":
