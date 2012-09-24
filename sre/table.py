@@ -227,7 +227,7 @@ class TexTable(Table):
         @ return: str
 
         '''
-        ret = "\\tabucline- \\endfoot \n'"
+        ret = "\\tabucline- \\endfoot \n"
         span = len(self._align)
         if self._data.FOOTNOTE is not None:
             ret = str().join([
