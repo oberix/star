@@ -88,7 +88,6 @@ def main(dirname):
     outInvoicesBag = Bag(expiries['outInvoiceDf'],
                       os.path.join(OUT_PATH, 'out_invoices.pickle'),
                       TI='tab',LM=lm_fatture,TITLE="Fatture vendita")
-    print expiries['purchaseVoucherDf']
     purchaseVoucherBag = Bag(expiries['purchaseVoucherDf'],
                       os.path.join(OUT_PATH, 'purchase_vouchers.pickle'),
                       TI='tab',LM=lm_liquidazioni,TITLE="Liquidazioni costo")
