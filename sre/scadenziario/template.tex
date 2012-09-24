@@ -27,11 +27,11 @@
 \setlength{\headheight}{47pt}
 
 %% left part of the head
-\fancyhead[l]{\SRE{invoices.COMPANY_STRING}}
+\fancyhead[l]{\SRE{in_invoices.COMPANY_STRING}}
 %% center of the head
 \fancyhead[c]{}
 %% right part of the head
-\fancyhead[r]{\color{DarkRed}\textbf{\Large{Scadenziario \SRE{invoices.COMPANY}}\linebreak Anno: \SRE{invoices.YEAR}}}
+\fancyhead[r]{\color{DarkRed}\textbf{\Large{Scadenziario \SRE{in_invoices.COMPANY}}\linebreak Anno: \SRE{in_invoices.YEAR}}}
 %% left part of the foot
 %\fancyfoot[l]{Servabit Srl}
 %% center of the foot
@@ -48,9 +48,11 @@
 \setlength{\parindent}{0cm}
 \begin{centering}
 \tabulinesep=1.5mm
-\large{Fatture}
-\normalsize{\SRE{invoices}}
-\large{Liquidazioni}
-\normalsize{\SRE{vouchers}}
+\large{Fatture acquisto}
+\normalsize{\SRE{in_invoices}}
+\large{Fatture vendita}
+\normalsize{\SRE{out_invoices}}
+\large{Liquidazioni di costo}
+\normalsize{\SRE{purchase_vouchers}}
 \end {centering}
 \end{document}
