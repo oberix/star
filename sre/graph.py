@@ -36,7 +36,7 @@ GRAPH_TYPES = (
 )
 
 class Graph(object):
-    
+
     def __init__(self, data, **kwargs):
         self._logger = logging.getLogger(type(self).__name__)
         self._title = data.TITLE
@@ -45,6 +45,30 @@ class Graph(object):
         self._graph = list()
         self.parse_lm(data.LM)
         self._figure = self.make_graph()
+
+    def _make_legend(self, figure, lines, labels):
+        ''' Create a legend
+        
+        @ param figure: the Figure object where to attach the legend
+        @ param lines: a list of lines/patches that needs to be in the
+            legend. This are the values returned by the calls to plot(), bar(),
+            etc.
+        @ param labels: a list of labels to use in the legend
+        @ return: a Legend instance
+
+        '''
+        # Evaluate number of columns
+        ncol = 3
+        if len(lines) < 5:
+            ncol = 2
+        elif len(lines) < 3:
+            ncol = 1
+        handles = (line[0] for line in lines)
+        leg = figure.legend(handles, labels, ncol=ncol,
+                            loc='upper left', borderaxespad=0.0,
+                            bbox_to_anchor=(0.1, 1.01, 0.0, 0.0))
+        leg.get_frame().set_linewidth(0) # Remove legend border
+        return leg
 
     def parse_lm(self, lm):
         ''' Parse Bag's LM dictionary and estract the following non-public
@@ -72,7 +96,12 @@ class Graph(object):
                 continue
 
     def make_graph(self):
-        # TODO: handle legend position and layout
+        ''' Create a Figure and plot a graph in it following what was specified
+        in Bag.LM.
+
+        @ return: the Figure instance created
+        
+        ''' 
         fig = plt.figure()
         ax = fig.add_subplot(1,1,1, axisbg='#eeefff', autoscale_on=True,
                              adjustable="box")
@@ -97,6 +126,7 @@ class Graph(object):
                 line = ax.plot(self._lax, self._df[col['key']], color=col['color'])
             elif col['type'] == 'bar':
                 # FIXME: Centered bars cause the plot to be much wider on the right
+                # TODO: handle cumulative bars
                 line = ax.bar(self._lax, self._df[col['key']], color=col['color'], align='center')
             elif col['type'] == 'scatter':
                 line = ax.scatter(self._df[col['key']])
@@ -106,7 +136,7 @@ class Graph(object):
                 continue
             lines.append(line)
             labels.append(col['label'])
-        leg = fig.legend((line[0] for line in lines), labels)
+        leg = self._make_legend(fig, lines, labels)
         return fig
 
     def out(self):
@@ -133,8 +163,8 @@ class TexGraph(Graph):
 class HTMLGraph(Graph):
 
     def out(self):
-        pass
-
+        # TODO: implement
+        raise NotImplementedError
 
 if __name__ == '__main__':
     ''' TEST '''
