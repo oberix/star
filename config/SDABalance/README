@@ -1,0 +1,13 @@
+La cartella config/SDABalance contiene i seguenti file:
+
+chart_abb.csv: Appiattimento della tassonomia XBRL per l'italia (versione del
+    2011) per il bilancio in forma abbreviata.
+chart_ese.csv: Appiattimento della tassonomia XBRL per l'italia (versione del
+    2011) per il bilancio d'esercizio.
+conti_ifa.csv: Piano dei conti Rete Servabit, per bilancio in forma abbreviata.
+conti_ifo.csv: Piano dei conti Rete Servabit, per bilancio d'esercizio.
+corrisp_ifa.csv: Mappatura per la riclassificazione di bilanci da PdC Rete
+    Servabit a IV direttiva CEE (forma abbreviata).
+corrisp_ifo.csv: Mappatura per la riclassificazione di bilanci da PdC Rete
+    Servabit a IV direttiva CEE (esercizio).
+
