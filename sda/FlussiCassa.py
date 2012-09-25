@@ -94,8 +94,6 @@ def main(dirname):
     totalExpensesFlowLineCode = config.options.get('total_expenses_flow_line',False)
     linesCsvFilePath = config.options.get('lines_csv_file_path',False)
     matchingsCsvFilePath = config.options.get('matchings_csv_file_path',False)
-    #incomingAccountsCsvFilePath = config.options.get('incoming_accounts_csv_file_path',False)
-    #costAccountsCsvFilePath = config.options.get('cost_accounts_csv_file_path',False)
     #verifica che la stringa associata al parametro only_validated_moves inserita in config
     #sia effettivamente un valore boleano 
     onlyValidatedMoves = True
@@ -138,6 +136,9 @@ def main(dirname):
 ###########
 
 def checkAccounts(matchingsDf, accountsDf):
+    '''
+    controlla le corrispondenze tra i conti nel file della mappatura e i conti presenti nel db, evidenziando le eventuali differenze
+    '''
     df1 = matchingsDf[["servabit_code"]]
     df2 = accountsDf[(accountsDf["TYP_CON"]=="other") | (accountsDf["TYP_CON"]=="receivable") |\
                     (accountsDf["TYP_CON"]=="payable")  | (accountsDf["TYP_CON"]=="liquidity")].reset_index(drop=True)
@@ -267,6 +268,16 @@ def _computeCashFlowFromReconcileFinalStep(cashFlowsDf, month, defaultFlowLine, 
         cashFlowsDf[code][month] += amount
         
 def _computeCashFlowFromMoveLine(cashFlowsDf, month, moveLineDf, matchingsDf, defaultIncomingsFlowLineCode, defaultExpensesFlowLineCode, printWarnings=False):
+    '''
+    funzione che calcola flussi di cassa provenienti da pagamenti in cui non sono presenti move line su conti payable o receivable
+    @param cashFlowsDf: è il dataframe con tutti i risultati dei flussi di cassa
+    @param month: è un intero (da 1 a 12) che indica il mese dei flussi da calcolare
+    @param defaultIncomingsFlowLineCode: è il codice della voce dei flussi di default per le entrate
+    @param defaultExpensesFlowLineCode: è il codice della voce dei flussi di default per le uscite
+    @param moveLineDf: è il df contenente tutte le move line
+    @param matchingsDf: è il df contenente le mappature tra conti servabit e le voci dei flussi di cassa ("in entrata" e "in uscita")
+    @param printWarnigns: è un booleano che indica se stampare o meno i messaggi di warning
+    '''
     df1 = pandas.merge(moveLineDf,matchingsDf,left_on="COD_CON",right_on="servabit_code")
     df2 = df1[df1["CRT_MVL"]>0].reset_index()
     for i in range(len(df2)):
@@ -293,6 +304,13 @@ def _computeCashFlowFromMoveLine(cashFlowsDf, month, moveLineDf, matchingsDf, de
 def computeCashFlows(fiscalyearName, moveLineDf, accountDf, periodDf, flowLinesDf,
                     matchingsDf, onlyValidatedMoves, defaultIncomingsFlowLineCode,
                     defaultExpensesFlowLineCode, printWarnings=True):
+    '''
+    funzione che calcola i flussi di cassa e i saldi suddivisi per journal. Restituisce un dizionario con le seguenti voci:
+    'cashFlows' : è il df dei flussi di cassa
+    'diffEntUsc' : è un df con la differenza tra entrate e uscite
+    'saldoAgg' : è un df con il saldo aggregato
+    'saldoJournals' : è un df con il saldo dei journals
+    '''
     #recupero conti di liquidità
     liquidityAccountsDf = accountDf[accountDf["TYP_CON"]=='liquidity'].reset_index(drop=True)
     #calcolo intero relativo all'anno fiscale
