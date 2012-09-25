@@ -24,22 +24,37 @@
 ######definizione degli lm
 #################
 
-lm_fatture = {
-        'DATE_DUE': [0, 'c', 'Data','scadenza'],
-        'NUM': [1, 'c', 'Numero','@v1'],
-        'STATE': [2, 'c', 'Stato ','@v2'],
-        'PARTNER': [3, '2c', 'Controparte',"@v3"],
-        'out_invoice': [4, '0.5r', 'Entrata',"@v4"],
-        'in_invoice': [5, '0.5c', 'Uscita','@v5'],
+lm_flussi = {
+        'descrizione': [0, '3l', '@v10'],
+        1: [1, 'r', 'gen'],
+        2: [2, 'r', 'feb'],
+        3: [3, 'r', 'mar'],
+        4: [4, 'r', 'apr'],
+        5: [5, 'r', 'mag'],
+        6: [6, 'r', 'giu'],
+        7: [7, 'r', 'lug'],
+        8: [8, 'r', 'ago'],
+        9: [9, 'r', 'set'],
+        10: [10, 'r', 'ott'],
+        11: [11, 'r', 'nov'],
+        12: [12, 'r', 'dic'],
+        'TOTAL': [13, 'r', 'TOTALE'],
         }
         
-lm_liquidazioni = {
-        'DATE_DUE': [0, 'c', 'Data','scadenza'],
-        'NUM': [1, 'c', 'Numero','@v1'],
-        'STATE': [2, 'c', 'Stato ','@v2'],
-        'PARTNER': [3, '2c', 'Controparte',"@v3"],
-        'sale': [4, '0.5r', 'Entrata',"@v4"],
-        'purchase': [5, '0.5c', 'Uscita','@v5'],
+lm_journals = {
+        'NAM_JRN': [0, '3l', '@v10'],
+        1: [1, 'r', 'gen'],
+        2: [2, 'r', 'feb'],
+        3: [3, 'r', 'mar'],
+        4: [4, 'r', 'apr'],
+        5: [5, 'r', 'mag'],
+        6: [6, 'r', 'giu'],
+        7: [7, 'r', 'lug'],
+        8: [8, 'r', 'ago'],
+        9: [9, 'r', 'set'],
+        10: [10, 'r', 'ott'],
+        11: [11, 'r', 'nov'],
+        12: [12, 'r', 'dic'],
         }
 
 
@@ -102,21 +117,20 @@ def main(dirname):
     #controllo conti
     checkAccounts(matchingsDf,accountStark.DF)
     #calcolo flussi
-    computeCashFlows(fiscalyearName,moveLineStark.DF,accountStark.DF,
+    results = computeCashFlows(fiscalyearName,moveLineStark.DF,accountStark.DF,
                     periodStark.DF,linesDf,matchingsDf,onlyValidatedMoves,
                     defaultIncomingsFlowLineCode,defaultExpensesFlowLineCode,
                     printWarnings=True)
-    #calcolo
-    #expiries = computeExpiries(invoiceStark.DF,voucherStark.DF,periodStark.DF,moveLineStark.DF,fiscalyearName)
-    #generazione e salvataggio bag
-    #bagInvoices = Bag(expiries['invoiceDf'], os.path.join(OUT_PATH, 'invoices.pickle'), TI='tab',LM=lm_fatture,TITLE="Fatture")
-    #bagVouchers = Bag(expiries['voucherDf'], os.path.join(OUT_PATH, 'vouchers.pickle'), TI='tab',LM=lm_liquidazioni,TITLE="Liquidazioni")
-    #setattr(bagInvoices,"YEAR",fiscalyearName)
-    #setattr(bagInvoices,"COMPANY",companyName)
-    #setattr(bagInvoices,"COMPANY_STRING",companyString)
-    #OUT_PATH = os.path.join(SRE_PATH, 'scadenziario')
-    #bagInvoices.save()
-    #bagVouchers.save()
+    companyString = companyDf['NAME'][0]+" - "+companyDf['ADDRESS'][0]+" \linebreak "+companyDf['ZIP'][0]+" "+companyDf['CITY'][0]+" P.IVA "+companyDf['VAT'][0]
+    OUT_PATH = os.path.join(SRE_PATH, 'flussi_cassa')
+    concatDf = pandas.concat([results['cashFlows'],results['diffEntUsc'],results['saldoAgg']])
+    bagFlows = Bag(concatDf, os.path.join(OUT_PATH, 'cash_flows.pickle'), TI='tab',LM=lm_flussi)
+    setattr(bagFlows,"YEAR",fiscalyearName)
+    setattr(bagFlows,"COMPANY_STRING",companyString)
+    setattr(bagFlows,"COMPANY",companyName)
+    bagFlows.save()
+    bagJournals = Bag(results['saldoJournals'], os.path.join(OUT_PATH, 'journals.pickle'), TI='tab',LM=lm_journals)
+    bagJournals.save()
     return 0
 
 ###########
@@ -414,23 +428,32 @@ def computeCashFlows(fiscalyearName, moveLineDf, accountDf, periodDf, flowLinesD
             df12["USED_FOR_CALC"] = False
             df12["level"] = level-1
             cashFlowsDf = pandas.concat([df10,df12,df15]).reset_index(drop=True)
-    cashFlowsDf = cashFlowsDf.sort(['index']).reset_index(drop=True)
-    df5 = flowLinesDf[["Fl_Code","descrizione"]]
-    df6 = pandas.merge(df5,cashFlowsDf,left_on="Fl_Code",right_on="index",how="left")
-    df6 = df6[["Fl_Code","descrizione",1,2,3,4,5,6,7,8,9,10,11,12,"TOTAL"]]
+    cashFlowsDf = cashFlowsDf.rename(columns={'index' : 'Fl_Code'})
+    df5 = flowLinesDf[["Fl_Code","descrizione"]].reset_index()
+    cashFlowsDf = pandas.merge(df5,cashFlowsDf,on="Fl_Code",how="left")
+    cashFlowsDf = cashFlowsDf[["Fl_Code","descrizione",1,2,3,4,5,6,7,8,9,10,11,12,"TOTAL","index"]]
     journalDfColumns = list(journalsDf.columns)
     for i in range(12):
         c = i+1
-        df6[c].ix[df6[c].isnull()] = 0
+        cashFlowsDf[c].ix[cashFlowsDf[c].isnull()] = 0
         if journalDfColumns.count(c) > 0:
             journalsDf[c].ix[journalsDf[c].isnull()] = 0
         else:
             journalsDf[c] = 0
-    df6["TOTAL"].ix[df6["TOTAL"].isnull()] = 0
+    cashFlowsDf["TOTAL"].ix[cashFlowsDf["TOTAL"].isnull()] = 0
+    cashFlowsDf = cashFlowsDf.sort(['index']).reset_index(drop=True)
+    del cashFlowsDf["index"]
+    del cashFlowsDf["Fl_Code"]
     #calcolo diff ent/usc
     diffEntUsc = journalsDf.copy()
     diffEntUsc["NAM_JRN"] = 'ciccio'
     diffEntUsc = diffEntUsc.groupby("NAM_JRN").sum().reset_index()
+    del diffEntUsc["NAM_JRN"]
+    diffEntUsc["TOTAL"] = 0
+    for i in range(12):
+        month = i+1
+        diffEntUsc["TOTAL"] += diffEntUsc[month]
+    diffEntUsc["descrizione"] = 'Differenza Ent/Usc'
     #calcolo saldo journals
     for i in range(11):
         month = i+2
@@ -439,6 +462,14 @@ def computeCashFlows(fiscalyearName, moveLineDf, accountDf, periodDf, flowLinesD
     saldoAgg = journalsDf.copy()
     saldoAgg["NAM_JRN"] = 'ciccio'
     saldoAgg = saldoAgg.groupby("NAM_JRN").sum().reset_index()
+    saldoAgg["descrizione"] = 'Saldo aggregato'
+    saldoAgg["TOTAL"] = ''
+    return {
+        'cashFlows' : cashFlowsDf,
+        'diffEntUsc' : diffEntUsc,
+        'saldoAgg' : saldoAgg,
+        'saldoJournals' : journalsDf,
+        }
                 
     
 if __name__ == "__main__":
