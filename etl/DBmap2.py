@@ -450,7 +450,8 @@ def open_session():
     global conf, logger
     logger.debug('Opening session')
     url = URL(
-        '+'.join([conf.options.get('dbtype', 'postgresql'), conf.options.get('driver', 'psycopg2')]),
+        '+'.join([conf.options.get('dbtype', 'postgresql'),
+                  conf.options.get('driver', 'psycopg2')]),
         username = conf.options.get('user', None),
         password = conf.options.get('pwd', None),
         host = conf.options.get('host', None),

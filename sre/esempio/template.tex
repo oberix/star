@@ -1,4 +1,4 @@
-\documentclass[a4paper]{article}
+\documentclass[a4paper, 10pt]{article}
 
 \usepackage{graphicx, caption, subcaption}                    % used to import images
 \usepackage{fancyhdr}                    % used to make the header and footer in three parts
@@ -32,7 +32,7 @@
 %% center of the head
 \fancyhead[c]{}
 %% right part of the head
-\fancyhead[r]{}
+\fancyhead[r]{\Large{\SRE{table0.TITLE}}}
 %% left part of the foot
 \fancyfoot[l]{}
 %% center of the foot
@@ -50,14 +50,24 @@ Tanto testo in questa riga così che si possa vedere se effettivamente questo ma
 
 \tabulinesep=1.5mm
 
+\section*{Tabella e grafico affiancati...}
 \begin{figure}[h!]
   \begin{subfigure}[cm]{0.5\linewidth}
     \SRE{table0}
   \end{subfigure}
   ~
-  \begin{subfigure}[cm]{0.5\linewidth}
-    \SRE{graph0}
+  \begin{subfigure}[cm]{0.5\linewidth}    
+    \begin{subfigure}[cm]{\linewidth}
+      \SRE{graph0}
+    \end{subfigure}
   \end{subfigure}
 \end{figure}
+
+\pagebreak
+
+\section*{...vediamo come stanno da soli}
+\centering \SRE{table0}
+\centering \SRE{table0.ciao}
+\centering \SRE{graph0}
 
 \end{document}
