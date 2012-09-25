@@ -250,7 +250,7 @@ def _computeCashFlowFromReconcileFinalStep(cashFlowsDf, month, defaultFlowLine, 
         row = df7[i:i+1]
         code = row["code"][i]
         amount = row["AMOUNT"][i]
-        cashFlowsDf[code][month-1] += amount
+        cashFlowsDf[code][month] += amount
         
 def _computeCashFlowFromMoveLine(cashFlowsDf, month, moveLineDf, matchingsDf, defaultIncomingsFlowLineCode, defaultExpensesFlowLineCode, printWarnings=False):
     df1 = pandas.merge(moveLineDf,matchingsDf,left_on="COD_CON",right_on="servabit_code")
@@ -259,7 +259,7 @@ def _computeCashFlowFromMoveLine(cashFlowsDf, month, moveLineDf, matchingsDf, de
         row = df2[i:i+1]
         code = row["entrata_code"][i]
         amount = row["CRT_MVL"][i]
-        cashFlowsDf[code][month-1] += amount
+        cashFlowsDf[code][month] += amount
         if printWarnings and code==defaultIncomingsFlowLineCode:
             print "Warning: la move.line "+row["NAM_MVL"][i].encode("utf8")+" sul conto="+\
                 row["COD_CON"][i].encode("utf8")+", della move "+row["NAM_MOV"][i].encode("utf8")+\
@@ -269,7 +269,7 @@ def _computeCashFlowFromMoveLine(cashFlowsDf, month, moveLineDf, matchingsDf, de
         row = df3[i:i+1]
         code = row["uscita_code"][i]
         amount = row["DBT_MVL"][i]
-        cashFlowsDf[code][month-1] += amount
+        cashFlowsDf[code][month] += amount
         if printWarnings and code==defaultExpensesFlowLineCode:
             print "Warning: la move.line "+row["NAM_MVL"][i].encode("utf8")+" sul conto="+\
                 row["COD_CON"][i].encode("utf8")+", della move "+row["NAM_MOV"][i].encode("utf8")+\
@@ -375,7 +375,7 @@ def computeCashFlows(fiscalyearName, moveLineDf, accountDf, periodDf, flowLinesD
     df1 = flowLinesDf[flowLinesDf["parent_id"].isnull()]
     count = 0
     df1["level"] = count
-    result = df1
+    dfFlowsWithLevel = df1
     while compute:
         count += 1
         df1 = df1[["Fl_Code"]]
@@ -384,34 +384,37 @@ def computeCashFlows(fiscalyearName, moveLineDf, accountDf, periodDf, flowLinesD
         if len(df1)>0:
             df1["level"] = count
             del df1["code"]
-            result = pandas.concat([result,df1]).reset_index(drop=True)
+            dfFlowsWithLevel = pandas.concat([dfFlowsWithLevel,df1]).reset_index(drop=True)
         else:
             compute=False
-    flowLinesDf = result
     #calcolo totali
-    df3 = flowLinesDf[["Fl_Code","level"]]
+    df3 = dfFlowsWithLevel[["Fl_Code","level"]]
     cashFlowsDf = pandas.merge(cashFlowsDf,df3,left_on="index",right_on="Fl_Code")
     del cashFlowsDf["Fl_Code"]
     df2 = cashFlowsDf[["level"]].drop_duplicates()
     maxLevel = int(max(list(df2["level"])))
     cashFlowsDf["USED_FOR_CALC"] = False
     for i in range(maxLevel):
-        print i
         level = maxLevel - i
         df10 = cashFlowsDf[(cashFlowsDf["USED_FOR_CALC"]==False) & (cashFlowsDf["level"]==level)]
         df15 = cashFlowsDf[(cashFlowsDf["USED_FOR_CALC"]==True) | (cashFlowsDf["level"]!=level)]
         if len(df10)>0:
             df10["USED_FOR_CALC"] = True
-            df11 = pandas.merge(df10,flowLinesDf,left_on="index",right_on="Fl_Code")
-            #print "10=%s" % df10
+            df11 = pandas.merge(df10,dfFlowsWithLevel,left_on="index",right_on="Fl_Code")
             df12 = df11.groupby("parent_id").sum()[columns].reset_index()
             df12 = df12.rename(columns={'parent_id' : 'index'})
             df12["USED_FOR_CALC"] = False
             df12["level"] = level-1
-            #print "12=%s" % df12
-            #print "15=%s" % df15
             cashFlowsDf = pandas.concat([df10,df12,df15]).reset_index(drop=True)
-    print cashFlowsDf    
+    cashFlowsDf = cashFlowsDf.sort(['index']).reset_index(drop=True)
+    df5 = flowLinesDf[["Fl_Code","descrizione"]]
+    df6 = pandas.merge(df5,cashFlowsDf,left_on="Fl_Code",right_on="index",how="left")
+    df6 = df6[["Fl_Code","descrizione",1,2,3,4,5,6,7,8,9,10,11,12,"TOTAL"]]
+    for i in range(12):
+        c = i+1
+        df6[c].ix[df6[c].isnull()] = 0
+    df6["TOTAL"].ix[df6["TOTAL"].isnull()] = 0
+    print df6
                 
     
 if __name__ == "__main__":
