@@ -40,10 +40,10 @@ import pandas
 # cambiamento potrebbe essere cruciale per determinarne il comportamento). E'     
 # consuetudine distiguere queste vaiabili da quelle 'di elaborazione' scrivendole 
 # tutte in maiuscolo.                                                             
-LIB_PATH = '/home/mpattaro/workspace/star/trunk/'
-PKL_PATH = '/tmp/Goal-PKL/'
+LIB_PATH = '/home/contabilita/star_branch/'
+PKL_PATH = '/home/contabilita/Goal-PKL/'
 COMPANY = 'Vicem'
-OUT_PATH = '/home/mpattaro/workspace/star/trunk/sre/esempio/'
+OUT_PATH = '/home/contabilita/star_branch/sre/esempio/'
 
 # Indico a python dove si trovano le librerie di star:                         
 # sys.path è una comune lista di stringhe, ciascuna delle quali rappresenta un 
@@ -86,11 +86,10 @@ lm = {
 # Giornale'. Il parametro TIP='tab' indica al sistama che si intende generare
 # una tabella da questi dati, presto sarà supportato anche TIP='graph' per
 # generare un grafico.
-BG01 = Bag(DF01, os.path.join(OUT_PATH, 'table0.pickle'), 
-           LM=lm, TITLE='Libro Giornale', TI='tab')
+BG01 = Bag(DF=DF01, LM=lm, TITLE='Libro Giornale', TIP='tab')
 
 # Infine salvo l'oggetto bag in un file pickle
-BG01.save()
+BG01.save(os.path.join(OUT_PATH, 'table0.pickle'))
 
 # Rimane solamente da generare il report con SRE :) 
 # Per farlo, andate nella cartella sre ed eseguite  

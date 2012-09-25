@@ -28,16 +28,18 @@ lm_fatture = {
         'DATE_DUE': [0, 'c', 'Data','scadenza'],
         'NUM': [1, 'c', 'Numero','@v1'],
         'STATE': [2, 'c', 'Stato ','@v2'],
-        'PARTNER': [3, '2l', 'Controparte',"@v3"],
-        'TOTAL': [4, '0.5r', 'Importo',"@v4"],
+        'PARTNER': [3, '2c', 'Controparte',"@v3"],
+        'out_invoice': [4, '0.5r', 'Entrata',"@v4"],
+        'in_invoice': [5, '0.5c', 'Uscita','@v5'],
         }
         
 lm_liquidazioni = {
         'DATE_DUE': [0, 'c', 'Data','scadenza'],
         'NUM': [1, 'c', 'Numero','@v1'],
         'STATE': [2, 'c', 'Stato ','@v2'],
-        'PARTNER': [3, '2l', 'Controparte',"@v3"],
-        'AMOUNT': [4, '0.5r', 'Importo',"@v4"],
+        'PARTNER': [3, '2c', 'Controparte',"@v3"],
+        'sale': [4, '0.5r', 'Entrata',"@v4"],
+        'purchase': [5, '0.5c', 'Uscita','@v5'],
         }
 
 
@@ -81,22 +83,14 @@ def main(dirname):
     #calcolo
     expiries = computeExpiries(invoiceStark.DF,voucherStark.DF,periodStark.DF,moveLineStark.DF,fiscalyearName)
     #generazione e salvataggio bag
+    bagInvoices = Bag(DF=expiries['invoiceDf'],TIP='tab',LM=lm_fatture,TITLE="Fatture")
+    bagVouchers = Bag(DF=expiries['voucherDf'],TIP='tab',LM=lm_liquidazioni,TITLE="Liquidazioni")
+    setattr(bagInvoices,"YEAR",fiscalyearName)
+    setattr(bagInvoices,"COMPANY",companyName)
+    setattr(bagInvoices,"COMPANY_STRING",companyString)
     OUT_PATH = os.path.join(SRE_PATH, 'scadenziario')
-    inInvoicesBag = Bag(expiries['inInvoiceDf'],
-                      os.path.join(OUT_PATH, 'in_invoices.pickle'),
-                      TI='tab',LM=lm_fatture,TITLE="Fatture acquisto")
-    outInvoicesBag = Bag(expiries['outInvoiceDf'],
-                      os.path.join(OUT_PATH, 'out_invoices.pickle'),
-                      TI='tab',LM=lm_fatture,TITLE="Fatture vendita")
-    purchaseVoucherBag = Bag(expiries['purchaseVoucherDf'],
-                      os.path.join(OUT_PATH, 'purchase_vouchers.pickle'),
-                      TI='tab',LM=lm_liquidazioni,TITLE="Liquidazioni costo")
-    setattr(inInvoicesBag,"YEAR",fiscalyearName)
-    setattr(inInvoicesBag,"COMPANY",companyName)
-    setattr(inInvoicesBag,"COMPANY_STRING",companyString)
-    inInvoicesBag.save()
-    outInvoicesBag.save()
-    purchaseVoucherBag.save()
+    bagInvoices.save(os.path.join(OUT_PATH, 'invoices.pickle'))
+    bagVouchers.save(os.path.join(OUT_PATH, 'vouchers.pickle'))
     return 0
     
 def computeExpiries(invoiceDf , voucherDf , periodDf , moveLineDf, fiscalyearName):
@@ -109,12 +103,10 @@ def computeExpiries(invoiceDf , voucherDf , periodDf , moveLineDf, fiscalyearNam
         fiscalyearDateStart = df2["FY_DATE_START"][0]
         fiscalyearDateStop = df2["FY_DATE_STOP"][0]
     
-    invoiceColumns = ["DATE_DUE","NUM","STATE","PARTNER","TOTAL"]
-    inInvoiceResultDf = pandas.DataFrame(columns=invoiceColumns)
-    outInvoiceResultDf = pandas.DataFrame(columns=invoiceColumns)
-    voucherColumns = ["DATE_DUE","NUM","STATE","PARTNER","AMOUNT"]
-    saleVoucherResultDf = pandas.DataFrame(columns=voucherColumns)
-    purchaseVoucherResultDf = pandas.DataFrame(columns=voucherColumns)
+    invoiceColumns = ["DATE_DUE","NUM","STATE","PARTNER","in_invoice","out_invoice"]
+    invoiceResultDf = pandas.DataFrame(columns=invoiceColumns)
+    voucherColumns = ["DATE_DUE","NUM","STATE","PARTNER","sale","purchase"]
+    voucherResultDf = pandas.DataFrame(columns=voucherColumns)
     
     if fiscalyearDateStart and fiscalyearDateStop:
         ####
@@ -123,14 +115,26 @@ def computeExpiries(invoiceDf , voucherDf , periodDf , moveLineDf, fiscalyearNam
         invoiceDf['DATE_DUE'].ix[invoiceDf['DATE_DUE'].isnull()] = invoiceDf.ix[invoiceDf['DATE_DUE'].isnull()]['DATE_INV']
         df1 = invoiceDf.ix[(invoiceDf["DATE_DUE"]<=fiscalyearDateStop) & (invoiceDf["DATE_DUE"]>=fiscalyearDateStart)]
         df2 = df1.ix[(df1["STATE"]!='paid') & (df1["STATE"]!='cancel')].reset_index()
-        if len(df2) > 0:
-            df3 = df2[['DATE_DUE','TYPE','NUM','STATE','PARTNER','TOTAL']]
-            df3['STATE'].ix[df3['STATE']=='open'] = 'validata'
-            df3['STATE'].ix[df3['STATE']=='draft'] = 'in bozza'
-            inInvoiceResultDf = df3[df3["TYPE"]=='in_invoice']
-            inInvoiceResultDf = inInvoiceResultDf[invoiceColumns]
-            outInvoiceResultDf = df3[df3["TYPE"]=='out_invoice']
-            outInvoiceResultDf = outInvoiceResultDf[invoiceColumns]
+        df3 = df2[['DATE_DUE','TYPE','NUM','STATE','PARTNER','TOTAL']]
+        df3['TOTAL']=df3['TOTAL'].map(float)
+        df4 = pandas.pivot_table(df3,values='TOTAL', cols=['TYPE'], 
+                        rows=['DATE_DUE','NUM','STATE','PARTNER'])
+        df4 = df4.reset_index()
+        #formattazione finale
+        columnsList = list(df4.columns)
+        if columnsList.count("in_invoice")==0:
+            df4["in_invoice"] = ""
+        if columnsList.count("out_invoice")==0:
+            df4["in_invoice"] = ""
+        df4['in_invoice'] = df4['in_invoice'].map(str)
+        df4['out_invoice'] = df4['out_invoice'].map(str)
+        df4['in_invoice'].ix[df4['in_invoice']=='nan'] = ''
+        df4['out_invoice'].ix[df4['out_invoice']=='nan'] = ''
+        df4['STATE'].ix[df4['STATE']=='open'] = 'validata'
+        df4['STATE'].ix[df4['STATE']=='draft'] = 'in bozza'
+        df4 = df4[invoiceColumns]
+        invoiceResultDf = df4
+        
         ####
         #calcolo liquidazioni in scadenza ancora non pagate
         ####
@@ -140,22 +144,32 @@ def computeExpiries(invoiceDf , voucherDf , periodDf , moveLineDf, fiscalyearNam
         df3 = df2.ix[(df2["TYPE"]=='sale') | (df2["TYPE"]=='purchase')].reset_index(drop=True)
         #calcolo delle liquidazioni pagate
         df4 = pandas.merge(df3,moveLineDf,on="NAM_MOV")
-        df5 = df4.ix[df4["ID_REC"].notnull()].reset_index()
+        df5 = df4.ix[df4["NAM_REC"].notnull()].reset_index()
         #esclusione delle liquidazioni pagate
         df6 = pandas.DataFrame({'NAM_MOV':list(set(df3['NAM_MOV']) - set(df5['NAM_MOV']))})
         df7 = pandas.merge(df3,df6,on="NAM_MOV")
-        if len(df7) > 0:
-            df7['STATE'].ix[df7['STATE']=='posted'] = 'validata'
-            df7['STATE'].ix[df7['STATE']=='draft'] = 'in bozza'
-            saleVoucherResultDf = df7[dft["TYPE"]=='sale']
-            saleVoucherResultDf = saleVoucherResultDf[voucherColumns]
-            purchaseVoucherResultDf = df7[dft["TYPE"]=='purchase']
-            purchaseVoucherResultDf = purchaseVoucherResultDf[voucherColumns]
+        df7['AMOUNT']=df7['AMOUNT'].map(float)
+        df8 = pandas.pivot_table(df7,values='AMOUNT', cols=['TYPE'], 
+                        rows=['DATE_DUE','NUM','STATE','PARTNER'])
+        df8 = df8.reset_index()
+        #formattazione finale
+        columnsList = list(df8.columns)
+        if columnsList.count("purchase")==0:
+            df8["purchase"] = ""
+        if columnsList.count("sale")==0:
+            df8["sale"] = ""
+        df8['purchase'] = df8['purchase'].map(str)
+        df8['sale'] = df8['sale'].map(str)
+        df8['purchase'].ix[df8['purchase']=='nan'] = ''
+        df8['sale'].ix[df8['sale']=='nan'] = ''
+        df8['STATE'].ix[df8['STATE']=='posted'] = 'validata'
+        df8['STATE'].ix[df8['STATE']=='draft'] = 'in bozza'
+        df8 = df8[voucherColumns]
+        voucherResultDf = df8
     
     return {
-        'inInvoiceDf' : inInvoiceResultDf,
-        'outInvoiceDf' : outInvoiceResultDf,
-        'purchaseVoucherDf' : purchaseVoucherResultDf,
+        'invoiceDf' : invoiceResultDf,
+        'voucherDf' : voucherResultDf,
         }
     
     
