@@ -40,10 +40,10 @@ import pandas
 # cambiamento potrebbe essere cruciale per determinarne il comportamento). E'     
 # consuetudine distiguere queste vaiabili da quelle 'di elaborazione' scrivendole 
 # tutte in maiuscolo.                                                             
-LIB_PATH = '/home/contabilita/star_branch/'
-PKL_PATH = '/home/contabilita/Goal-PKL/'
+LIB_PATH = '/home/mpattaro/workspace/star/trunk/'
+PKL_PATH = '/tmp/Goal-PKL/'
 COMPANY = 'Vicem'
-OUT_PATH = '/home/contabilita/star_branch/sre/esempio/'
+OUT_PATH = '/home/mpattaro/workspace/star/trunk/sre/esempio/'
 
 # Indico a python dove si trovano le librerie di star:                         
 # sys.path è una comune lista di stringhe, ciascuna delle quali rappresenta un 
