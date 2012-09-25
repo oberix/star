@@ -296,7 +296,7 @@ def computeCashFlows(fiscalyearName, moveLineDf, accountDf, periodDf, flowLinesD
         t = (el,[0,0,0,0,0,0,0,0,0,0,0,0,0])
         itemsList.append(t)
     cashFlowsDf = pandas.DataFrame.from_items(itemsList)
-    journalsDf = pandas.DataFrame.from_items(itemsList)
+    journalsDf = pandas.DataFrame()
     #calcolo dei risultati per ogni mese
     if onlyValidatedMoves:
         moveLineDf = moveLineDf[moveLineDf["STA_MOV"]=='posted'].reset_index(drop=True)
@@ -314,7 +314,15 @@ def computeCashFlows(fiscalyearName, moveLineDf, accountDf, periodDf, flowLinesD
         df2['CRT_MVL'] = df2['CRT_MVL'].map(float)
         if len(df2) > 0:
             #calcolo flussi per journal
-            journalsDf = df2.groupby("NAM_JRN").sum()[['DBT_MVL','CRT_MVL']].reset_index()
+            df3 = df2.groupby("NAM_JRN").sum()[['DBT_MVL','CRT_MVL']].reset_index()
+            df3[month] = df3["DBT_MVL"] - df3["CRT_MVL"]
+            if len(journalsDf)>0:
+                df21 = pandas.merge(df3,journalsDf,on="NAM_JRN",how="outer")                
+                del df21["DBT_MVL"]
+                del df21["CRT_MVL"]
+                journalsDf = df21
+            else:
+                journalsDf = df3[["NAM_JRN",month]]
             #calcolo flussi suddivisi in voci
             df4 = df2[["NAM_MOV","NAM_FY","NAM_JRN"]]
             if len(df4) > 0:
@@ -410,11 +418,27 @@ def computeCashFlows(fiscalyearName, moveLineDf, accountDf, periodDf, flowLinesD
     df5 = flowLinesDf[["Fl_Code","descrizione"]]
     df6 = pandas.merge(df5,cashFlowsDf,left_on="Fl_Code",right_on="index",how="left")
     df6 = df6[["Fl_Code","descrizione",1,2,3,4,5,6,7,8,9,10,11,12,"TOTAL"]]
+    journalDfColumns = list(journalsDf.columns)
     for i in range(12):
         c = i+1
         df6[c].ix[df6[c].isnull()] = 0
+        if journalDfColumns.count(c) > 0:
+            journalsDf[c].ix[journalsDf[c].isnull()] = 0
+        else:
+            journalsDf[c] = 0
     df6["TOTAL"].ix[df6["TOTAL"].isnull()] = 0
-    print df6
+    #calcolo diff ent/usc
+    diffEntUsc = journalsDf.copy()
+    diffEntUsc["NAM_JRN"] = 'ciccio'
+    diffEntUsc = diffEntUsc.groupby("NAM_JRN").sum().reset_index()
+    #calcolo saldo journals
+    for i in range(11):
+        month = i+2
+        journalsDf[month] += journalsDf[month-1]
+    #calcolo saldo aggregato
+    saldoAgg = journalsDf.copy()
+    saldoAgg["NAM_JRN"] = 'ciccio'
+    saldoAgg = saldoAgg.groupby("NAM_JRN").sum().reset_index()
                 
     
 if __name__ == "__main__":
