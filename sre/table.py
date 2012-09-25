@@ -52,6 +52,7 @@ TEX_ESCAPE = {
     re.compile("/"): "/\-", # tell LaTeX that an hyphen can be inserted after a '/'
     re.compile("\^"): "\textasciicircum",
     re.compile("~"): "\normaltilde",
+    re.compile("-"): "$-$",
     }
 
 HTML_ESCAPE = {}
@@ -70,6 +71,7 @@ def unique_list(list_):
             list_.remove(elem)
             i += 1
 
+# TODO: move this to template.py
 def escape(string, patterns=TEX_ESCAPE):
     ''' Escape string to work with LaTeX.
     The function calls TEX_ESCAPE dictionary to metch regexp with their escaped

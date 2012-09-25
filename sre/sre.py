@@ -34,7 +34,7 @@ sys.path = list(set(sys.path))
 from share import Config
 import template
 
-__all__ = ['sre', 'TexSreTemplate']
+__all__ = ['sre']
 
 def _load_config(src_path, confpath=None):
     ''' Get configuration file.

@@ -113,30 +113,33 @@ class TexSreTemplate(string.Template):
         # single Pickle attributes.
         ph_list = [ph[2] for ph in self.pattern.findall(self.template)]
         ph_list.remove(str()) # Remove placeholder command definition.
-        self._logger.info("Reading pickles.")
+        # In case of multiple instance of a placeholder, evaluate only once.
+        ph_list = list(set(ph_list))
+        self._logger.info("Reading pickles...")
         bags = dict() # Pickle file's cache (never load twice the same file!)
         for ph in ph_list:
             ph_parts = ph.split('.')
             base = ph_parts[0]
             if not bags.get(base, False):
                 # Load and add to cache
+                self._logger.debug('Now loading: %s', os.path.join(path, '.'.join([base, 'pickle'])))
                 try:
                     bags[base] = Bag.load(os.path.join(path, '.'.join([base, 'pickle'])))
                 except IOError, err:
                     self._logger.warning('%s; skipping...', err)
                     continue
-            if len(ph_parts) > 1: # extract attribute
+            # Generate string to substitute to the placeholder
+            if bags[base].TI == 'tab':
+                ret[base] = TexTable(bags[base], **kwargs).out()
+            elif bags[base].TI == 'graph':
+                ret[base], fd = TexGraph(bags[base], **kwargs).out()
+                self._fds.append(fd)
+            else: # TODO: handle other types
+                self._logger.debug('bags = %s', bags)
+                self._logger.warning("Unhandled bag TI '%s' found in %s, skipping...", bags[base].TI, base)
+                continue
+            if len(ph_parts) > 1 and hasattr(bags[base], '.'.join(ph_parts[1:])): # extract attribute
                 ret[ph] = eval('.'.join(['bags[base]'] + ph_parts[1:]))
-            else: # just use DF/LM 
-                if bags[base].TI == 'tab':
-                    ret[ph] = TexTable(bags[base], **kwargs).out()
-                elif bags[base].TI == 'graph':
-                    ret[ph], fd = TexGraph(bags[base], **kwargs).out()
-                    self._fds.append(fd)
-                else: # TODO: handle other types
-                    self._logger.debug('bags = %s', bags)
-                    self._logger.warning("Unhandled bag TI '%s' found in %s, skipping...", bags[base].TI, base)
-                    continue
         return ret
 
     def report(self, **kwargs):
@@ -225,13 +228,14 @@ class HTMLSreTemplate(string.Template):
         # single Pickle attributes.
         ph_list = [ph[2] for ph in self.pattern.findall(self.template)]
         ph_list.remove(str()) # Remove placeholder command definition.
-        self._logger.info("Reading pickles.")
+        self._logger.info("Reading pickles...")
         bags = dict() # Pickle file's cache (never load twice the same file!)
         for ph in ph_list:
             ph_parts = ph.split('.')
             base = ph_parts[0]
             if not bags.get(base, False):
                 # Load and add to cache
+                self._logger.debug('\t...%s', os.path.join(path, '.'.join([base, 'pickle'])))
                 try:
                     bags[base] = Bag.load(os.path.join(path, '.'.join([base, 'pickle'])))
                 except IOError, err:
@@ -245,7 +249,6 @@ class HTMLSreTemplate(string.Template):
                 elif bags[base].TI == 'graph':
                     ret[ph] = HTMLGraph(bags[base], **kwargs).out()
                 else: # TODO: handle other types
-                    self._logger.debug('bags = %s', bags)
                     self._logger.warning("Unhandled bag TIP '%s' found in %s, skipping...", bags[base].TIP, base)
                     continue
         return ret

@@ -20,7 +20,6 @@
 ##############################################################################
 
 import matplotlib.pyplot as plt
-#from matplotlib.figure import Figure
 from matplotlib import rc
 import logging
 from tempfile import NamedTemporaryFile, TemporaryFile
@@ -35,38 +34,41 @@ GRAPH_TYPES = (
     'scatter',
 )
 
+FIGSIZE = { # (w, h) in inches
+    'stamp': (3.180, 2.380),
+    'dinamic': (6.360, 2.380),
+    'square': (6.360, 6.360),
+    'flag': (3.180, 9.52),
+}
+
 class Graph(object):
 
     def __init__(self, data, **kwargs):
         self._logger = logging.getLogger(type(self).__name__)
+        rc('legend', **{
+                'markerscale': 1, 
+                'labelspacing': 0, 
+                'columnspacing': 1, 
+                'borderpad': 0,
+                })
+        self._data = data
         self._title = data.TITLE
         self._footnote = data.FOOTNOTE
         self._df = data.DF
         self._graph = list()
+        self._fontsize = 10.0
+        self._size = 'dinamic'
         self.parse_lm(data.LM)
         self._figure = self.make_graph()
 
-    def _make_legend(self, figure, lines, labels):
-        ''' Create a legend
-        
-        @ param figure: the Figure object where to attach the legend
-        @ param lines: a list of lines/patches that needs to be in the
-            legend. This are the values returned by the calls to plot(), bar(),
-            etc.
-        @ param labels: a list of labels to use in the legend
-        @ return: a Legend instance
-
-        '''
-        # Evaluate number of columns
+    def _make_legend(self, figure, handles, labels):
         ncol = 3
-        if len(lines) < 5:
+        if len(handles) < 5:
             ncol = 2
-        elif len(lines) < 3:
+        elif len(handles) < 3:
             ncol = 1
-        handles = (line[0] for line in lines)
-        leg = figure.legend(handles, labels, ncol=ncol,
-                            loc='upper left', borderaxespad=0.0,
-                            bbox_to_anchor=(0.1, 1.01, 0.0, 0.0))
+        leg = figure.legend(handles, labels, ncol=ncol, loc='upper left',
+                            bbox_to_anchor=(0.11, 1.1))
         leg.get_frame().set_linewidth(0) # Remove legend border
         return leg
 
@@ -80,7 +82,11 @@ class Graph(object):
         '''
         # TODO: handle line styles (see sftp://terra.devsite/home/studiabo/UlisseRep/Q20/Q20S2630/HS690790/MER_ARE)
         for key, val in lm.iteritems():
-            if val[0] == 'lax':
+            if key == 'size':
+                self._size = lm['size']
+            elif key == 'fontsize':
+                self._fontsize = lm['fontsize']
+            elif val[0] == 'lax':
                 self._lax = self._df[key]
             elif val[0] in GRAPH_TYPES:
                 self._graph.append({
@@ -102,7 +108,7 @@ class Graph(object):
         @ return: the Figure instance created
         
         ''' 
-        fig = plt.figure()
+        fig = plt.figure(figsize=FIGSIZE[self._size])
         ax = fig.add_subplot(1,1,1, axisbg='#eeefff', autoscale_on=True,
                              adjustable="box")
         ax.set_xlim(self._lax.min(), self._lax.max())
@@ -136,7 +142,8 @@ class Graph(object):
                 continue
             lines.append(line)
             labels.append(col['label'])
-        leg = self._make_legend(fig, lines, labels)
+        handles = [line[0] for line in lines]
+        leg = self._make_legend(fig, handles, labels)
         return fig
 
     def out(self):
@@ -151,12 +158,14 @@ class TexGraph(Graph):
     def __init__(self, data, **kwargs):
         super(TexGraph, self).__init__(data, **kwargs)
         # Tell matplotlib to use LaTeX to render text
+        rc('font',**{'family': 'serif','sans-serif':['Computer Modern Roman'], 'size':self._fontsize})
         rc('text', usetex=True)
-        
+ 
     def out(self):
         fd = NamedTemporaryFile(suffix='.pdf')
         self._figure.savefig(fd, format='pdf')
-        ret = "\\includegraphics[width=\\linewidth, keepaspectratio=True]{%s}" % fd.name
+#        ret = "\\includegraphics[width=\\linewidth, keepaspectratio=True]{%s}" % fd.name
+        ret = "\\includegraphics{%s}" % fd.name
         self._logger.debug("graph file name is '%s'", fd.name)
         return ret, fd
 
@@ -185,9 +194,11 @@ if __name__ == '__main__':
     logging.basicConfig(level = logging.DEBUG)
 
     lm = {
+        # 'fontsize': 10.0,
+        # 'size': 'stamp',
         'a': ['lax'],
-        'c': ['plot', 'sx', 'Ciao', 'r'],
-        'b': ['bar', 'dx', 'Bau', 'b'],
+        'c': ['plot', 'sx', '\LaTeX', 'r'],
+        'b': ['bar', 'dx', "$E=mc^2$", 'b'],
         'd': ['plot', 'dx', 'Dau', 'g'],
         }
 
@@ -201,8 +212,8 @@ if __name__ == '__main__':
     bag.save()
 
     lm = {
-        'b': [0, '|c|', '|@v0|', '|Bau|'],
-        'c': [1, 'l|', '|@v0|', 'Ciao|'],
+        'b': [0, '|c|', '|@v0|', '|Bao'],
+        'c': [1, 'l|', '|@v0|', '\LaTeX|'],
         'd': [2, 'r|', '@v1|', 'Dau|'],
         }
     path = '/home/mpattaro/workspace/star/trunk/sre/esempio/table0.pickle'
