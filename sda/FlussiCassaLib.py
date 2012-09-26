@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # -*- coding: utf-8 -*-
 ##############################################################################
 #    
@@ -18,118 +17,11 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
 #
 ##############################################################################
-
-
-#################
-######definizione degli lm
-#################
-
-lm_flussi = {
-        'descrizione': [0, '3l', '@v10'],
-        1: [1, 'r', 'gen'],
-        2: [2, 'r', 'feb'],
-        3: [3, 'r', 'mar'],
-        4: [4, 'r', 'apr'],
-        5: [5, 'r', 'mag'],
-        6: [6, 'r', 'giu'],
-        7: [7, 'r', 'lug'],
-        8: [8, 'r', 'ago'],
-        9: [9, 'r', 'set'],
-        10: [10, 'r', 'ott'],
-        11: [11, 'r', 'nov'],
-        12: [12, 'r', 'dic'],
-        'TOTAL': [13, 'r', 'TOTALE'],
-        }
-        
-lm_journals = {
-        'NAM_JRN': [0, '3l', '@v10'],
-        1: [1, 'r', 'gen'],
-        2: [2, 'r', 'feb'],
-        3: [3, 'r', 'mar'],
-        4: [4, 'r', 'apr'],
-        5: [5, 'r', 'mag'],
-        6: [6, 'r', 'giu'],
-        7: [7, 'r', 'lug'],
-        8: [8, 'r', 'ago'],
-        9: [9, 'r', 'set'],
-        10: [10, 'r', 'ott'],
-        11: [11, 'r', 'nov'],
-        12: [12, 'r', 'dic'],
-        }
-
-
-import sys
-import os
-import getopt
 import pandas
 import numpy
 import calendar
 from datetime import date
 
-# Servabit libraries
-BASEPATH = os.path.abspath(os.path.join(
-                os.path.dirname(__file__),
-                os.path.pardir))
-sys.path.append(BASEPATH)
-sys.path = list(set(sys.path))
-
-SRE_PATH = os.path.join(BASEPATH,"sre")
-
-from share import Config
-from share import Stark
-from share import Bag
-
-def main(dirname):
-    #legge il file config    
-    configFilePath = os.path.join(BASEPATH,"config","flussi_cassa_effettivi.cfg")
-    config = Config(configFilePath)
-    config.parse()
-    #assegna ai parametri di interesse il valore letto in config
-    companyName = config.options.get('company',False)
-    picklesPath = config.options.get('pickles_path',False)
-    fiscalyearName=config.options.get('fiscalyear',False)
-    defaultIncomingsFlowLineCode = config.options.get('default_incomings_flow_line',False)
-    defaultExpensesFlowLineCode = config.options.get('default_expenses_flow_line',False)
-    totalIncomingsFlowLineCode = config.options.get('total_incomings_flow_line',False)
-    totalExpensesFlowLineCode = config.options.get('total_expenses_flow_line',False)
-    linesCsvFilePath = config.options.get('lines_csv_file_path',False)
-    matchingsCsvFilePath = config.options.get('matchings_csv_file_path',False)
-    #verifica che la stringa associata al parametro only_validated_moves inserita in config
-    #sia effettivamente un valore boleano 
-    onlyValidatedMoves = True
-    if str(config.options.get('only_validated_moves',True))=='False':
-        onlyValidatedMoves = False
-    #lettura degli oggetti stark di interesse
-    companyPathPkl = os.path.join(picklesPath,companyName)
-    accountStark = Stark.load(os.path.join(companyPathPkl,"ACC.pickle"))
-    periodStark = Stark.load(os.path.join(companyPathPkl,"PERIOD.pickle"))
-    moveLineStark = Stark.load(os.path.join(companyPathPkl,"MVL.pickle"))
-    companyStarK = Stark.load(os.path.join(companyPathPkl,"COMP.pickle"))
-    companyDf = companyStarK.DF
-    companyString = companyDf['NAME'][0]+" - "+companyDf['ADDRESS'][0]+" \linebreak "+companyDf['ZIP'][0]+" "+companyDf['CITY'][0]+" P.IVA "+companyDf['VAT'][0]
-    #lettura csv
-    linesDf = pandas.read_csv(linesCsvFilePath, sep=";", header=0)
-    matchingsDf = pandas.read_csv(matchingsCsvFilePath, sep=";", header=0)
-    #incomingsDf = pandas.read_csv(incomingAccountsCsvFilePath, sep=";", header=0)
-    #costsDf = pandas.read_csv(costAccountsCsvFilePath, sep=";", header=0)
-    #controllo conti
-    checkAccounts(matchingsDf,accountStark.DF)
-    #calcolo flussi
-    results = computeCashFlows(fiscalyearName,moveLineStark.DF,accountStark.DF,
-                    periodStark.DF,linesDf,matchingsDf,onlyValidatedMoves,
-                    defaultIncomingsFlowLineCode,defaultExpensesFlowLineCode,
-                    printWarnings=True)
-    companyString = companyDf['NAME'][0]+" - "+companyDf['ADDRESS'][0]+" \linebreak "+companyDf['ZIP'][0]+" "+companyDf['CITY'][0]+" P.IVA "+companyDf['VAT'][0]
-    OUT_PATH = os.path.join(SRE_PATH, 'flussi_cassa_effettivi')
-    concatDf = pandas.concat([results['cashFlows'],results['diffEntUsc'],results['saldoAgg']])
-    bagFlows = Bag(concatDf, os.path.join(OUT_PATH, 'cash_flows.pickle'), TI='tab',LM=lm_flussi)
-    setattr(bagFlows,"YEAR",fiscalyearName)
-    setattr(bagFlows,"COMPANY_STRING",companyString)
-    setattr(bagFlows,"COMPANY",companyName)
-    bagFlows.save()
-    bagJournals = Bag(results['saldoJournals'], os.path.join(OUT_PATH, 'journals.pickle'), TI='tab',LM=lm_journals)
-    bagJournals.save()
-    return 0
 
 ###########
 ## funzioni di calcolo
@@ -299,7 +191,6 @@ def _computeCashFlowFromMoveLine(cashFlowsDf, month, moveLineDf, matchingsDf, de
             print "Warning: la move.line "+row["NAM_MVL"][i].encode("utf8")+" sul conto="+\
                 row["COD_CON"][i].encode("utf8")+", della move "+row["NAM_MOV"][i].encode("utf8")+\
                 " non è riconciliata. L'importo è finito in altre uscite operative con importo "+str(row["DBT_MVL"][i])
-        
 
 def computeCashFlows(fiscalyearName, moveLineDf, accountDf, periodDf, flowLinesDf,
                     matchingsDf, onlyValidatedMoves, defaultIncomingsFlowLineCode,
@@ -488,9 +379,3 @@ def computeCashFlows(fiscalyearName, moveLineDf, accountDf, periodDf, flowLinesD
         'saldoAgg' : saldoAgg,
         'saldoJournals' : journalsDf,
         }
-                
-    
-if __name__ == "__main__":
-    abspath=os.path.abspath(sys.argv[0])
-    dirname=os.path.dirname(abspath)
-    sys.exit(main(dirname))
