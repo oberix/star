@@ -81,7 +81,7 @@ from share import Bag
 
 def main(dirname):
     #legge il file config    
-    configFilePath = os.path.join(BASEPATH,"config","flussi_cassa.cfg")
+    configFilePath = os.path.join(BASEPATH,"config","flussi_cassa_effettivi.cfg")
     config = Config(configFilePath)
     config.parse()
     #assegna ai parametri di interesse il valore letto in config
@@ -120,7 +120,7 @@ def main(dirname):
                     defaultIncomingsFlowLineCode,defaultExpensesFlowLineCode,
                     printWarnings=True)
     companyString = companyDf['NAME'][0]+" - "+companyDf['ADDRESS'][0]+" \linebreak "+companyDf['ZIP'][0]+" "+companyDf['CITY'][0]+" P.IVA "+companyDf['VAT'][0]
-    OUT_PATH = os.path.join(SRE_PATH, 'flussi_cassa')
+    OUT_PATH = os.path.join(SRE_PATH, 'flussi_cassa_effettivi')
     concatDf = pandas.concat([results['cashFlows'],results['diffEntUsc'],results['saldoAgg']])
     bagFlows = Bag(concatDf, os.path.join(OUT_PATH, 'cash_flows.pickle'), TI='tab',LM=lm_flussi)
     setattr(bagFlows,"YEAR",fiscalyearName)
