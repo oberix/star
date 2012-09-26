@@ -379,3 +379,5 @@ def computeCashFlows(fiscalyearName, moveLineDf, accountDf, periodDf, flowLinesD
         'saldoAgg' : saldoAgg,
         'saldoJournals' : journalsDf,
         }
+        
+#def computePrevisionFlows(cashFlowDf,referenceDate,)

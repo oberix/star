@@ -63,6 +63,8 @@ import os
 import getopt
 import pandas
 import FlussiCassaLib
+from datetime import date
+from datetime import datetime
 
 # Servabit libraries
 BASEPATH = os.path.abspath(os.path.join(
@@ -79,7 +81,7 @@ from share import Bag
 
 def main(dirname):
     #legge il file config    
-    configFilePath = os.path.join(BASEPATH,"config","flussi_cassa_effettivi.cfg")
+    configFilePath = os.path.join(BASEPATH,"config","flussi_cassa.cfg")
     config = Config(configFilePath)
     config.parse()
     #assegna ai parametri di interesse il valore letto in config
@@ -90,8 +92,15 @@ def main(dirname):
     defaultExpensesFlowLineCode = config.options.get('default_expenses_flow_line',False)
     totalIncomingsFlowLineCode = config.options.get('total_incomings_flow_line',False)
     totalExpensesFlowLineCode = config.options.get('total_expenses_flow_line',False)
+    referenceDate = config.options.get('reference_date',False)
     linesCsvFilePath = config.options.get('lines_csv_file_path',False)
     matchingsCsvFilePath = config.options.get('matchings_csv_file_path',False)
+    fixedCostsCsvFilePath = config.options.get('fixed_costs_csv_file_path',False)
+    #verifica del parametro reference_date
+    referenceDate = datetime.strptime(referenceDate,"")
+    #if len(referenceDate) < 8:
+        
+    print "ref_date=%s" % referenceDate
     #verifica che la stringa associata al parametro only_validated_moves inserita in config
     #sia effettivamente un valore boleano 
     onlyValidatedMoves = True
@@ -103,22 +112,23 @@ def main(dirname):
     periodStark = Stark.load(os.path.join(companyPathPkl,"PERIOD.pickle"))
     moveLineStark = Stark.load(os.path.join(companyPathPkl,"MVL.pickle"))
     companyStarK = Stark.load(os.path.join(companyPathPkl,"COMP.pickle"))
+    invoiceStark = Stark.load(os.path.join(companyPathPkl,"INV.pickle"))
+    voucherStark = Stark.load(os.path.join(companyPathPkl,"VOU.pickle"))
     companyDf = companyStarK.DF
     companyString = companyDf['NAME'][0]+" - "+companyDf['ADDRESS'][0]+" \linebreak "+companyDf['ZIP'][0]+" "+companyDf['CITY'][0]+" P.IVA "+companyDf['VAT'][0]
     #lettura csv
     linesDf = pandas.read_csv(linesCsvFilePath, sep=";", header=0)
     matchingsDf = pandas.read_csv(matchingsCsvFilePath, sep=";", header=0)
-    #incomingsDf = pandas.read_csv(incomingAccountsCsvFilePath, sep=";", header=0)
-    #costsDf = pandas.read_csv(costAccountsCsvFilePath, sep=";", header=0)
+    fixedCostsDf = pandas.read_csv(fixedCostsCsvFilePath, sep=";", header=0)
     #controllo conti
     FlussiCassaLib.checkAccounts(matchingsDf,accountStark.DF)
-    #calcolo flussi
+    #calcolo flussi effettivi
     results = FlussiCassaLib.computeCashFlows(fiscalyearName,moveLineStark.DF,accountStark.DF,
                     periodStark.DF,linesDf,matchingsDf,onlyValidatedMoves,
                     defaultIncomingsFlowLineCode,defaultExpensesFlowLineCode,
                     printWarnings=True)
     companyString = companyDf['NAME'][0]+" - "+companyDf['ADDRESS'][0]+" \linebreak "+companyDf['ZIP'][0]+" "+companyDf['CITY'][0]+" P.IVA "+companyDf['VAT'][0]
-    OUT_PATH = os.path.join(SRE_PATH, 'flussi_cassa_effettivi')
+    OUT_PATH = os.path.join(SRE_PATH, 'flussi_cassa')
     concatDf = pandas.concat([results['cashFlows'],results['diffEntUsc'],results['saldoAgg']])
     bagFlows = Bag(concatDf, os.path.join(OUT_PATH, 'cash_flows.pickle'), TI='tab',LM=lm_flussi)
     setattr(bagFlows,"YEAR",fiscalyearName)
@@ -127,6 +137,8 @@ def main(dirname):
     bagFlows.save()
     bagJournals = Bag(results['saldoJournals'], os.path.join(OUT_PATH, 'journals.pickle'), TI='tab',LM=lm_journals)
     bagJournals.save()
+    #calcolo flussi previsionali
+    
     return 0
     
 if __name__ == "__main__":
