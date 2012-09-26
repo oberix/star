@@ -43,7 +43,7 @@ FIGSIZE = { # (w, h) in inches
 
 class Graph(object):
 
-    def __init__(self, data, **kwargs):
+    def __init__(self, data, legend=True, size='square', fontsize=10.0, **kwargs):
         self._logger = logging.getLogger(type(self).__name__)
         rc('legend', **{
                 'markerscale': 1, 
@@ -56,20 +56,40 @@ class Graph(object):
         self._footnote = data.FOOTNOTE
         self._df = data.DF
         self._graph = list()
-        self._fontsize = 10.0
-        self._size = 'dinamic'
+        self._fontsize = fontsize
+        self._size = size
+        self._legend = legend
         self.parse_lm(data.LM)
         self._figure = self.make_graph()
 
     def _make_legend(self, figure, handles, labels):
+        ''' Create legend for the graph, evaluate how the whole figure must be
+        scaled to make room for the legend.
+        
+        @ param figure: Figure object that must contain the legend
+        @ param hadles: list of Line an Path objects used to populate the
+             graph.
+        @ param labels: list of string used as labels in the legend
+        @ return: the new Legend created.
+
+        '''
+        # Evaluate number of columns
         ncol = 3
         if len(handles) < 5:
             ncol = 2
         elif len(handles) < 3:
             ncol = 1
+        # Estimate new hight needed for the legend
+        dheight = ((len(handles)/ncol) + 1) * self._fontsize * 0.01
+        dheight_perc = dheight / figure.get_figheight() 
+        # Scale figure and adjust subplot
+        figure.set_figheight(figure.get_figheight() + dheight)
+        figure.subplots_adjust(top=(0.9-dheight_perc))
+        # Make legend
         leg = figure.legend(handles, labels, ncol=ncol, loc='upper left',
-                            bbox_to_anchor=(0.11, 1.1))
+                            bbox_to_anchor=(0.10, 1.0))
         leg.get_frame().set_linewidth(0) # Remove legend border
+
         return leg
 
     def parse_lm(self, lm):
@@ -110,7 +130,7 @@ class Graph(object):
         ''' 
         fig = plt.figure(figsize=FIGSIZE[self._size])
         ax = fig.add_subplot(1,1,1, axisbg='#eeefff', autoscale_on=True,
-                             adjustable="box")
+                             adjustable="datalim")
         ax.set_xlim(self._lax.min(), self._lax.max())
         ax.grid(True)
         lines = list()
@@ -143,7 +163,8 @@ class Graph(object):
             lines.append(line)
             labels.append(col['label'])
         handles = [line[0] for line in lines]
-        leg = self._make_legend(fig, handles, labels)
+        if self._legend:
+            leg = self._make_legend(fig, handles, labels)
         return fig
 
     def out(self):
@@ -158,13 +179,18 @@ class TexGraph(Graph):
     def __init__(self, data, **kwargs):
         super(TexGraph, self).__init__(data, **kwargs)
         # Tell matplotlib to use LaTeX to render text
-        rc('font',**{'family': 'serif','sans-serif':['Computer Modern Roman'], 'size':self._fontsize})
+        rc('font',**{
+                'family': 'serif',
+                'sans-serif':['Computer Modern Roman'], 
+                'size':self._fontsize})
         rc('text', usetex=True)
  
     def out(self):
-        fd = NamedTemporaryFile(suffix='.pdf')
+        if self._logger.getEffectiveLevel() > logging.DEBUG:
+            fd = NamedTemporaryFile(suffix='.pdf')
+        else:
+            fd = open('/tmp/tmpsregraph.pdf', 'wb')
         self._figure.savefig(fd, format='pdf')
-#        ret = "\\includegraphics[width=\\linewidth, keepaspectratio=True]{%s}" % fd.name
         ret = "\\includegraphics{%s}" % fd.name
         self._logger.debug("graph file name is '%s'", fd.name)
         return ret, fd
@@ -194,8 +220,6 @@ if __name__ == '__main__':
     logging.basicConfig(level = logging.DEBUG)
 
     lm = {
-        # 'fontsize': 10.0,
-        # 'size': 'stamp',
         'a': ['lax'],
         'c': ['plot', 'sx', '\LaTeX', 'r'],
         'b': ['bar', 'dx', "$E=mc^2$", 'b'],

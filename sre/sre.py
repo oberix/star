@@ -36,6 +36,8 @@ import template
 
 __all__ = ['sre']
 
+_logger = None
+
 def _load_config(src_path, confpath=None):
     ''' Get configuration file.
 
@@ -78,25 +80,25 @@ def _compile_tex(file_, template, dest, fds):
         "-I", os.path.dirname(template), # input path (where other files resides)
         file_, # main input file
         ]
-    logging.info("Compiling into PDF.")
-    logging.debug(" ".join(command))
+    _logger.info("Compiling into PDF.")
+    _logger.debug(" ".join(command))
     # open log file
     logfd = open(template.replace('.tex', '.log'), 'w')
     try:
         ret = subprocess.call(command, stdout=logfd, stderr=logfd)
     except IOError, err:
-        logger.error(err)
+        _logger.error(err)
         return err.errno
     finally:
         logfd.close()
     # close temporary files (those created by TexGraph), causing deletion.
     map(lambda fd: fd.close(), fds)
     if ret > 0:
-        logging.warning(
+        _logger.warning(
             "texi2pdf exited with bad exit status, you can inspect what went wrong in %s", 
             os.path.join(dest, file_.replace('.tex', '.log')))
         return ret
-    logging.info("Done.")
+    _logger.info("Done.")
     return ret                  
 
 def sre(src_path, config=None, **kwargs):
@@ -119,6 +121,8 @@ def sre(src_path, config=None, **kwargs):
     '''
     config = _load_config(src_path, confpath=config)
     templ_path = 'main.tex'
+    global _logger
+    _logger = logging.getLogger('sre')
 
     try:
         templ_path = config['template']
@@ -145,7 +149,7 @@ def sre(src_path, config=None, **kwargs):
             # Error, return errno
             return report
     else:
-        logging.error("Could not find a valid template, exiting.")
+        _logger.error("Could not find a valid template, exiting.")
         return 1
     return 0
 
