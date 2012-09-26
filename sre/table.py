@@ -49,10 +49,10 @@ TEX_ESCAPE = {
     re.compile("<(?!\{)"): "\\textless",
     re.compile("\n"): "\\\\",
     re.compile("_"): "\_",
+    re.compile("-"): "$-$",
     re.compile("/"): "/\-", # tell LaTeX that an hyphen can be inserted after a '/'
     re.compile("\^"): "\textasciicircum",
     re.compile("~"): "\normaltilde",
-    re.compile("-"): "$-$",
     }
 
 HTML_ESCAPE = {}
