@@ -63,6 +63,7 @@ import os
 import getopt
 import pandas
 import FlussiCassaLib
+import ScadenziarioLib
 from datetime import date
 from datetime import datetime
 
@@ -97,10 +98,11 @@ def main(dirname):
     matchingsCsvFilePath = config.options.get('matchings_csv_file_path',False)
     fixedCostsCsvFilePath = config.options.get('fixed_costs_csv_file_path',False)
     #verifica del parametro reference_date
-    referenceDate = datetime.strptime(referenceDate,"")
-    #if len(referenceDate) < 8:
-        
-    print "ref_date=%s" % referenceDate
+    if len(referenceDate) < 8:
+        referenceDate = date.today()
+    else:
+        referenceDate = datetime.strptime(referenceDate,"%d-%m-%Y")
+        referenceDate = referenceDate.date()
     #verifica che la stringa associata al parametro only_validated_moves inserita in config
     #sia effettivamente un valore boleano 
     onlyValidatedMoves = True
@@ -124,9 +126,9 @@ def main(dirname):
     FlussiCassaLib.checkAccounts(matchingsDf,accountStark.DF)
     #calcolo flussi effettivi
     results = FlussiCassaLib.computeCashFlows(fiscalyearName,moveLineStark.DF,accountStark.DF,
-                    periodStark.DF,linesDf,matchingsDf,onlyValidatedMoves,
+                    periodStark.DF,linesDf,matchingsDf,fixedCostsDf,onlyValidatedMoves,
                     defaultIncomingsFlowLineCode,defaultExpensesFlowLineCode,
-                    printWarnings=True)
+                    printWarnings=False)
     companyString = companyDf['NAME'][0]+" - "+companyDf['ADDRESS'][0]+" \linebreak "+companyDf['ZIP'][0]+" "+companyDf['CITY'][0]+" P.IVA "+companyDf['VAT'][0]
     OUT_PATH = os.path.join(SRE_PATH, 'flussi_cassa')
     concatDf = pandas.concat([results['cashFlows'],results['diffEntUsc'],results['saldoAgg']])
@@ -138,7 +140,10 @@ def main(dirname):
     bagJournals = Bag(results['saldoJournals'], os.path.join(OUT_PATH, 'journals.pickle'), TI='tab',LM=lm_journals)
     bagJournals.save()
     #calcolo flussi previsionali
-    
+    expiries = ScadenziarioLib.computeExpiries(invoiceStark.DF,voucherStark.DF,periodStark.DF,moveLineStark.DF,fiscalyearName)
+    forecastedFlowsDf = FlussiCassaLib.computeForecastedFlows(results['cashFlows'],referenceDate,expiries)
+    bagForecastedFlows = Bag(forecastedFlowsDf, os.path.join(OUT_PATH, 'forecasted_flows.pickle'), TI='tab',LM=lm_flussi)
+    bagForecastedFlows.save()
     return 0
     
 if __name__ == "__main__":

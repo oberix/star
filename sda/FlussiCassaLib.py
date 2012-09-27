@@ -193,7 +193,7 @@ def _computeCashFlowFromMoveLine(cashFlowsDf, month, moveLineDf, matchingsDf, de
                 " non è riconciliata. L'importo è finito in altre uscite operative con importo "+str(row["DBT_MVL"][i])
 
 def computeCashFlows(fiscalyearName, moveLineDf, accountDf, periodDf, flowLinesDf,
-                    matchingsDf, onlyValidatedMoves, defaultIncomingsFlowLineCode,
+                    matchingsDf, fixedCostsDf, onlyValidatedMoves, defaultIncomingsFlowLineCode,
                     defaultExpensesFlowLineCode, printWarnings=True):
     '''
     funzione che calcola i flussi di cassa e i saldi suddivisi per journal. Restituisce un dizionario con le seguenti voci:
@@ -293,6 +293,13 @@ def computeCashFlows(fiscalyearName, moveLineDf, accountDf, periodDf, flowLinesD
                 df7 = df6[(df6["TYP_CON"]!='receivable') & (df6["TYP_CON"]!='payable')].reset_index(drop=True)
                 _computeCashFlowFromMoveLine(cashFlowsDf, month, df7, matchingsDf, 
                                             defaultIncomingsFlowLineCode, defaultExpensesFlowLineCode,printWarnings=printWarnings)
+                                            
+                #####
+                ##flussi per conti di costo a periodicita' fissa
+                #####
+                df10 = pandas.merge(df6,fixedCostsDf,left_on="COD_CON",right_on="servabit_code")
+                #print df10
+                
     #calcolo totali mensili
     cashFlowsDf = cashFlowsDf.transpose()
     columns = list(cashFlowsDf.columns)
@@ -380,4 +387,56 @@ def computeCashFlows(fiscalyearName, moveLineDf, accountDf, periodDf, flowLinesD
         'saldoJournals' : journalsDf,
         }
         
-#def computePrevisionFlows(cashFlowDf,referenceDate,)
+def computeForecastedFlows(cashFlowDf,referenceDate,expiriesResults):
+    '''
+    funzione di calcolo per i flussi previsti
+    @param cashFlowDf: è il dataframe con i flussi di cassa
+    @param referenceDate: è la data di riferimento. A partire dal mese di questa data saranno calcolati i flussi previsti
+    @param expiriesResults: è un dizionario che contiene i dataframe contenenti le fatture e le liquidazioni in scadenza
+    '''
+    historicalIncomings = cashFlowDf[cashFlowDf["descrizione"]=='Totale Entrate'].reset_index(drop=True)
+    historicalExits = cashFlowDf[cashFlowDf["descrizione"]=='Totale Uscite'].reset_index(drop=True)
+    referenceMonth = referenceDate.month
+    #calcolo previsioni entrate
+    outInvoiceDf = expiriesResults["outInvoiceDf"]
+    outInvoiceDf["MONTH"] = outInvoiceDf["DATE_DUE"].map(lambda x: x.month)
+    df1 = outInvoiceDf[["MONTH","TOTAL"]]
+    df1 = df1.groupby("MONTH").sum().reset_index()
+    forecastedIncomingsDf = pandas.DataFrame({'descrizione': ['Entrate']})
+    for i in range(12):
+        month = i+1
+        if month < referenceMonth:
+            forecastedIncomingsDf[month] = historicalIncomings[month]
+        else:
+            df3 = df1[df1["MONTH"]==month].reset_index()
+            if len(df3) > 0:
+                forecastedIncomingsDf[month] = df3["TOTAL"]
+            else:
+                forecastedIncomingsDf[month] = 0
+    #calcolo previsioni uscite
+    inInvoiceDf = expiriesResults["inInvoiceDf"]
+    inInvoiceDf["MONTH"] = inInvoiceDf["DATE_DUE"].map(lambda x: x.month)
+    purchaseVouchersDf = expiriesResults['purchaseVoucherDf']
+    purchaseVouchersDf = purchaseVouchersDf.rename(columns={'AMOUNT' : 'TOTAL'})
+    purchaseVouchersDf["MONTH"] = purchaseVouchersDf["DATE_DUE"].map(lambda x: x.month)
+    df1 = inInvoiceDf[["MONTH","TOTAL"]]
+    df2 = purchaseVouchersDf[["MONTH","TOTAL"]]
+    df3 = pandas.concat([df1,df2])
+    df4 = df3.groupby("MONTH").sum().reset_index()
+    forecastedExitsDf = pandas.DataFrame({'descrizione': ['Uscite']})
+    for i in range(12):
+        month = i+1
+        if month < referenceMonth:
+            forecastedExitsDf[month] = historicalExits[month]
+        else:
+            df6 = df4[df4["MONTH"]==month].reset_index()
+            if len(df6) > 0:
+                forecastedExitsDf[month] = df6["TOTAL"]
+            else:
+                forecastedExitsDf[month] = 0
+    forecastedFlowsDf = pandas.concat([forecastedIncomingsDf,forecastedExitsDf]).reset_index()
+    forecastedFlowsDf["TOTAL"] = 0
+    for i in range(12):
+        month = i+1
+        forecastedFlowsDf["TOTAL"] += forecastedFlowsDf[month]
+    return forecastedFlowsDf
