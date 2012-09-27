@@ -361,15 +361,16 @@ def computeCashFlows(fiscalyearName, moveLineDf, accountDf, periodDf, flowLinesD
     del cashFlowsDf["index"]
     del cashFlowsDf["Fl_Code"]
     #calcolo diff ent/usc
-    diffEntUsc = journalsDf.copy()
-    diffEntUsc["NAM_JRN"] = 'ciccio'
-    diffEntUsc = diffEntUsc.groupby("NAM_JRN").sum().reset_index()
-    del diffEntUsc["NAM_JRN"]
+    diffEntUsc = pandas.DataFrame({'descrizione' : ['Differenza Ent/Usc']})
+    df7 = cashFlowsDf[cashFlowsDf["descrizione"]=='Totale Entrate'].reset_index()
+    df8 = cashFlowsDf[cashFlowsDf["descrizione"]=='Totale Uscite'].reset_index()
+    for i in range(12):
+        month = i+1
+        diffEntUsc[month] = df7[month]- df8[month]
     diffEntUsc["TOTAL"] = 0
     for i in range(12):
         month = i+1
         diffEntUsc["TOTAL"] += diffEntUsc[month]
-    diffEntUsc["descrizione"] = 'Differenza Ent/Usc'
     #calcolo saldo journals
     for i in range(11):
         month = i+2
