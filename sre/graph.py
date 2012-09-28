@@ -43,30 +43,6 @@ FIGSIZE = { # (w, h) in inches
     'flag': (3.180, 9.52),
 }
 
-VAL_STEP = {
-    0: 0,
-    0.5: 0.2,
-    1: 0.5,
-    2: 1,
-    8: 2,
-    15: 5,
-    30: 10,
-    60: 20,
-    120: 40,
-    150: 50,
-    300: 60,
-    500: 100,
-    1000: 200,
-    1500: 500,
-    3000: 1000,
-    6000: 2000,
-    10000: 20000,
-    12000: 4000,
-    15000: 5000,
-    30000: 6000,
-    50000: 10000,
-}
-
 WORST_COLOR = "#FFDBC1"
 BEST_COLOR = "#9BFFE6"
 
@@ -84,8 +60,8 @@ class Graph(object):
         self._title = data.TITLE
         self._footnote = data.FOOTNOTE
         self._df = data.DF
-        self._graph = list()
-        self._x_meta = dict()
+        self._y_meta = list()
+        self._x_meta = list()
         self._fontsize = data.fontsize
         self._size = data.size
         self._legend = data.legend
@@ -135,7 +111,7 @@ class Graph(object):
         '''
         x_data = self._lax
         y_data = self._df[y_meta['key']]
-        x_meta = self._x_meta
+        x_meta = self._x_meta[0]
         # TODO: set lable for the axes
         val = (x_data[0], y_data[0])
         bench = (x_data[1], y_data[1])
@@ -204,23 +180,23 @@ class Graph(object):
         attrubutes:
 
         _lax: Series to use as x axes
-        _graph: a subset of LM containing only variables we are going to plot.
+        _y_meta: metadata for y ax series
+        _x_meta: metadata for x ax series
 
         '''
         # TODO: handle line styles (see sftp://terra.devsite/home/studiabo/UlisseRep/Q20/Q20S2630/HS690790/MER_ARE)
         for key, val in lm.iteritems():
             if val[0] == 'lax':
                 self._lax = self._df[key]
-                self._x_meta = {
+                self._x_meta.append({
                     'key': key,
                     'type': val[0],
                     'ax': val[1],
                     'label': val[2],
-                    'color': val[3],}
+                    'color': val[3],})
             elif val[0] in GRAPH_TYPES:                
-                self._graph.append({
+                self._y_meta.append({
                         'key': key,
-                        # 'order': val[0],
                         'type': val[0],
                         'ax': val[1],
                         'label': val[2],
@@ -244,8 +220,8 @@ class Graph(object):
         ax.grid(True)
         lines = list()
         labels = list()
-        for idx in xrange(len(self._graph)):
-            col = self._graph[idx]
+        for idx in xrange(len(self._y_meta)):
+            col = self._y_meta[idx]
             # Axes
             new_ax = ax
             if idx > 0:
@@ -264,6 +240,7 @@ class Graph(object):
                 # TODO: handle cumulative bars
                 line = ax.bar(self._lax, self._df[col['key']], color=col['color'], align='center')
             elif col['type'] == 'scatter':
+                
                 line = self._scatter(ax, col)
             else:
                 self._logger.warning("Unhandled graph type '%s', I will ignore entry '%s'", 
@@ -284,8 +261,14 @@ class Graph(object):
         raise NotImplementedError
 
 class TexGraph(Graph):
+    ''' Extends Graph to generate LaTeX rendered graphs; implements out()
+    method so that it produce a LaTeX tag ready to be substitued in the
+    template.
+    '''
     
     def __init__(self, data, **kwargs):
+        ''' Just set some rc params
+        ''' 
         super(TexGraph, self).__init__(data, **kwargs)
         # Tell matplotlib to use LaTeX to render text
         rc('font',**{
@@ -295,11 +278,14 @@ class TexGraph(Graph):
         rc('text', usetex=True)
  
     def out(self):
+        ''' Produce a LaTeX compatible tag to be substituted in the template.
+        '''
         delete = True
         if self._logger.getEffectiveLevel() <= logging.DEBUG:
             delete = False
         fd = NamedTemporaryFile(suffix='.pdf', delete=delete)        
         self._figure.savefig(fd, format='pdf')
+
         ret = "\\includegraphics{%s}" % fd.name
         self._logger.debug("graph file name is '%s'", fd.name)
         return ret, fd
@@ -336,8 +322,8 @@ if __name__ == '__main__':
         }    
 
     df = pnd.DataFrame({
-            'a': [5.1, 5.2, 0],
-            'b': [32.0, 32.3, 2],
+            'a': [5.1, 10.2, 0],
+            'b': [32.0, 50.3, 2],
          })
 
     path = '/home/mpattaro/workspace/star/trunk/sre/esempio/graph0.pickle'
@@ -357,5 +343,4 @@ if __name__ == '__main__':
     # graph._figure.show()
 #    bag.save()
 #    graph._figure.savefig('/tmp/pollo.pdf', format='pdf')
-    
-    
+
