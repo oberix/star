@@ -122,7 +122,7 @@ class Stark(GenericPickler):
         self._DF = df
 
     @staticmethod
-    def _polish(func, df=None):
+    def _polish(func, df):
         ''' Parse and execute a statement in reverse polish notation.
 
         Statemenst must be expressed in a Lisp-like manner, but uing python
@@ -176,7 +176,7 @@ class Stark(GenericPickler):
         if dim is None:
             dim = self._dim
         if var is None:
-            var = self._num #+ self._str
+            var = self._num + self._cal
         # var and dim may be single column's name
         if isinstance(var, str) or isinstance(var, unicode):
             var = [var]
