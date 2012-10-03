@@ -18,19 +18,16 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
 #
 ##############################################################################
-'''
-    Stark Class select and rename fields from Goal2df Move Line
-    dataframe and hold a description about
-.'''
-__version__ = '0.1'
-__author__ = 'Luigi Cirillo (<luigi.cirillo@servabit.it>)'
+__version__ = '0.9'
+__author__ = ['Luigi Cirillo (<luigi.cirillo@servabit.it>)',
+              'Marco Pattaro (<marco.pattaro@servabit.it>)']
 __all__ = ['Stark']
 
 import sys
 import os 
 import pandas
 import numpy
-import copy
+import copy 
 
 BASEPATH = os.path.abspath(os.path.join(
         os.path.dirname(__file__),
@@ -123,14 +120,19 @@ class Stark(GenericPickler):
 
     @staticmethod
     def _polish(func, df):
-        ''' Parse and execute a statement in reverse polish notation.
+        ''' Parse and execute a statement in polish notation.
 
         Statemenst must be expressed in a Lisp-like manner, but uing python
         tuples. If any dataframe's colum is part of the statement, the column's
         name can be expressed as a string in the statement.
+        
+        @ param func: function in polish notation
+        @ param df: DataFrame containing columns to which func refears to
+        @ return: function result
 
         Example:
-            ('mul', ('div', 'B', 'C'), 100)
+            ('mul', ('div', 'B', 'C'), 100) # where 'B' and 'C' are in
+                                            # df.columns
         Is the same as:
             df['B'] / df['C'] * 100
 
