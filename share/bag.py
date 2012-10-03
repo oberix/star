@@ -87,7 +87,10 @@ class Bag(GenericPickler):
     '''   
     
     #definisco la funzione __init__ 
-    def __init__(self, DF, LD, TI='tab', LM=None, TITLE=None, FOOTNOTE=None, **kwargs):
+    def __init__(self, DF, LD, TI='tab', LM=None, 
+                 TITLE=None, FOOTNOTE=None, 
+                 size='square', fontsize=10.0,
+                 legend=False, **kwargs):
         self.DF = DF
         self.LD = LD
         if TI not in TI_VALS:
@@ -100,6 +103,9 @@ class Bag(GenericPickler):
         self._LM = LM
         self.TITLE = TITLE
         self.FOOTNOTE = FOOTNOTE
+        self.size = size
+        self.fontsize = fontsize
+        self.legend = legend
         for key, val in kwargs:
             setattr(self, key, val)
 
