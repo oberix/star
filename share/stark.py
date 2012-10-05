@@ -189,6 +189,13 @@ class Stark(GenericPickler):
                 'ELA' : expr})
 
     def save(self, file_=None):
+        ''' Save object as pickle file.
+        
+        If a filename is not provided, the one stored in self.LD will be used.
+
+        @ param file_: destination file path 
+        
+        '''
         if file_ is None:
             file_ = self.LD
         if not os.path.exists(os.path.dirname(file_)):
@@ -244,9 +251,9 @@ class Stark(GenericPickler):
 
         '''
         # Some input checks
-        if not isinstance(func, tuple):
+        if not hasattr(func, '__iter__'):
             raise AttributeError(
-                'func must be a tuple, %s teceived instead.' % type(func).__name__)
+                'func must be a iterable, %s teceived instead.' % type(func).__name__)
         if len(func) < 2:
             raise AttributeError(
                 'func must have at last two elements (an operator and a term), received %s' % len(func))
@@ -321,12 +328,7 @@ class Stark(GenericPickler):
         # pack up everithing and return
         return Stark(df, VD=vd)
 
-    def agg(self, func='sum', dim=None, var=None):
-        ''' Alias to Stark.aggregate()
-        ''' 
-        return self.aggregate(func=func, dim=dim, var=var)
 
-        
 if __name__ == '__main__' :
     ''' Test
     ''' 
@@ -377,3 +379,4 @@ if __name__ == '__main__' :
     df['E'] = Stark.eval_polish(vd['E']['ELA'], df)
     s = Stark(df, VD=vd)
     s1 = s.aggregate(numpy.mean)
+    s1.save('/tmp/test.pickle')
