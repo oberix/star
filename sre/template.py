@@ -139,7 +139,7 @@ class TexSreTemplate(string.Template):
                 self._logger.warning("Unhandled bag TI '%s' found in %s, skipping...", bags[base].TI, base)
                 continue
             if len(ph_parts) > 1 and hasattr(bags[base], '.'.join(ph_parts[1:])): # extract attribute
-                ret[ph] = eval('.'.join(['bags[base]'] + ph_parts[1:]))
+                ret[ph] = bags[base].__getattribute__('.'.join(ph_parts[1:]))
         return ret
 
     def report(self, **kwargs):

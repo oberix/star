@@ -28,6 +28,7 @@ import os
 import pandas
 import numpy
 import copy 
+import string
 
 BASEPATH = os.path.abspath(os.path.join(
         os.path.dirname(__file__),
@@ -39,6 +40,18 @@ from share import GenericPickler
 TI_VALS = (
     'elab'
 )
+
+TIP_VALS = ['D', 'N', 'S', 'R']
+
+OPERATORS = {
+    '+' : '__add__',
+    '-' : '__sub__',
+    '*' : '__mul__',
+    '/' : '__div__',
+    '//': '__floordiv__',
+    '**': '__pow__',
+    '%' : '__mod__',
+}
 
 class Stark(GenericPickler):
     ''' This is the artifact that outputs mainly from etl procedures. It is a
@@ -61,7 +74,7 @@ class Stark(GenericPickler):
 
     '''
 
-    def __init__(self, DF, LD, TI='elab', VD=None):
+    def __init__(self, DF, LD=None, TI='elab', VD=None):
         self._DF = DF
         self.LD = LD
         if TI not in TI_VALS:
@@ -72,6 +85,11 @@ class Stark(GenericPickler):
         if not set(VD.keys()).issubset(set(DF.columns.tolist())):
             raise ValueError("VD.keys() must be a subset of DF.columns")
         self._VD = VD
+        self._update_vd()
+
+    def _update_vd(self):
+        ''' Call this method every time VD is changed to update Stark data
+        ''' 
         self._dim = list()
         self._cal = list()
         self._num = list()
@@ -84,6 +102,91 @@ class Stark(GenericPickler):
                 self._num.append(key)
             elif val['TIP'] == 'S':
                 self._str.append(key)
+                
+    @property
+    def VD(self):
+        return self._VD
+
+    @VD.setter
+    def VD(self, vd):
+        ''' VD setter:
+        Just check VD/DF consistency before proceding.
+        ''' 
+        if vd is None:
+            vd = {}
+        if not set(vd.keys()).issubset(set(self.DF.columns.tolist())):
+            raise ValueError("vd.keys() must be a subset of DF.columns")
+        self._VD = vd
+        self._update_vd()
+
+    @property
+    def DF(self):
+        return self._DF
+
+    @DF.setter
+    def DF(self, df):
+        ''' DF settre:
+        Just check VD/DF consistency before proceding.
+        '''
+        if not set(self._VD.keys()).issubset(set(df.columns.tolist())):
+            raise ValueError("VD.keys() must be a subset of DF.columns")
+        self._DF = df
+
+    def update_vd(self, key, entry):
+        ''' Update VD dictionary with a new entry.
+        
+        @ param key: new key in the dictionary
+        @ param entry: value to assign
+        @ raise ValueError: if DF/VD consistency would broke
+
+        '''
+        # Check key consistency
+        if key not in self._DF.columns.tolist():
+            raise ValueError("VD.keys() must be a subset of DF.columns")
+        # TODO: check entry consistency
+        self._VD[key] = entry
+        self._update_vd()
+
+    def update_df(self, col, series=None, var_type='N', expr=None, des=None, mis=None):
+        ''' Utility method to safely add/update a DataFrame column.
+        
+        Add or modify a column of the DataFrame trying to preserve DF/VD
+        consistency. This method has two main beheviours:
+            1 - When passing an already calculated series or list to assign to
+                a column, it consequently modify the VD.
+            2 - When passing an expression, the new column is automatically
+                calculated and assinged; finally the VD is updated.
+
+        @ param col: Column's name
+        @ param series: Series or list or any other type accepted as DataFrame
+            column.
+        @ param var_type: One of VD TIP values, if it's 'R' an expr must not be
+            None
+        @ param expr: The expression to calculate the column's value, it can
+            either be a string or a tuple.
+        @ param des: Descriprion
+        @ param mis: Unit of measure.
+        @ raise ValueError: when parameters are inconsistent
+
+        '''
+        if var_type not in TIP_VALS:
+            raise ValueError("var_type mut be one of [%s]" % '|'.join(TIP_VALS))
+        if expr is None and var_type == 'R':
+            raise ValueError("You must specify an expression for var_type = 'R'")
+        elif series is None and var_type != 'R':
+            raise ValueError("You must pass a series or list for var_type != 'R'")        
+        if var_type == 'R':
+            try:
+                self._DF[col] = Stark.eval(expr, df=self._DF)
+            except AttributeError:
+                self._DF[col] = Stark.eval_polish(expr, df=self._DF)
+        else:
+            self._DF[col] = series
+        self.update_vd(col, {
+                'TIP' : var_type,
+                'DES' : des,
+                'MIS' : mis,
+                'ELA' : expr})
 
     def save(self, file_=None):
         if file_ is None:
@@ -92,39 +195,42 @@ class Stark(GenericPickler):
             os.makedirs(os.path.dirname(file_))
         super(Stark, self).save(file_)
 
-    @property
-    def VD(self):
-        return self._VD
+    @staticmethod
+    def eval(func, df):
+        ''' Evaluate a function with DataFrame columns'es placeholders.
+        
+        Without placeholders this function is just a common python eval; when
+        func contains column's names preceded by '$', this will be substituted
+        with actual column's reference bevore passing the whole string to
+        eval().
 
-    @VD.setter
-    def VD(self, vd):
-        if vd is None:
-            vd = {}
-        if not set(vd.keys()).issubset(set(self.DF.columns.tolist())):
-            raise ValueError("vd.keys() must be a subset of DF.columns")
-        self._VD = vd
+        @ param func: a string rappresenting a valid python statement; the
+            string can containt DataFrame columns'es placeholders in the form
+           of '$colname'
+        @ param df: DataFrame to apply function to.
+        @ return: eval(func) return value
 
-
-    @property
-    def DF(self):
-        ''' DF getter: returns a copy of the DF so that any modification to it
-        is made via instance methods (well one can always gain access via
-        self._DF).
+        Example:
+            "$B / $C * 100"
+        
         '''
-        return self._DF.copy()
-
-    @DF.setter
-    def DF(self, df):
-        # TODO: DF setter should also check for VD consistency
-        self._DF = df
+        if not isinstance(func, str) or isinstance(func, unicode):
+            raise AttributeError(
+                'func must be a string, %s received instead.' % type(func).__name__)
+        templ = string.Template(func)
+        ph_dict = {}
+        ph_list = [ph[1] for ph in string.Template.pattern.findall(func)]
+        for ph in ph_list:
+            ph_dict[ph] = str().join(["df['", ph, "']"])
+        return eval(templ.substitute(ph_dict))
 
     @staticmethod
-    def _polish(func, df):
+    def eval_polish(func, df):
         ''' Parse and execute a statement in polish notation.
 
         Statemenst must be expressed in a Lisp-like manner, but uing python
-        tuples. If any dataframe's colum is part of the statement, the column's
-        name can be expressed as a string in the statement.
+        tuples. If any dataframe's column is part of the statement, the
+        column's name can be expressed as a string in the statement.
         
         @ param func: function in polish notation
         @ param df: DataFrame containing columns to which func refears to
@@ -137,16 +243,25 @@ class Stark(GenericPickler):
             df['B'] / df['C'] * 100
 
         '''
+        # Some input checks
+        if not isinstance(func, tuple):
+            raise AttributeError(
+                'func must be a tuple, %s teceived instead.' % type(func).__name__)
         if len(func) < 2:
             raise AttributeError(
                 'func must have at last two elements (an operator and a term), received %s' % len(func))
         if df is None:
             df = pandas.DataFrame()
-        op = '__%s__' % func[0]
+        op = func[0]
+        if op in OPERATORS.keys():
+            op = OPERATORS[op]
+        else:
+            op = '__%s__' % func[0]
         terms = list()
+        # Evaluate
         for idx in range(1, len(func)):
             if hasattr(func[idx], '__iter__'): # recursive step
-                terms.append(Stark._polish(func[idx], df=df))
+                terms.append(Stark.eval_polish(func[idx], df))
             elif func[idx] in df.columns: # df col
                 terms.append(df[func[idx]])
             else: # literal
@@ -187,7 +302,7 @@ class Stark(GenericPickler):
         outkeys = dim + var
         group = self._DF.groupby(dim)
         # Create aggregate df
-        # Try to avoid dispatching ambiguity
+        # Trying to avoid dispatching ambiguity
         try:
             df = group.aggregate(func)[var].reset_index()
         except AttributeError:
@@ -195,13 +310,16 @@ class Stark(GenericPickler):
         # re-evaluate calculated values
         for key in self._cal:
             if (key in outkeys) and (self._VD[key]['TIP'] == 'R'):
-                df[key] = Stark._polish(self._VD[key]['ELA'], df=df)
+                try:
+                    df[key] = Stark.eval(self._VD[key]['ELA'], df)
+                except AttributeError:
+                    df[key] = Stark.eval_polish(self._VD[key]['ELA'], df)
         # prepare new VD
         vd = dict()
         for key in outkeys:
             vd[key] = copy.deepcopy(self._VD[key])
         # pack up everithing and return
-        return Stark(df, self.LD, VD=vd)
+        return Stark(df, VD=vd)
 
     def agg(self, func='sum', dim=None, var=None):
         ''' Alias to Stark.aggregate()
@@ -248,10 +366,14 @@ if __name__ == '__main__' :
         'D' : {'TIP': 'R',
                'DES': 'P != NP',
                'MIS': 'Cocce di bagigio',
-               'ELA': ('mul', ('div', 'B', 'C'), 100)},
+               'ELA' : "$B / $C * 100"},
+        'E' : {'TIP': 'R',
+               'DES': 'P != NP',
+               'MIS': 'Cocce di bagigio',
+               'ELA': ('*', ('/', 'B', 'C'), 100)}
         }
 
-    path = '/tmp/test.pickle'
-    df['D'] = Stark._polish(vd['D']['ELA'], df=df)
-    s = Stark(df, path, VD=vd)
+    df['D'] = Stark.eval(vd['D']['ELA'], df)
+    df['E'] = Stark.eval_polish(vd['E']['ELA'], df)
+    s = Stark(df, VD=vd)
     s1 = s.aggregate(numpy.mean)
