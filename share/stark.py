@@ -147,7 +147,8 @@ class Stark(GenericPickler):
         self._VD[key] = entry
         self._update_vd()
 
-    def update_df(self, col, series=None, var_type='N', expr=None, des=None, mis=None):
+    def update_df(self, col, series=None, var_type='N', expr=None, des=None,
+                  mis=None):
         ''' Utility method to safely add/update a DataFrame column.
         
         Add or modify a column of the DataFrame trying to preserve DF/VD
@@ -170,11 +171,14 @@ class Stark(GenericPickler):
 
         '''
         if var_type not in TIP_VALS:
-            raise ValueError("var_type mut be one of [%s]" % '|'.join(TIP_VALS))
+            raise ValueError("var_type mut be one of [%s]" % \
+                                 '|'.join(TIP_VALS))
         if expr is None and var_type == 'R':
-            raise ValueError("You must specify an expression for var_type = 'R'")
+            raise ValueError(
+                "You must specify an expression for var_type = 'R'")
         elif series is None and var_type != 'R':
-            raise ValueError("You must pass a series or list for var_type != 'R'")        
+            raise ValueError(
+                "You must pass a series or list for var_type != 'R'")        
         if var_type == 'R':
             try:
                 self._DF[col] = Stark.eval(expr, df=self._DF)
@@ -213,7 +217,7 @@ class Stark(GenericPickler):
 
         @ param func: a string rappresenting a valid python statement; the
             string can containt DataFrame columns'es placeholders in the form
-           of '$colname'
+            of '$colname'
         @ param df: DataFrame to apply function to.
         @ return: eval(func) return value
 
@@ -223,7 +227,8 @@ class Stark(GenericPickler):
         '''
         if not isinstance(func, str) or isinstance(func, unicode):
             raise AttributeError(
-                'func must be a string, %s received instead.' % type(func).__name__)
+                'func must be a string, %s received instead.' % \
+                    type(func).__name__)
         templ = string.Template(func)
         ph_dict = {}
         ph_list = [ph[1] for ph in string.Template.pattern.findall(func)]
@@ -253,7 +258,8 @@ class Stark(GenericPickler):
         # Some input checks
         if not hasattr(func, '__iter__'):
             raise AttributeError(
-                'func must be a iterable, %s teceived instead.' % type(func).__name__)
+                'func must be a iterable, %s teceived instead.' % \
+                    type(func).__name__)
         if len(func) < 2:
             raise AttributeError(
                 'func must have at last two elements (an operator and a term), received %s' % len(func))
@@ -266,13 +272,13 @@ class Stark(GenericPickler):
             op = '__%s__' % func[0]
         terms = list()
         # Evaluate
-        for idx in range(1, len(func)):
-            if hasattr(func[idx], '__iter__'): # recursive step
-                terms.append(Stark.eval_polish(func[idx], df))
-            elif func[idx] in df.columns: # df col
-                terms.append(df[func[idx]])
+        for elem in func[1:]:
+            if hasattr(elem, '__iter__'): # recursive step
+                terms.append(Stark.eval_polish(elem, df))
+            elif elem in df.columns: # df col
+                terms.append(df[elem])
             else: # literal
-                terms.append(func[idx])
+                terms.append(elem)
         try:
             return terms[0].__getattribute__(op)(terms[1])
         except (IndexError, TypeError):

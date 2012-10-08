@@ -98,7 +98,6 @@ class Graph(object):
 
         return leg
 
-
     def _scatter(self, ax, y_meta):
         ''' Buld a scatter plot.
         This method covers the case of a scatter with one point which position
@@ -156,10 +155,10 @@ class Graph(object):
         ax.add_artist(label)
 
         # bechmark axes
-        ax.axvline(x = bench[0], linewidth=2, linestyle='--' ,color='MidnightBlue', 
-                   antialiased=True, zorder=2)
-        ax.axhline(y = bench[1], linewidth=2, linestyle='--' ,color='MidnightBlue', 
-                   antialiased=True, zorder=2)
+        ax.axvline(x = bench[0], linewidth=2, linestyle='--', 
+                   color='MidnightBlue', antialiased=True, zorder=2)
+        ax.axhline(y = bench[1], linewidth=2, linestyle='--',
+                   color='MidnightBlue', antialiased=True, zorder=2)
         
         # Set axes tiks, limit and labels
         ax.set_xlim((min_val[0], max_val[0]))
@@ -170,9 +169,10 @@ class Graph(object):
         xlab = ax.set_xlabel(x_meta['label'], color='DarkBlue', labelpad=-1)
         ylab = ax.set_ylabel(y_meta['label'], color='DarkBlue', labelpad=-1)
         
-        # FIME: isn't there a better way to avoid axes labels to fall off the figure?
-        ax.get_figure().subplots_adjust(right=0.750, left=0.175, top=0.950, bottom=0.150)     
-
+        # FIME: isn't there a better way to avoid axes labels to fall off the
+        # figure?
+        ax.get_figure().subplots_adjust(right=0.750, left=0.175, 
+                                        top=0.950, bottom=0.150)
         return scat
 
     def parse_lm(self, lm):
@@ -184,7 +184,7 @@ class Graph(object):
         _x_meta: metadata for x ax series
 
         '''
-        # TODO: handle line styles (see sftp://terra.devsite/home/studiabo/UlisseRep/Q20/Q20S2630/HS690790/MER_ARE)
+        # TODO: handle line styles
         for key, val in lm.iteritems():
             if val[0] == 'lax':
                 self._lax = self._df[key]
@@ -203,7 +203,9 @@ class Graph(object):
                         'color': val[3],
                         })
             else:
-                self._logger.warning("Unhandled graph type '%s', I will ignore entry '%s'", val[0], key)
+                self._logger.warning(
+                    "Unhandled graph type '%s', I will ignore entry '%s'", 
+                    val[0], key)
                 continue
 
     def make_graph(self):
@@ -234,17 +236,21 @@ class Graph(object):
                 new_ax.yaxis.tick_right()
             # Handle different graph types
             if col['type'] == 'plot':
-                line = ax.plot(self._lax, self._df[col['key']], color=col['color'])
+                line = ax.plot(self._lax, self._df[col['key']],
+                               color=col['color'])
             elif col['type'] == 'bar':
-                # FIXME: Centered bars cause the plot to be much wider on the right
+                # FIXME: Centered bars cause the plot to be much wider on the
+                # right
                 # TODO: handle cumulative bars
-                line = ax.bar(self._lax, self._df[col['key']], color=col['color'], align='center')
+                line = ax.bar(self._lax, self._df[col['key']],
+                              color=col['color'], align='center')
             elif col['type'] == 'scatter':
                 
                 line = self._scatter(ax, col)
             else:
-                self._logger.warning("Unhandled graph type '%s', I will ignore entry '%s'", 
-                                     col['type'], col['key'])
+                self._logger.warning(
+                    "Unhandled graph type '%s', I will ignore entry '%s'", 
+                    col['type'], col['key'])
                 continue
             lines.append(line)
             labels.append(col['label'])
@@ -271,7 +277,7 @@ class TexGraph(Graph):
         ''' 
         super(TexGraph, self).__init__(data, **kwargs)
         # Tell matplotlib to use LaTeX to render text
-        rc('font',**{
+        rc('font', **{
                 'family': 'serif',
                 'sans-serif':['Computer Modern Roman'], 
                 'size':self._fontsize})
@@ -326,8 +332,9 @@ if __name__ == '__main__':
             'b': [32.0, 50.3, 2],
          })
 
-    path = '/home/mpattaro/workspace/star/trunk/sre/esempio/graph0.pickle'
-    bag = Bag(df, path, LM=lm, TI='graph', TITLE='USRobotics', size='stamp', fontsize=10.0)
+    path = '/home/marco/workspace/star/sre/esempio/graph0.pickle'
+    bag = Bag(df, path, LM=lm, TI='graph', TITLE='USRobotics', size='stamp',
+              fontsize=10.0)
     bag.save()
 
     lm = {
@@ -335,7 +342,7 @@ if __name__ == '__main__':
         'b': [1, 'c|', '|@v0|', '|B|'],
         }
         
-    path = '/home/mpattaro/workspace/star/trunk/sre/esempio/table0.pickle'
+    path = '/home/marco/workspace/star/sre/esempio/table0.pickle'
     bag = Bag(df, path, LM=lm, TITLE='Esempio')
     bag.save()
 

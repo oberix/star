@@ -50,11 +50,13 @@ TEX_ESCAPE = {
     re.compile("\n"): "\\\\",
     re.compile("_"): "\_",
 #    re.compile("-"): "$-$",
-    re.compile("/"): "/\-", # tell LaTeX that an hyphen can be inserted after a '/'
+    # tell LaTeX that an hyphen can be inserted after a '/'
+    re.compile("/"): "/\-", 
     re.compile("\^"): "\textasciicircum",
     re.compile("~"): "\normaltilde",
     }
 
+# TODO: fill this up
 HTML_ESCAPE = {}
 
 def unique_list(list_):
@@ -276,7 +278,8 @@ class TexTable(Table):
                     except AttributeError:
                         # element is not a string
                         out_record.append(escape(str(elem).encode('utf-8')))
-            out += rowstart + """ & """.join(out_record) + " \\\ %s \n" % self._hsep
+            out += rowstart + """ & """.join(out_record) + \
+                " \\\ %s \n" % self._hsep
         out += "\\tabucline- \n"
         return out
     
@@ -332,7 +335,7 @@ class HTMLTable(Table):
 
     def _make_body(self):
         '''
-        sezione che costruisce il body della tabella: thead
+        sezione che costruisce il body della tabella: tbody
         '''
 
         out = '''<tbody>\n'''
