@@ -75,17 +75,37 @@ class Stark(GenericPickler):
     '''
 
     def __init__(self, DF, LD=None, TI='elab', VD=None):
-        self._DF = DF
+        self._DF = DF.copy()
         self.LD = LD
         if TI not in TI_VALS:
             raise ValueError("TI must be one of %s" % TI_VALS)
         self.TI = TI
         if VD is None:
             VD = {}
-        if not set(VD.keys()).issubset(set(DF.columns.tolist())):
-            raise ValueError("VD.keys() must be a subset of DF.columns")
+        # if not set(VD.keys()).issubset(set(DF.columns.tolist())):
+        #     raise ValueError("VD.keys() must be a subset of DF.columns")
         self._VD = VD
         self._update_vd()
+
+    def __getitem__(self, key):
+        ''' Delegate to DataFrame.__setitem__().
+        '''
+        return self._DF.__getitem__(key)
+
+    def __setitem__(self, key, value):
+        ''' Delegate to DataFrame.__setitem__(). The purpose of this method it
+        to permit a DataFrame-like syntax when assigning a new column, while
+        keeping the VD consistent.
+
+        '''
+        if isinstance(value, str) or isinstance(value, unicode):
+            try:
+                self.update_df(key, expr=value, var_type='R')
+            except NameError:
+                self.update_df(key, series=value, var_type='S')
+        else:
+            self.update_df(key, series=value, var_type='N')
+        
 
     def _update_vd(self):
         ''' Call this method every time VD is changed to update Stark data
@@ -121,8 +141,6 @@ class Stark(GenericPickler):
         ''' 
         if vd is None:
             vd = {}
-        # if not set(vd.keys()).issubset(set(self.DF.columns.tolist())):
-        #     raise ValueError("vd.keys() must be a subset of DF.columns")
         self._VD = vd
         self._update_vd()
 
@@ -135,10 +153,8 @@ class Stark(GenericPickler):
         ''' DF settre:
         Just check VD/DF consistency before proceding.
         '''
-        # if not set(self._VD.keys()).issubset(set(df.columns.tolist())):
-        #     raise ValueError("VD.keys() must be a subset of DF.columns")
-        self._DF = df
-        # id DF changes, re-evaluate calculated data
+        self._DF = df.copy()
+        # DF changed, re-evaluate calculated data
         self._update_vd()
 
     def update_vd(self, key, entry):
@@ -150,9 +166,6 @@ class Stark(GenericPickler):
 
         '''
         # Check key consistency
-        if key not in self._DF.columns.tolist():
-            raise ValueError("VD.keys() must be a subset of DF.columns")
-        # TODO: check entry consistency
         self._VD[key] = entry
         self._update_vd()
 
@@ -358,6 +371,7 @@ if __name__ == '__main__' :
     df = pandas.DataFrame(
         numpy.random.randn(nelems, len(cols)), columns=cols,
         index=index).sortlevel().reset_index()
+    df['A'] = nelems*['test']
 
     vd = {
         'region' : {'TIP': 'D',
@@ -372,18 +386,11 @@ if __name__ == '__main__' :
                'ELA': None,},
         'D' : {'TIP': 'R',
                'ORD': 0,
-               'DES': 'P != NP',
-               'MIS': 'Cocce di bagigio',
                'ELA': "$B / $C * 100"},
         'E' : {'TIP': 'R',
                'ORD': 1, 
                'ELA': ('+', 'C', 'D')}
         }
 
-    df['A'] = nelems*['test']
-    df['D'] = Stark.eval(vd['D']['ELA'], df)
-    df['E'] = Stark.eval_polish(vd['E']['ELA'], df)
-
     s = Stark(df, VD=vd)
     s1 = s.aggregate(numpy.mean)
-    s1.save('/tmp/test.pickle')
