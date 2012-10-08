@@ -93,15 +93,19 @@ class Stark(GenericPickler):
         self._dim = list()
         self._cal = list()
         self._num = list()
+        self._str = list()
         for key, val in self._VD.iteritems():
             if val['TIP'] == 'D':
-                self._dim.append(key)
+                self._dim.append((key,val))
             elif val['TIP'] == 'R':
                 self._cal.append(key)
             elif val['TIP'] == 'N':
                 self._num.append(key)
             elif val['TIP'] == 'S':
                 self._str.append(key)
+        # sort dimensions, order determines hierarchy
+        self._dim.sort(key=lambda x: x[1].get('ORD', 0))
+        self._dim = [elem[0] for elem in self._dim]
                 
     @property
     def VD(self):
@@ -306,7 +310,7 @@ class Stark(GenericPickler):
         if dim is None:
             dim = self._dim
         if var is None:
-            var = self._num + self._cal
+            var = self._num + self._cal 
         # var and dim may be single column's name
         if isinstance(var, str) or isinstance(var, unicode):
             var = [var]
@@ -356,13 +360,17 @@ if __name__ == '__main__' :
 
     vd = {
         'region' : {'TIP': 'D',
-               'DES': 'This is a dimension',
-               'MIS': None,
-               'ELA': None,},
+                    'ORD': 0,
+                    'DES': 'This is a dimension',
+                    'MIS': None,
+                    'ELA': None,},
         'country' : {'TIP': 'D',
-               'DES': 'Another one',
-               'MIS': None,
-               'ELA': None,},
+                     'ORD': 1,
+                     'DES': 'Another one',
+                     'MIS': None,
+                     'ELA': None,},
+        'A' : {'TIP': 'S',
+               'DES': 'String test'},
         'B' : {'TIP': 'N',
                'DES': 'Lo! a numeric!',
                'MIS': 'Bagigi',
@@ -383,6 +391,7 @@ if __name__ == '__main__' :
 
     df['D'] = Stark.eval(vd['D']['ELA'], df)
     df['E'] = Stark.eval_polish(vd['E']['ELA'], df)
+    df['A'] = nelems*['test']
     s = Stark(df, VD=vd)
     s1 = s.aggregate(numpy.mean)
     s1.save('/tmp/test.pickle')

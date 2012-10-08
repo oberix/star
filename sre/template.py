@@ -68,7 +68,7 @@ class AbstractSreTemplate(string.Template):
     def _load_template(self, path):
         ''' Read template from file and generate a TexSreTemplate object.
         @ param path: path to the template file
-        @ return: SreTemplare instance
+        @ return: AbstractSreTemplare instance
 
         '''
         self._logger.info("Loading template.")
