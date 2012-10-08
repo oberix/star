@@ -94,19 +94,22 @@ class Stark(GenericPickler):
         self._cal = list()
         self._num = list()
         self._str = list()
-        for key, val in self._VD.iteritems():
+        vd_items = self._VD.items()
+        vd_items.sort(key=lambda x: x[1].get('ORD', 0))
+        for key, val in vd_items:
             if val['TIP'] == 'D':
-                self._dim.append((key,val))
+                self._dim.append(key)
             elif val['TIP'] == 'R':
+                try:
+                    self._DF[key] = Stark.eval(self._VD[key]['ELA'], self._DF)
+                except AttributeError:
+                    self._DF[key] = Stark.eval_polish(self._VD[key]['ELA'], self._DF)
                 self._cal.append(key)
             elif val['TIP'] == 'N':
                 self._num.append(key)
             elif val['TIP'] == 'S':
                 self._str.append(key)
-        # sort dimensions, order determines hierarchy
-        self._dim.sort(key=lambda x: x[1].get('ORD', 0))
-        self._dim = [elem[0] for elem in self._dim]
-                
+
     @property
     def VD(self):
         return self._VD
@@ -118,8 +121,8 @@ class Stark(GenericPickler):
         ''' 
         if vd is None:
             vd = {}
-        if not set(vd.keys()).issubset(set(self.DF.columns.tolist())):
-            raise ValueError("vd.keys() must be a subset of DF.columns")
+        # if not set(vd.keys()).issubset(set(self.DF.columns.tolist())):
+        #     raise ValueError("vd.keys() must be a subset of DF.columns")
         self._VD = vd
         self._update_vd()
 
@@ -132,9 +135,11 @@ class Stark(GenericPickler):
         ''' DF settre:
         Just check VD/DF consistency before proceding.
         '''
-        if not set(self._VD.keys()).issubset(set(df.columns.tolist())):
-            raise ValueError("VD.keys() must be a subset of DF.columns")
+        # if not set(self._VD.keys()).issubset(set(df.columns.tolist())):
+        #     raise ValueError("VD.keys() must be a subset of DF.columns")
         self._DF = df
+        # id DF changes, re-evaluate calculated data
+        self._update_vd()
 
     def update_vd(self, key, entry):
         ''' Update VD dictionary with a new entry.
@@ -152,7 +157,7 @@ class Stark(GenericPickler):
         self._update_vd()
 
     def update_df(self, col, series=None, var_type='N', expr=None, des=None,
-                  mis=None):
+                  mis=None, order=0):
         ''' Utility method to safely add/update a DataFrame column.
         
         Add or modify a column of the DataFrame trying to preserve DF/VD
@@ -183,15 +188,11 @@ class Stark(GenericPickler):
         elif series is None and var_type != 'R':
             raise ValueError(
                 "You must pass a series or list for var_type != 'R'")        
-        if var_type == 'R':
-            try:
-                self._DF[col] = Stark.eval(expr, df=self._DF)
-            except AttributeError:
-                self._DF[col] = Stark.eval_polish(expr, df=self._DF)
-        else:
+        if var_type != 'R':
             self._DF[col] = series
         self.update_vd(col, {
                 'TIP' : var_type,
+                'ORD' : order,
                 'DES' : des,
                 'MIS' : mis,
                 'ELA' : expr})
@@ -361,37 +362,28 @@ if __name__ == '__main__' :
     vd = {
         'region' : {'TIP': 'D',
                     'ORD': 0,
-                    'DES': 'This is a dimension',
-                    'MIS': None,
-                    'ELA': None,},
+                    'DES': 'This is a dimension'},
         'country' : {'TIP': 'D',
-                     'ORD': 1,
-                     'DES': 'Another one',
-                     'MIS': None,
-                     'ELA': None,},
-        'A' : {'TIP': 'S',
-               'DES': 'String test'},
+                     'ORD': 1},
+        'A' : {'TIP': 'S'},
         'B' : {'TIP': 'N',
-               'DES': 'Lo! a numeric!',
-               'MIS': 'Bagigi',
                'ELA': None,},
         'C' : {'TIP': 'N',
-               'DES': 'You are getting boring now!',
-               'MIS': 'Noci',
                'ELA': None,},
         'D' : {'TIP': 'R',
+               'ORD': 0,
                'DES': 'P != NP',
                'MIS': 'Cocce di bagigio',
-               'ELA' : "$B / $C * 100"},
+               'ELA': "$B / $C * 100"},
         'E' : {'TIP': 'R',
-               'DES': 'P != NP',
-               'MIS': 'Cocce di bagigio',
-               'ELA': ('*', ('/', 'B', 'C'), 100)}
+               'ORD': 1, 
+               'ELA': ('+', 'C', 'D')}
         }
 
+    df['A'] = nelems*['test']
     df['D'] = Stark.eval(vd['D']['ELA'], df)
     df['E'] = Stark.eval_polish(vd['E']['ELA'], df)
-    df['A'] = nelems*['test']
+
     s = Stark(df, VD=vd)
     s1 = s.aggregate(numpy.mean)
     s1.save('/tmp/test.pickle')
