@@ -53,6 +53,24 @@ OPERATORS = {
     '%' : '__mod__',
 }
 
+def _unroll(dict_):
+    ''' Unroll tree-like nested dictionary in depth-first order, following
+    'child' keys. Siblings order can be defined with 'ORD' key.
+
+    @ param dict_: python dictionary
+    @ return: ordered list
+
+    '''
+    ret = list()
+    # Sort items to preserve order between siblings
+    items = dict_.items()
+    items.sort(key=lambda x: x[1].get('ORD', 0))
+    for key, val in items:
+        ret.append(key)
+        if val.get('child'):
+            ret += _unroll(val['child'])
+    return ret
+
 class Stark(GenericPickler):
     ''' This is the artifact that outputs mainly from etl procedures. It is a
     collection of meta-information around datas inside a pandas DataFrame.
@@ -85,7 +103,7 @@ class Stark(GenericPickler):
         # if not set(VD.keys()).issubset(set(DF.columns.tolist())):
         #     raise ValueError("VD.keys() must be a subset of DF.columns")
         self._VD = VD
-        self._update_vd()
+        self._update()
 
     def __getitem__(self, key):
         ''' Delegate to DataFrame.__setitem__().
@@ -103,31 +121,38 @@ class Stark(GenericPickler):
                 self.update_df(key, expr=value, var_type='R')
             except NameError:
                 self.update_df(key, series=value, var_type='S')
-        else:
+        else: # FIXME: a type check woudn't be bad here!
             self.update_df(key, series=value, var_type='N')
-        
 
-    def _update_vd(self):
-        ''' Call this method every time VD is changed to update Stark data
+    def _update(self):
+        ''' Call this method every time VD is changed to update Stark data.
+        Iter over VD and fill up different lists of keys, each list contains
+        names from each data type.
+
         ''' 
+        # Start from clean lists
         self._dim = list()
         self._cal = list()
         self._num = list()
         self._str = list()
+        # Sort VD.items() by 'ORD' to have output lists already ordered.
         vd_items = self._VD.items()
         vd_items.sort(key=lambda x: x[1].get('ORD', 0))
         for key, val in vd_items:
             if val['TIP'] == 'D':
-                self._dim.append(key)
+                self._dim += _unroll({key: val})
             elif val['TIP'] == 'R':
+                # (Re)evaluate calculated columns
                 try:
-                    self._DF[key] = Stark.eval(self._VD[key]['ELA'], self._DF)
+                    self._DF[key] = self.eval(self._VD[key]['ELA'])
                 except AttributeError:
-                    self._DF[key] = Stark.eval_polish(self._VD[key]['ELA'], self._DF)
+                    self._DF[key] = self.eval_polish(self._VD[key]['ELA'])
                 self._cal.append(key)
             elif val['TIP'] == 'N':
+                # TODO: check that dtypes are really numeric types
                 self._num.append(key)
             elif val['TIP'] == 'S':
+                # TODO: check that dtypes are str or unicode
                 self._str.append(key)
 
     @property
@@ -142,7 +167,7 @@ class Stark(GenericPickler):
         if vd is None:
             vd = {}
         self._VD = vd
-        self._update_vd()
+        self._update()
 
     @property
     def DF(self):
@@ -155,7 +180,7 @@ class Stark(GenericPickler):
         '''
         self._DF = df.copy()
         # DF changed, re-evaluate calculated data
-        self._update_vd()
+        self._update()
 
     def update_vd(self, key, entry):
         ''' Update VD dictionary with a new entry.
@@ -167,7 +192,7 @@ class Stark(GenericPickler):
         '''
         # Check key consistency
         self._VD[key] = entry
-        self._update_vd()
+        self._update()
 
     def update_df(self, col, series=None, var_type='N', expr=None, des=None,
                   mis=None, order=0):
@@ -224,8 +249,7 @@ class Stark(GenericPickler):
             os.makedirs(os.path.dirname(file_))
         super(Stark, self).save(file_)
 
-    @staticmethod
-    def eval(func, df):
+    def eval(self, func):
         ''' Evaluate a function with DataFrame columns'es placeholders.
         
         Without placeholders this function is just a common python eval; when
@@ -236,7 +260,6 @@ class Stark(GenericPickler):
         @ param func: a string rappresenting a valid python statement; the
             string can containt DataFrame columns'es placeholders in the form
             of '$colname'
-        @ param df: DataFrame to apply function to.
         @ return: eval(func) return value
 
         Example:
@@ -251,11 +274,10 @@ class Stark(GenericPickler):
         ph_dict = {}
         ph_list = [ph[1] for ph in string.Template.pattern.findall(func)]
         for ph in ph_list:
-            ph_dict[ph] = str().join(["df['", ph, "']"])
+            ph_dict[ph] = str().join(["self._DF['", ph, "']"])
         return eval(templ.substitute(ph_dict))
 
-    @staticmethod
-    def eval_polish(func, df):
+    def eval_polish(self, func):
         ''' Parse and execute a statement in polish notation.
 
         Statemenst must be expressed in a Lisp-like manner, but uing python
@@ -263,7 +285,6 @@ class Stark(GenericPickler):
         column's name can be expressed as a string in the statement.
         
         @ param func: function in polish notation
-        @ param df: DataFrame containing columns to which func refears to
         @ return: function result
 
         Example:
@@ -281,8 +302,8 @@ class Stark(GenericPickler):
         if len(func) < 2:
             raise AttributeError(
                 'func must have at last two elements (an operator and a term), received %s' % len(func))
-        if df is None:
-            df = pandas.DataFrame()
+        # if df is None:
+        #     df = pandas.DataFrame()
         op = func[0]
         if op in OPERATORS.keys():
             op = OPERATORS[op]
@@ -292,9 +313,9 @@ class Stark(GenericPickler):
         # Evaluate
         for elem in func[1:]:
             if hasattr(elem, '__iter__'): # recursive step
-                terms.append(Stark.eval_polish(elem, df))
-            elif elem in df.columns: # df col
-                terms.append(df[elem])
+                terms.append(self.eval_polish(elem))
+            elif elem in self._DF.columns: # df col
+                terms.append(self._DF[elem])
             else: # literal
                 terms.append(elem)
         try:
@@ -338,17 +359,14 @@ class Stark(GenericPickler):
             df = group.aggregate(func)[var].reset_index()
         except AttributeError:
             df = group.aggregate(eval(func))[var].reset_index()
-        # re-evaluate calculated values
-        for key in self._cal:
-            if (key in outkeys) and (self._VD[key]['TIP'] == 'R'):
-                try:
-                    df[key] = Stark.eval(self._VD[key]['ELA'], df)
-                except AttributeError:
-                    df[key] = Stark.eval_polish(self._VD[key]['ELA'], df)
-        # prepare new VD
         vd = dict()
         for key in outkeys:
-            vd[key] = copy.deepcopy(self._VD[key])
+            try:
+                vd[key] = copy.deepcopy(self._VD[key])
+            except KeyError:
+                # Nested dimension case, item has already been copied by a
+                # previous deepcopy() call.
+                pass
         # pack up everithing and return
         return Stark(df, VD=vd)
 
@@ -358,27 +376,44 @@ if __name__ == '__main__' :
     ''' 
     cols = ['B', 'C']
     countries = numpy.array([
-        ('namerica', 'US'),
-        ('europe', 'UK'),
-        ('europe', 'GR'),
-        ('europe', 'IT'),
-        ('asia', 'JP'),
-        ('samerica', 'BR'),
+        ('namerica', 'US', 'Washington DC'),
+        ('namerica', 'US', 'New York'),
+        ('europe', 'UK', 'London'),
+        ('europe', 'UK', 'Liverpool'),
+        ('europe', 'GR', 'Athinai'),
+        ('europe', 'GR', 'Thessalonica'),
+        ('europe', 'IT', 'Roma'),
+        ('europe', 'IT', 'Milano'),
+        ('asia', 'JP', 'Tokyo'),
+        ('samerica', 'BR', 'Brasilia'),
+        ('samerica', 'BR', 'Rio'),
         ])
     nelems = 100
     key = map(tuple, countries[numpy.random.randint(0, len(countries), nelems)])
-    index = pandas.MultiIndex.from_tuples(key, names=['region', 'country'])
+    index = pandas.MultiIndex.from_tuples(key, names=['region', 'country', 'city'])
+
+    # DataFrame with two numeric columns...
     df = pandas.DataFrame(
         numpy.random.randn(nelems, len(cols)), columns=cols,
         index=index).sortlevel().reset_index()
+    # ... and a string column
     df['A'] = nelems*['test']
 
     vd = {
-        'region' : {'TIP': 'D',
-                    'ORD': 0,
-                    'DES': 'This is a dimension'},
-        'country' : {'TIP': 'D',
-                     'ORD': 1},
+        'region' : {
+            'TIP': 'D',
+            'child': {
+                'country': {
+                    'TIP': 'D',
+                    'DES': 'country',
+                    'child': {
+                        'city': {
+                            'TIP': 'D',
+                            'DES': 'city'}
+                        }
+                    }
+                }
+            },
         'A' : {'TIP': 'S'},
         'B' : {'TIP': 'N',
                'ELA': None,},
@@ -389,8 +424,10 @@ if __name__ == '__main__' :
                'ELA': "$B / $C * 100"},
         'E' : {'TIP': 'R',
                'ORD': 1, 
-               'ELA': ('+', 'C', 'D')}
+               'ELA': ('/', ('+', 'C', 'D'), 100)}
         }
 
+#    import ipdb; ipdb.set_trace()
     s = Stark(df, VD=vd)
-    s1 = s.aggregate(numpy.mean)
+
+#    s1 = s.aggregate(numpy.sum)
