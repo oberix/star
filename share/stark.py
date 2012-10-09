@@ -271,7 +271,7 @@ class Stark(GenericPickler):
                 'func must be a string, %s received instead.' % \
                     type(func).__name__)
         templ = string.Template(func)
-        ph_dict = {}
+        ph_dict = dict()
         ph_list = [ph[1] for ph in string.Template.pattern.findall(func)]
         for ph in ph_list:
             ph_dict[ph] = str().join(["self._DF['", ph, "']"])
@@ -302,8 +302,6 @@ class Stark(GenericPickler):
         if len(func) < 2:
             raise AttributeError(
                 'func must have at last two elements (an operator and a term), received %s' % len(func))
-        # if df is None:
-        #     df = pandas.DataFrame()
         op = func[0]
         if op in OPERATORS.keys():
             op = OPERATORS[op]
@@ -359,15 +357,15 @@ class Stark(GenericPickler):
             df = group.aggregate(func)[var].reset_index()
         except AttributeError:
             df = group.aggregate(eval(func))[var].reset_index()
+        # Set up output VD
         vd = dict()
         for key in outkeys:
             try:
                 vd[key] = copy.deepcopy(self._VD[key])
             except KeyError:
-                # Nested dimension case, item has already been copied by a
+                # Nested dimension case: item has already been copied by a
                 # previous deepcopy() call.
                 pass
-        # pack up everithing and return
         return Stark(df, VD=vd)
 
 
@@ -427,7 +425,5 @@ if __name__ == '__main__' :
                'ELA': ('/', ('+', 'C', 'D'), 100)}
         }
 
-#    import ipdb; ipdb.set_trace()
     s = Stark(df, VD=vd)
-
-#    s1 = s.aggregate(numpy.sum)
+    s1 = s.aggregate(numpy.sum)

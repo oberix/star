@@ -87,7 +87,7 @@ class Bag(GenericPickler):
     '''   
     
     #definisco la funzione __init__ 
-    def __init__(self, DF, LD, TI='tab', LM=None, 
+    def __init__(self, DF, LD=None, TI='tab', LM=None, 
                  TITLE=None, FOOTNOTE=None, 
                  size='square', fontsize=10.0,
                  legend=False, **kwargs):
