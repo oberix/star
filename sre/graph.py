@@ -33,6 +33,7 @@ __all__ = ['Graph']
 GRAPH_TYPES = (
     'plot',
     'bar',
+    'barh',
     'scatter',
 )
 
@@ -115,15 +116,14 @@ class Graph(object):
         val = (x_data[0], y_data[0])
         bench = (x_data[1], y_data[1])
         quadrant = (x_data[2], y_data[2])
-        # TOCHECK: log1p looks good, but it's just empirical
-        margin = (np.log1p(np.abs(x_data[0:2].max() - x_data[0:2].min()) +1), 
-                  np.log1p(np.abs(y_data[0:2].max() - y_data[0:2].min()) +1))
+        # TOCHECK: log looks good, but it's just empirical
+        margin = (np.log2(np.abs(x_data[0:2].max() - x_data[0:2].min())), 
+                  np.log2(np.abs(y_data[0:2].max() - y_data[0:2].min())))
         min_val = (x_data[0:2].min() - margin[0], y_data[0:2].min() - margin[0])
         max_val = (x_data[0:2].max() + margin[1], y_data[0:2].max() + margin[1])
 
         # Draw colored quadrants
-        for idx in xrange(len(quadrant)):
-            quad = quadrant[idx]            
+        for idx, quad in enumerate(quadrant):
             if quad < 2: # 2 right quadrants
                 rect_x = bench[0]
                 width = max_val[0] - bench[0]
@@ -171,8 +171,8 @@ class Graph(object):
         
         # FIME: isn't there a better way to avoid axes labels to fall off the
         # figure?
-        ax.get_figure().subplots_adjust(right=0.750, left=0.175, 
-                                        top=0.950, bottom=0.150)
+        # ax.get_figure().subplots_adjust(right=0.750, left=0.175, 
+        #                                 top=0.950, bottom=0.150)
         return scat
 
     def parse_lm(self, lm):
@@ -194,7 +194,7 @@ class Graph(object):
                     'ax': val[1],
                     'label': val[2],
                     'color': val[3],})
-            elif val[0] in GRAPH_TYPES:                
+            elif val[0] in GRAPH_TYPES:
                 self._y_meta.append({
                         'key': key,
                         'type': val[0],
@@ -222,8 +222,7 @@ class Graph(object):
         ax.grid(True)
         lines = list()
         labels = list()
-        for idx in xrange(len(self._y_meta)):
-            col = self._y_meta[idx]
+        for idx, col in enumerate(self._y_meta):
             # Axes
             new_ax = ax
             if idx > 0:
@@ -245,12 +244,11 @@ class Graph(object):
                 line = ax.bar(self._lax, self._df[col['key']],
                               color=col['color'], align='center')
             elif col['type'] == 'scatter':
-                
                 line = self._scatter(ax, col)
+            elif col['type'] == 'barh':
+                line = ax.barh(self._lax, self._df[col['key']],
+                                 color=col['color'], align='center')
             else:
-                self._logger.warning(
-                    "Unhandled graph type '%s', I will ignore entry '%s'", 
-                    col['type'], col['key'])
                 continue
             lines.append(line)
             labels.append(col['label'])
@@ -323,27 +321,35 @@ if __name__ == '__main__':
     lm = {
         'a': ['lax', 'sx', 'Ammonrtamenti in \% produzione', 'r'],
         'b': ['scatter', 'sx', "Intensita' capitale fisso", 'b'],
-        # 'b': ['bar', 'dx', "$E=mc^2$", 'b'],
+        # 'c': ['barh', 'dx', "$E=mc^2$", 'b'],
         # 'd': ['plot', 'dx', 'Dau', 'g'],
         }    
 
     df = pnd.DataFrame({
-            'a': [5.1, 10.2, 0],
-            'b': [32.0, 50.3, 2],
+            'a': [5.1, 5000.1, 0],
+            'b': [32.0, 32000.0, 2],
+            # 'a': np.arange(0, 1, 0.1),
+            # 'b': np.random.randint(100, size=2),
+            # 'c': np.random.randint(100, size=10),
+            # 'd': np.random.randint(100, size=10),
          })
 
-    path = '/home/marco/workspace/star/sre/esempio/graph0.pickle'
-    bag = Bag(df, path, LM=lm, TI='graph', TITLE='USRobotics', size='stamp',
+    path = '/home/mpattaro/workspace/star/trunk/sre/esempio/graph0.pickle'
+    bag = Bag(df, LD=path, LM=lm, TI='graph', TITLE='USRobotics', 
+              size='stamp',
+              legend=False,
               fontsize=10.0)
     bag.save()
 
     lm = {
-        'a': [0, '|c|','|@v0|', '|A'],
-        'b': [1, 'c|', '|@v0|', '|B|'],
+        'a': [0, '|c|','|@v0|', '|A|'],
+        'b': [1, 'c|', '|@v0|', 'B|'],
+        # 'c': [1, 'c|', '|@v0|', 'C|'],
+        # 'd': [1, 'c|', '|@v0|', 'D|'],
         }
         
-    path = '/home/marco/workspace/star/sre/esempio/table0.pickle'
-    bag = Bag(df, path, LM=lm, TITLE='Esempio')
+    path = '/home/mpattaro/workspace/star/trunk/sre/esempio/table0.pickle'
+    bag = Bag(df, LD=path, LM=lm, TITLE='Esempio')
     bag.save()
 
     # graph = TexGraph(bag)
