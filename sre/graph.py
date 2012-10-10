@@ -26,6 +26,8 @@ import numpy as np
 import logging
 from tempfile import NamedTemporaryFile, TemporaryFile
 
+import plotters
+
 __author__ = "Marco Pattaro <marco.pattaro@servabit.it>"
 __version__ = "0.1"
 __all__ = ['Graph']
@@ -66,6 +68,7 @@ class Graph(object):
         self._fontsize = data.fontsize
         self._size = data.size
         self._legend = data.legend
+        self._plotters = dict()
         self.parse_lm(data.LM)
         self._figure = self.make_graph()
 
@@ -202,6 +205,8 @@ class Graph(object):
                         'label': val[2],
                         'color': val[3],
                         })
+                if not self._plotters.get(val[0]):
+                    self._plotters[val[0]] = plotters.__getattribute__(val[0])(self)
             else:
                 self._logger.warning(
                     "Unhandled graph type '%s', I will ignore entry '%s'", 
@@ -234,21 +239,10 @@ class Graph(object):
             if col['ax'] == 'dx':
                 new_ax.yaxis.tick_right()
             # Handle different graph types
-            if col['type'] == 'plot':
-                line = ax.plot(self._lax, self._df[col['key']],
-                               color=col['color'])
-            elif col['type'] == 'bar':
-                # FIXME: Centered bars cause the plot to be much wider on the
-                # right
-                # TODO: handle cumulative bars
-                line = ax.bar(self._lax, self._df[col['key']],
-                              color=col['color'], align='center')
-            elif col['type'] == 'scatter':
-                line = self._scatter(ax, col)
-            elif col['type'] == 'barh':
-                line = ax.barh(self._lax, self._df[col['key']],
-                                 color=col['color'], align='center')
-            else:
+            try:
+                line = self._plotters[col['type']].plot(ax, col)
+            except KeyError:
+                # TODO: print some worning
                 continue
             lines.append(line)
             labels.append(col['label'])
@@ -320,21 +314,21 @@ if __name__ == '__main__':
 
     lm = {
         'a': ['lax', 'sx', 'Ammonrtamenti in \% produzione', 'r'],
-        'b': ['scatter', 'sx', "Intensita' capitale fisso", 'b'],
-        # 'c': ['barh', 'dx', "$E=mc^2$", 'b'],
-        # 'd': ['plot', 'dx', 'Dau', 'g'],
+        # 'b': ['scatter', 'sx', "Intensita' capitale fisso", 'b'],
+        'c': ['bar', 'sx', "$E=mc^2$", 'b'],
+        'd': ['plot', 'dx', 'Dau', 'g'],
         }    
 
     df = pnd.DataFrame({
-            'a': [5.1, 5000.1, 0],
-            'b': [32.0, 32000.0, 2],
-            # 'a': np.arange(0, 1, 0.1),
+            # 'a': [5.1, 6.1, 0],
+            # 'b': [32.0, 33.0, 2],
+            'a': np.arange(0, 10, 1),
             # 'b': np.random.randint(100, size=2),
-            # 'c': np.random.randint(100, size=10),
-            # 'd': np.random.randint(100, size=10),
+            'c': np.random.randint(100, size=10),
+            'd': np.random.randint(100, size=10),
          })
 
-    path = '/home/mpattaro/workspace/star/trunk/sre/esempio/graph0.pickle'
+    path = '/home/mpattaro/workspace/star/trunk/reports/esempio/graph0.pickle'
     bag = Bag(df, LD=path, LM=lm, TI='graph', TITLE='USRobotics', 
               size='stamp',
               legend=False,
@@ -343,12 +337,12 @@ if __name__ == '__main__':
 
     lm = {
         'a': [0, '|c|','|@v0|', '|A|'],
-        'b': [1, 'c|', '|@v0|', 'B|'],
-        # 'c': [1, 'c|', '|@v0|', 'C|'],
-        # 'd': [1, 'c|', '|@v0|', 'D|'],
+        # 'b': [1, 'c|', '|@v0|', 'B|'],
+        'c': [1, 'c|', '|@v0|', 'C|'],
+        'd': [1, 'c|', '|@v0|', 'D|'],
         }
         
-    path = '/home/mpattaro/workspace/star/trunk/sre/esempio/table0.pickle'
+    path = '/home/mpattaro/workspace/star/trunk/reports/esempio/table0.pickle'
     bag = Bag(df, LD=path, LM=lm, TITLE='Esempio')
     bag.save()
 
