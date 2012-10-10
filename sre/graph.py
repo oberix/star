@@ -20,9 +20,7 @@
 ##############################################################################
 
 import matplotlib.pyplot as plt
-import matplotlib.patches as patches
 from matplotlib import rc
-import numpy as np
 import logging
 from tempfile import NamedTemporaryFile, TemporaryFile
 
@@ -32,22 +30,12 @@ __author__ = "Marco Pattaro <marco.pattaro@servabit.it>"
 __version__ = "0.1"
 __all__ = ['Graph']
 
-GRAPH_TYPES = (
-    'plot',
-    'bar',
-    'barh',
-    'scatter',
-)
-
 FIGSIZE = { # (w, h) in inches
     'stamp': (3.200, 2.0), # (3.180, 2.380)
     'dinamic': (6.360, 2.380),
     'square': (6.360, 6.360),
     'flag': (3.180, 9.52),
 }
-
-WORST_COLOR = "#FFDBC1"
-BEST_COLOR = "#9BFFE6"
 
 class Graph(object):
 
@@ -68,7 +56,7 @@ class Graph(object):
         self._fontsize = data.fontsize
         self._size = data.size
         self._legend = data.legend
-        self._plotters = dict()
+        self._plotters = plotters.Plotters(self)
         self.parse_lm(data.LM)
         self._figure = self.make_graph()
 
@@ -102,82 +90,6 @@ class Graph(object):
 
         return leg
 
-    def _scatter(self, ax, y_meta):
-        ''' Buld a scatter plot.
-        This method covers the case of a scatter with one point which position
-        is highlited by a system axes with colored quadrants, where each colo
-        tels if it's a good, neutral or bad placement.
-
-        @ param y_meta:
-        @ return: A Collection instance
-
-        '''
-        x_data = self._lax
-        y_data = self._df[y_meta['key']]
-        x_meta = self._x_meta[0]
-        # TODO: set lable for the axes
-        val = (x_data[0], y_data[0])
-        bench = (x_data[1], y_data[1])
-        quadrant = (x_data[2], y_data[2])
-        # TOCHECK: log looks good, but it's just empirical
-        margin = (np.log2(np.abs(x_data[0:2].max() - x_data[0:2].min())), 
-                  np.log2(np.abs(y_data[0:2].max() - y_data[0:2].min())))
-        min_val = (x_data[0:2].min() - margin[0], y_data[0:2].min() - margin[0])
-        max_val = (x_data[0:2].max() + margin[1], y_data[0:2].max() + margin[1])
-
-        # Draw colored quadrants
-        for idx, quad in enumerate(quadrant):
-            if quad < 2: # 2 right quadrants
-                rect_x = bench[0]
-                width = max_val[0] - bench[0]
-            else:  # 2 left quadrants
-                rect_x = min_val[0]
-                width = bench[0] - min_val[0]
-            if quad == 1 or quad == 2: # 2 lower quadrants
-                rect_y = min_val[1]
-                height = bench[1] - min_val[1]
-            else: # 2 upper quadrants
-                rect_y = bench[1]
-                height = max_val[1] - bench[1]
-            color = BEST_COLOR
-            if idx == 0:
-                color = WORST_COLOR
-            rect = patches.Rectangle(
-                (rect_x, rect_y), width=width, height=height, antialiased=True,
-                facecolor=color, zorder=1)
-            ax.add_patch(rect)
-        # Draw dot
-        scat = [ax.scatter(val[0], val[1], s=20, c=y_meta['color'],
-                          color=y_meta['color'], antialiased=True, zorder=3)]
-        
-        offset = (margin[0]/15.0, margin[1]/15.0)
-        # Add a lable to the dot
-        # TODO: this string should be escaped
-        label = ax.text(val[0] + offset[0], val[1] + offset[1], self._title,
-                        color=y_meta['color'], clip_on=False, zorder=4)
-        ax.add_artist(label)
-
-        # bechmark axes
-        ax.axvline(x = bench[0], linewidth=2, linestyle='--', 
-                   color='MidnightBlue', antialiased=True, zorder=2)
-        ax.axhline(y = bench[1], linewidth=2, linestyle='--',
-                   color='MidnightBlue', antialiased=True, zorder=2)
-        
-        # Set axes tiks, limit and labels
-        ax.set_xlim((min_val[0], max_val[0]))
-        ax.set_xticks([bench[0], val[0]])
-        ax.set_ylim((min_val[1], max_val[1]))
-        ax.set_yticks([bench[1], val[1]])
-        # TODO: this strings should be escaped too
-        xlab = ax.set_xlabel(x_meta['label'], color='DarkBlue', labelpad=-1)
-        ylab = ax.set_ylabel(y_meta['label'], color='DarkBlue', labelpad=-1)
-        
-        # FIME: isn't there a better way to avoid axes labels to fall off the
-        # figure?
-        # ax.get_figure().subplots_adjust(right=0.750, left=0.175, 
-        #                                 top=0.950, bottom=0.150)
-        return scat
-
     def parse_lm(self, lm):
         ''' Parse Bag's LM dictionary and estract the following non-public
         attrubutes:
@@ -197,7 +109,7 @@ class Graph(object):
                     'ax': val[1],
                     'label': val[2],
                     'color': val[3],})
-            elif val[0] in GRAPH_TYPES:
+            else:
                 self._y_meta.append({
                         'key': key,
                         'type': val[0],
@@ -205,13 +117,6 @@ class Graph(object):
                         'label': val[2],
                         'color': val[3],
                         })
-                if not self._plotters.get(val[0]):
-                    self._plotters[val[0]] = plotters.__getattribute__(val[0])(self)
-            else:
-                self._logger.warning(
-                    "Unhandled graph type '%s', I will ignore entry '%s'", 
-                    val[0], key)
-                continue
 
     def make_graph(self):
         ''' Create a Figure and plot a graph in it following what was specified
@@ -242,7 +147,9 @@ class Graph(object):
             try:
                 line = self._plotters[col['type']].plot(ax, col)
             except KeyError:
-                # TODO: print some worning
+                self._logger.warning(
+                    "Unhandled graph type '%s', I will ignore entry '%s'", 
+                    col['type'], col['label'])
                 continue
             lines.append(line)
             labels.append(col['label'])
@@ -316,7 +223,7 @@ if __name__ == '__main__':
         'a': ['lax', 'sx', 'Ammonrtamenti in \% produzione', 'r'],
         # 'b': ['scatter', 'sx', "Intensita' capitale fisso", 'b'],
         'c': ['bar', 'sx', "$E=mc^2$", 'b'],
-        'd': ['plot', 'dx', 'Dau', 'g'],
+        'd': ['bar', 'dx', 'Dau', 'g'],
         }    
 
     df = pnd.DataFrame({
@@ -330,7 +237,7 @@ if __name__ == '__main__':
 
     path = '/home/mpattaro/workspace/star/trunk/reports/esempio/graph0.pickle'
     bag = Bag(df, LD=path, LM=lm, TI='graph', TITLE='USRobotics', 
-              size='stamp',
+              size='square',
               legend=False,
               fontsize=10.0)
     bag.save()

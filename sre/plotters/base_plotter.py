@@ -18,10 +18,30 @@
 #
 ##############################################################################
 
-class BaseGraph(object):
+import plotters
+import logging
+
+class BasePlotter(object):
     
     def __init__(self, graph):
         self._graph = graph
 
     def plot(self, ax, **kwargs):
         raise NotImplementedError
+
+class Plotters(object):
+    ''' Plotter factory.
+    Just to ensure every plotter has one and only one instance.
+    '''
+
+    def __init__(self, graph):
+        self._graph = graph
+        self._logger = logging.getLogger(type(self).__name__)
+        self._plotters = dict()
+
+    def __getitem__(self, key):
+        if key not in plotters.GRAPH_TYPES:
+            raise KeyError("Unhandled graph type '%s'" % key)
+        if not self._plotters.get(key):
+            self._plotters[key] = plotters.__getattribute__(key)(self._graph)
+        return self._plotters[key]

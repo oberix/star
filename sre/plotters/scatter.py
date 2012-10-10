@@ -20,12 +20,12 @@
 
 import numpy as np
 import matplotlib.patches as patches
-from base_graph import BaseGraph
+from base_plotter import BasePlotter
 
 WORST_COLOR = "#FFDBC1"
 BEST_COLOR = "#9BFFE6"
 
-class Scatter(BaseGraph):
+class Scatter(BasePlotter):
     
     def plot(self, ax, col):
         x_data = self._graph._lax

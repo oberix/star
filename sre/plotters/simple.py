@@ -18,21 +18,21 @@
 #
 ##############################################################################
 
-from base_graph import BaseGraph
+from base_plotter import BasePlotter
 
-class Plot(BaseGraph):
+class Plot(BasePlotter):
 
     def plot(self, ax, col):
         return ax.plot(self._graph._lax, self._graph._df[col['key']],
                        color=col['color'])
 
-class Bar(BaseGraph):
+class Bar(BasePlotter):
 
     def plot(self, ax, col):
         return ax.bar(self._graph._lax, self._graph._df[col['key']],
                color=col['color'], align='center')
 
-class Barh(BaseGraph):
+class Barh(BasePlotter):
 
     def plot(self, ax, col):
         return ax.barh(self._graph._lax, self._graph._df[col['key']],
