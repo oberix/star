@@ -24,8 +24,11 @@ from base_plotter import BasePlotter
 
 WORST_COLOR = "#FFDBC1"
 BEST_COLOR = "#9BFFE6"
+#BEST_COLOR = "#005e93"
 
 class Scatter(BasePlotter):
+    ''' Implement a benckmark scatter graphic.
+    '''
     
     def plot(self, ax, col):
         x_data = self._graph._lax
@@ -55,9 +58,9 @@ class Scatter(BasePlotter):
             else: # 2 upper quadrants
                 rect_y = bench[1]
                 height = max_val[1] - bench[1]
-            color = BEST_COLOR
+            color = WORST_COLOR
             if idx == 0:
-                color = WORST_COLOR
+                color = BEST_COLOR
             rect = patches.Rectangle(
                 (rect_x, rect_y), width=width, height=height, antialiased=True,
                 facecolor=color, zorder=1)

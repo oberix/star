@@ -47,14 +47,19 @@ class Graph(object):
                 'columnspacing': 1, 
                 'borderpad': 0,
                 })
-#        self._data = data
         self._title = data.TITLE
         self._footnote = data.FOOTNOTE
         self._df = data.DF
         self._y_meta = list()
         self._x_meta = list()
         self._fontsize = data.fontsize
-        self._size = data.size
+        try:
+            self._size = FIGSIZE[data.size]
+        except KeyError, e:
+            if isinstance(data.size, tuple):
+                self._size = data.size
+            else:
+                raise e
         self._legend = data.legend
         self._plotters = plotters.Plotters(self)
         self.parse_lm(data.LM)
@@ -86,9 +91,17 @@ class Graph(object):
         # Make legend
         leg = figure.legend(handles, labels, ncol=ncol, loc='upper left',
                             bbox_to_anchor=(0.10, 1.0))
-        leg.get_frame().set_linewidth(0) # Remove legend border
+        # Remove legend border
+        leg.get_frame().set_linewidth(0)
 
         return leg
+
+    def _unroll_cum(self, lm, val):
+        ret = list()
+        if val.get('cum'):
+            ret = [val.get('cum', None)]
+            ret += self._unroll_cum(lm, lm[val['cum']])
+        return ret
 
     def parse_lm(self, lm):
         ''' Parse Bag's LM dictionary and estract the following non-public
@@ -101,22 +114,14 @@ class Graph(object):
         '''
         # TODO: handle line styles
         for key, val in lm.iteritems():
-            if val[0] == 'lax':
+            if val['type'] == 'lax':
                 self._lax = self._df[key]
-                self._x_meta.append({
-                    'key': key,
-                    'type': val[0],
-                    'ax': val[1],
-                    'label': val[2],
-                    'color': val[3],})
+                self._x_meta.append(val)
             else:
-                self._y_meta.append({
-                        'key': key,
-                        'type': val[0],
-                        'ax': val[1],
-                        'label': val[2],
-                        'color': val[3],
-                        })
+                val['key'] = key
+                val['cumulate'] = self._unroll_cum(lm, val)
+                self._y_meta.append(val)
+#        self._y_meta.sort(key=lambda x: len(x['cumulate']), reverse=True)
 
     def make_graph(self):
         ''' Create a Figure and plot a graph in it following what was specified
@@ -124,32 +129,22 @@ class Graph(object):
 
         @ return: the Figure instance created
         
-        ''' 
-        fig = plt.figure(figsize=FIGSIZE[self._size])
+        '''
+        fig = plt.figure(figsize=self._size)
         ax = fig.add_subplot(1,1,1, axisbg='#eeefff', autoscale_on=True,
                              adjustable="datalim")
+        # TODO: consider moving ax setting in concrete Plotter implementation
         ax.set_xlim(self._lax.min(), self._lax.max())
         ax.grid(True)
         lines = list()
         labels = list()
         for idx, col in enumerate(self._y_meta):
-            # Axes
-            new_ax = ax
-            if idx > 0:
-                new_ax = fig.add_axes(
-                    ax.get_position(True), 
-                    label=col['label'],
-                    frameon=False, 
-                    sharex=ax)
-            if col['ax'] == 'dx':
-                new_ax.yaxis.tick_right()
-            # Handle different graph types
             try:
                 line = self._plotters[col['type']].plot(ax, col)
             except KeyError:
                 self._logger.warning(
                     "Unhandled graph type '%s', I will ignore entry '%s'", 
-                    col['type'], col['label'])
+                    col['type'], col['key'])
                 continue
             lines.append(line)
             labels.append(col['label'])
@@ -217,44 +212,91 @@ if __name__ == '__main__':
     import pandas as pnd
     import numpy as np
     
-    logging.basicConfig(level = logging.DEBUG)
+    logging.basicConfig(level=logging.DEBUG)
 
-    lm = {
-        'a': ['lax', 'sx', 'Ammonrtamenti in \% produzione', 'r'],
-        # 'b': ['scatter', 'sx', "Intensita' capitale fisso", 'b'],
-        'c': ['bar', 'sx', "$E=mc^2$", 'b'],
-        'd': ['bar', 'dx', 'Dau', 'g'],
-        }    
+    lm_bar = {
+        'a': {'type': 'lax', 
+              'label': 'AAA'},
+        'b': {'type': 'bar', 
+              'label': 'BBB',
+              'color': 'b',},
+        'c': {'type': 'bar', 
+              'ax': 'dx',
+              'label': "CCC", 
+              'color': 'g',
+              'cum': 'b'},
+        }
+
+    lm_barh = {
+        'a': {'type': 'lax', 
+              'label': 'AAA'},
+        'b': {'type': 'barh', 
+              'ax': 'sx', 
+              'label': 'BBB',
+              'color': 'b'},
+        'c': {'type': 'barh', 
+              'ax': 'dx', 
+              'label': "CCC", 
+              'color': 'g',
+              'cum': 'b'},
+        }
+
+    lm_plot = {
+        'a': {'type': 'lax', 
+              'label': 'AAA'},
+        'b': {'type': 'bar', 
+              'ax': 'sx', 
+              'label': 'BBB',
+              'color': 'b'},
+        'c': {'type': 'plot', 
+              'ax': 'dx', 
+              'label': "CCC", 
+              'color': 'g',}
+        }
 
     df = pnd.DataFrame({
-            # 'a': [5.1, 6.1, 0],
-            # 'b': [32.0, 33.0, 2],
-            'a': np.arange(0, 10, 1),
-            # 'b': np.random.randint(100, size=2),
-            'c': np.random.randint(100, size=10),
-            'd': np.random.randint(100, size=10),
+            'a': np.arange(0, 11, 1),
+            'b': np.arange(5, 16, 1),
+            'c': np.arange(0, 5.5, 0.5),
          })
 
-    path = '/home/mpattaro/workspace/star/trunk/reports/esempio/graph0.pickle'
-    bag = Bag(df, LD=path, LM=lm, TI='graph', TITLE='USRobotics', 
-              size='square',
+#    import ipdb; ipdb.set_trace()
+
+    lm_sc = {
+        'a': {'type': 'lax', 
+              'ax': 'sx', 
+              'label': 'AAA'},
+        'b': {'type': 'scatter', 
+              'ax': 'sx', 
+              'label': 'BBB',
+              'color': 'b'},
+        }
+
+    df_sc = pnd.DataFrame({
+            'a': [59.9, 46.2, 0],
+            'b': [13.6, 7.1, 2],
+            })
+
+    bar = Bag(df, LM=lm_bar, TI='graph', TITLE='USRobotics', 
+              size='stamp',
+              legend=True,
+              fontsize=10.0)
+    barh = Bag(df,  LM=lm_barh, TI='graph', TITLE='USRobotics', 
+              size='stamp',
+              legend=True,
+              fontsize=10.0)
+    plot = Bag(df,  LM=lm_plot, TI='graph', TITLE='USRobotics', 
+              size='stamp',
+              legend=True,
+              fontsize=10.0)
+    scat = Bag(df_sc, LM=lm_sc, TI='graph', TITLE='USRobotics', 
+              size='stamp',
               legend=False,
               fontsize=10.0)
-    bag.save()
 
-    lm = {
-        'a': [0, '|c|','|@v0|', '|A|'],
-        # 'b': [1, 'c|', '|@v0|', 'B|'],
-        'c': [1, 'c|', '|@v0|', 'C|'],
-        'd': [1, 'c|', '|@v0|', 'D|'],
-        }
-        
-    path = '/home/mpattaro/workspace/star/trunk/reports/esempio/table0.pickle'
-    bag = Bag(df, LD=path, LM=lm, TITLE='Esempio')
-    bag.save()
+    bar.save("/home/mpattaro/workspace/star/trunk/reports/esempio/bar.pickle")
+    barh.save("/home/mpattaro/workspace/star/trunk/reports/esempio/barh.pickle")
+    plot.save("/home/mpattaro/workspace/star/trunk/reports/esempio/plot.pickle")
+    scat.save("/home/mpattaro/workspace/star/trunk/reports/esempio/scatter.pickle")
 
-    # graph = TexGraph(bag)
-    # graph._figure.show()
-#    bag.save()
-#    graph._figure.savefig('/tmp/pollo.pdf', format='pdf')
 
