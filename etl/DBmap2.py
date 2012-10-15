@@ -35,11 +35,7 @@ from sqlalchemy import create_engine, Column, String, Integer, Sequence, Foreign
 import logging
 
 # Servabit libraries
-BASEPATH = os.path.abspath(os.path.join(
-                os.path.dirname(__file__),
-                os.path.pardir))
-sys.path.append(BASEPATH)
-sys.path = list(set(sys.path))
+import etl
 from share.config import Config
 
 

@@ -24,11 +24,7 @@ import pandas
 import sqlalchemy
 
 # Servabit libraries
-BASEPATH = os.path.abspath(os.path.join(
-                os.path.dirname(__file__),
-                os.path.pardir))
-sys.path.append(BASEPATH)
-sys.path = list(set(sys.path))
+import etl
 import DBmap2
 import create_dict
 import parallel_jobs

@@ -294,9 +294,9 @@ if __name__ == '__main__':
               legend=False,
               fontsize=10.0)
 
-    bar.save("/home/mpattaro/workspace/star/trunk/reports/esempio/bar.pickle")
-    barh.save("/home/mpattaro/workspace/star/trunk/reports/esempio/barh.pickle")
-    plot.save("/home/mpattaro/workspace/star/trunk/reports/esempio/plot.pickle")
-    scat.save("/home/mpattaro/workspace/star/trunk/reports/esempio/scatter.pickle")
+    bar.save("/home/mpattaro/workspace/star/trunk2/reports/esempio/bar.pickle")
+    barh.save("/home/mpattaro/workspace/star/trunk2/reports/esempio/barh.pickle")
+    plot.save("/home/mpattaro/workspace/star/trunk2/reports/esempio/plot.pickle")
+    scat.save("/home/mpattaro/workspace/star/trunk2/reports/esempio/scatter.pickle")
 
 

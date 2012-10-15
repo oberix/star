@@ -26,12 +26,6 @@ import os
 import string
 import logging
 
-BASEPATH = os.path.abspath(os.path.join(
-        os.path.dirname(__file__),
-        os.path.pardir))
-sys.path.append(BASEPATH)
-sys.path = list(set(sys.path))
-
 from share import Bag
 from table import TexTable, HTMLTable
 from graph import TexGraph, HTMLGraph

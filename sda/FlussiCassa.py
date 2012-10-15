@@ -67,18 +67,12 @@ import ScadenziarioLib
 from datetime import date
 from datetime import datetime
 
-# Servabit libraries
-BASEPATH = os.path.abspath(os.path.join(
-                os.path.dirname(__file__),
-                os.path.pardir))
-sys.path.append(BASEPATH)
-sys.path = list(set(sys.path))
-
-SRE_PATH = os.path.join(BASEPATH,"sre")
-
+import sda
 from share import Config
 from share import Stark
 from share import Bag
+
+SRE_PATH = os.path.join(BASEPATH,"sre")
 
 def main(dirname):
     #legge il file config    

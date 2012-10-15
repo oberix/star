@@ -9,11 +9,7 @@ from datetime import date
 
 # Servabit libraries
 
-BASEPATH = "/home/contabilita/star_branch"
-SDAPATH = "/home/contabilita/star_branch/sda"
-sys.path.append(BASEPATH)
-sys.path.append(SDAPATH)
-sys.path = list(set(sys.path))
+import sda
 import SDABalanceLib
 from share import Config
 from share import Stark

@@ -43,7 +43,6 @@ from datetime import date
 # cambiamento potrebbe essere cruciale per determinarne il comportamento). E'     
 # consuetudine distiguere queste vaiabili da quelle 'di elaborazione' scrivendole 
 # tutte in maiuscolo.                                                             
-LIB_PATH = '/home/contabilita/star_branch/'
 PKL_PATH = '/home/contabilita/Goal-PKL/'
 COMPANY = 'Vicem'
 OUT_PATH = '/home/contabilita/star_branch/sre/libro_giornale/'
@@ -53,14 +52,8 @@ ADR= 'Via Santo Stefano 57'
 CAP='40125 Bologna'
 FY = 2011
 
-# Indico a python dove si trovano le librerie di star:                         
-# sys.path è una comune lista di stringhe, ciascuna delle quali rappresenta un 
-# path, un percorso all'interno del filesystem; quando si esegue l'istruzione  
-# "import", Python cerca in tutti questi percorsi per trovare il file (modulo) 
-# richiesto. (in questo caso, questo commando diventa superfluo dato che stiamo già lavorando dentro la cartella star_branch. tuttavia, bisogna accertarsi che il percorso delle librerie si trovi effettivamente nella sys.path, prima di decidere se eseguire il commando o meno)                                                                   
-sys.path.append(LIB_PATH)
-
 # librerie di star 
+import sda
 from share import Bag
 from share import Stark
 

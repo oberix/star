@@ -18,4 +18,11 @@
 #
 ##############################################################################
 
-import sda
+import sys
+import os
+
+BASEPATH = os.path.abspath(os.path.join(
+        os.path.dirname(sys.argv[0]),
+        os.path.pardir))
+sys.path.append(BASEPATH)
+sys.path = list(set(sys.path))

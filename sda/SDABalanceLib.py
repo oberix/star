@@ -9,10 +9,11 @@ from datetime import date
 #sys.path.append(BASEPATH)
 #sys.path = list(set(sys.path))
 
-BASEPATH = "/home/contabilita/star_branch"
-sys.path.append(BASEPATH)
-sys.path = list(set(sys.path))
+# BASEPATH = "/home/contabilita/star_branch"
+# sys.path.append(BASEPATH)
+# sys.path = list(set(sys.path))
 
+import sda
 
 def str2list(string):
     string=string.replace("'","")

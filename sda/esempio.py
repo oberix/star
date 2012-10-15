@@ -30,27 +30,29 @@
 ##############################################################################
 
 # librerie standard
+
 import os
 import sys
 # pandas non è usato direttamente in questo esempio, ma in genere sarà utile
 import pandas 
+import sda
 
 # Definizione di costanti:                                                        
 # tutto ciò che non verrà modificato dall'esecuzione del codice, ma il cui        
 # cambiamento potrebbe essere cruciale per determinarne il comportamento). E'     
 # consuetudine distiguere queste vaiabili da quelle 'di elaborazione' scrivendole 
 # tutte in maiuscolo.                                                             
-LIB_PATH = '/home/contabilita/star_branch/'
-PKL_PATH = '/home/contabilita/Goal-PKL/'
+#LIB_PATH = '/tmp/star_branch/'
+PKL_PATH = '/tmp/Goal-PKL/'
 COMPANY = 'Vicem'
-OUT_PATH = '/home/contabilita/star_branch/sre/esempio/'
+OUT_PATH = '/tmp/esempio/'
 
 # Indico a python dove si trovano le librerie di star:                         
 # sys.path è una comune lista di stringhe, ciascuna delle quali rappresenta un 
 # path, un percorso all'interno del filesystem; quando si esegue l'istruzione  
 # "import", Python cerca in tutti questi percorsi per trovare il file (modulo) 
 # richiesto.                                                                   
-sys.path.append(LIB_PATH)
+#sys.path.append(LIB_PATH)
 
 # librerie di star
 from share import Bag
