@@ -201,16 +201,11 @@ if __name__ == '__main__':
 
     import os
     import sys
-
-    BASEPATH = os.path.abspath(os.path.join(
-        os.path.dirname(__file__),
-        os.path.pardir))
-    sys.path.append(BASEPATH)
-    sys.path = list(set(sys.path))
-
-    from share import Bag
     import pandas as pnd
     import numpy as np
+
+    import sre
+    from share import Bag
     
     logging.basicConfig(level=logging.DEBUG)
 
@@ -294,9 +289,9 @@ if __name__ == '__main__':
               legend=False,
               fontsize=10.0)
 
-    bar.save("/home/mpattaro/workspace/star/trunk2/reports/esempio/bar.pickle")
-    barh.save("/home/mpattaro/workspace/star/trunk2/reports/esempio/barh.pickle")
-    plot.save("/home/mpattaro/workspace/star/trunk2/reports/esempio/plot.pickle")
-    scat.save("/home/mpattaro/workspace/star/trunk2/reports/esempio/scatter.pickle")
+    bar.save(os.path.join(sre.BASEPATH, "reports/esempio/bar.pickle"))
+    barh.save(os.path.join(sre.BASEPATH, "reports/esempio/barh.pickle"))
+    plot.save(os.path.join(sre.BASEPATH, "reports/esempio/plot.pickle"))
+    scat.save(os.path.join(sre.BASEPATH, "reports/esempio/scatter.pickle"))
 
 

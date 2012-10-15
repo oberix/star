@@ -36,6 +36,8 @@ class AbstractSreTemplate(string.Template):
     ''' Abstract Class for Sre template parsing
     '''
 
+    comment = "#.*" # just an example with Python comments.
+
     def __init__(self, src_path, config=None):
         self._src_path = os.path.abspath(src_path)
 	self._logger = logging.getLogger(type(self).__name__)
@@ -69,6 +71,7 @@ class AbstractSreTemplate(string.Template):
         fd = codecs.open(path, mode='r', encoding='utf-8')
         try:
             templ = fd.read()
+            templ = re.sub(re.compile(self.comment), str(), templ)
             super(AbstractSreTemplate, self).__init__(templ)
         except IOError, err:
             self._logger.error(err)
@@ -186,6 +189,7 @@ class TexSreTemplate(AbstractSreTemplate):
 
     delimiter = '\SRE'
     idpattern = '[_a-z][_a-z0-9.]*' 
+    comment = "%.*"
 
     def __init__(self, src_path, config=None):
         self._suffix = '.tex'
@@ -217,6 +221,7 @@ class HTMLSreTemplate(AbstractSreTemplate):
     # TODO: change delimiter for HTML
     delimiter = '\SRE'
     idpattern = '[_a-z][_a-z0-9.]*' 
+    comment = "<!--.*-->"
 
     def __init__(self, src_path, config=None):
         self._suffix = '.html'
