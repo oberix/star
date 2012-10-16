@@ -95,8 +95,9 @@ class Stark(GenericPickler):
     def __init__(self, DF, LD=None, TI='elab', VD=None, env=None):
         self._DF = DF.copy()
         self.LD = LD
+        self._env = env
         if env is None:
-            env = globals()
+            self._env = globals()
         if TI not in TI_VALS:
             raise ValueError("TI must be one of %s" % TI_VALS)
         self.TI = TI
@@ -105,7 +106,7 @@ class Stark(GenericPickler):
         # if not set(VD.keys()).issubset(set(DF.columns.tolist())):
         #     raise ValueError("VD.keys() must be a subset of DF.columns")
         self._VD = VD
-        self._update(globals_=env)
+        self._update()
 
     def __getitem__(self, key):
         ''' Delegate to DataFrame.__setitem__().
@@ -126,7 +127,7 @@ class Stark(GenericPickler):
         else: # FIXME: a type check woudn't be bad here!
             self.update_df(key, series=value, var_type='N')
 
-    def _update(self, globals_=None):
+    def _update(self):
         ''' Call this method every time VD is changed to update Stark data.
         Iter over VD and fill up different lists of keys, each list contains
         names from each data type.
@@ -137,8 +138,6 @@ class Stark(GenericPickler):
         self._cal = list()
         self._num = list()
         self._str = list()
-        if globals_ is None:
-            gobals_ = globals()
         # Sort VD.items() by 'ORD' to have output lists already ordered.
         vd_items = self._VD.items()
         vd_items.sort(key=lambda x: x[1].get('ORD', 0))
@@ -148,7 +147,7 @@ class Stark(GenericPickler):
             elif val['TIP'] == 'R':
                 # (Re)evaluate calculated columns
                 try:
-                    self._DF[key] = self.eval(self._VD[key]['ELA'], globals_=globals_)
+                    self._DF[key] = self.eval(self._VD[key]['ELA'])
                 except AttributeError:
                     self._DF[key] = self.eval_polish(self._VD[key]['ELA'])
                 self._cal.append(key)
@@ -253,7 +252,7 @@ class Stark(GenericPickler):
             os.makedirs(os.path.dirname(file_))
         super(Stark, self).save(file_)
 
-    def eval(self, func, globals_=None):
+    def eval(self, func):
         ''' Evaluate a function with DataFrame columns'es placeholders.
         
         Without placeholders this function is just a common python eval; when
@@ -274,14 +273,12 @@ class Stark(GenericPickler):
             raise AttributeError(
                 'func must be a string, %s received instead.' % \
                     type(func).__name__)
-        if globals_ is None:
-            globals_ = globals()
         templ = string.Template(func)
         ph_dict = dict()
         ph_list = [ph[1] for ph in string.Template.pattern.findall(func)]
         for ph in ph_list:
             ph_dict[ph] = str().join(["self._DF['", ph, "']"])
-        return eval(templ.substitute(ph_dict), globals_, {'self': self})
+        return eval(templ.substitute(ph_dict), self._env, {'self': self})
 
     def eval_polish(self, func):
         ''' Parse and execute a statement in polish notation.
@@ -372,7 +369,7 @@ class Stark(GenericPickler):
                 # Nested dimension case: item has already been copied by a
                 # previous deepcopy() call.
                 pass
-        return Stark(df, VD=vd)
+        return Stark(df, VD=vd, env=self._env)
 
 
 if __name__ == '__main__' :
