@@ -23,35 +23,28 @@ __author__ = ['Luigi Cirillo (<luigi.cirillo@servabit.it>)',
               'Marco Pattaro (<marco.pattaro@servabit.it>)']
 __all__ = ['Stark']
 
-import sys
 import os 
 import pandas
 import numpy
 import copy 
 import string
 
-BASEPATH = os.path.abspath(os.path.join(
-        os.path.dirname(__file__),
-        os.path.pardir))
-sys.path.append(BASEPATH)
-sys.path = list(set(sys.path))
-from share import GenericPickler
+from generic_pickler import GenericPickler
 
-TI_VALS = (
-    'elab'
-)
+STARK_TYPES = ('elab', )
 
-TIP_VALS = ['D', 'N', 'S', 'R']
+TYPE_VALS = ['D', 'N', 'S', 'R']
 
 OPERATORS = {
-    '+' : '__add__',
-    '-' : '__sub__',
-    '*' : '__mul__',
-    '/' : '__div__',
+    '+': '__add__',
+    '-': '__sub__',
+    '*': '__mul__',
+    '/': '__div__',
     '//': '__floordiv__',
     '**': '__pow__',
-    '%' : '__mod__',
+    '%': '__mod__',
 }
+
 
 def _unroll(dict_):
     ''' Unroll tree-like nested dictionary in depth-first order, following
@@ -71,47 +64,56 @@ def _unroll(dict_):
             ret += _unroll(val['child'])
     return ret
 
+
 class Stark(GenericPickler):
     ''' This is the artifact that outputs mainly from etl procedures. It is a
     collection of meta-information around datas inside a pandas DataFrame.
 
     Stark has the following attributes:
         DF: a pandas DataFrame
-        LD: the path where the object will be saved as pickle
+        path: the path where the object will be saved as pickle
         TI: type (just 'elab' for now)
         VD: a a dictionary of various info for the user; keys are DF columns
         names, each key contain a dictionary with the following keys.
-            TIP: data use, one of (D|N|S|R), that stands for:
+            TYPE: data use, one of (D|N|S|R), that stands for:
                 Dimension: can be used in aggregation (like groupby)
                 Numeric: a numeric data type
                 String: a string data type
                 Calculated: (Ricavato in Italian)
             DES: a short description
             MIS: unit of measure
-            ELA: elaboration that ptocuced the data (if TIP == 'R')
+            ELAB: elaboration that ptocuced the data (if TYPE == 'R')
 
     '''
 
-    def __init__(self, DF, LD=None, TI='elab', VD=None, env=None):
-        self._DF = DF.copy()
-        self.LD = LD
-        self._env = env
+    def __init__(self, df, path=None, stark_type='elab', meta=None, env=None):
+        '''
+        @ param df: DataFrame
+        @ param path: save path
+        @ param stark_type: type
+        @ param meta: metadata dictionary
+        @ param env: environment dictionary (usually globals() from caller)
+        '''
+        self._df = df.copy()
+        self.path = path
         if env is None:
             self._env = globals()
-        if TI not in TI_VALS:
-            raise ValueError("TI must be one of %s" % TI_VALS)
-        self.TI = TI
-        if VD is None:
-            VD = {}
-        # if not set(VD.keys()).issubset(set(DF.columns.tolist())):
-        #     raise ValueError("VD.keys() must be a subset of DF.columns")
-        self._VD = VD
+        else:
+            self._env = env
+        if stark_type not in STARK_TYPES:
+            raise ValueError("stark_type must be one of %s" % STARK_TYPES)
+        self._type = stark_type
+        if meta is None:
+            meta = {}
+        self._meta = meta
+        # Call _update() to consolidate data and metadata
+        # Start from clean lists
         self._update()
 
     def __getitem__(self, key):
         ''' Delegate to DataFrame.__setitem__().
         '''
-        return self._DF.__getitem__(key)
+        return self._df.__getitem__(key)
 
     def __setitem__(self, key, value):
         ''' Delegate to DataFrame.__setitem__(). The purpose of this method it
@@ -138,54 +140,54 @@ class Stark(GenericPickler):
         self._cal = list()
         self._num = list()
         self._str = list()
-        # Sort VD.items() by 'ORD' to have output lists already ordered.
-        vd_items = self._VD.items()
+        # Sort meta.items() by 'ORD' to have output lists already ordered.
+        vd_items = self._meta.items()
         vd_items.sort(key=lambda x: x[1].get('ORD', 0))
         for key, val in vd_items:
-            if val['TIP'] == 'D':
+            if val['TYPE'] == 'D':
                 self._dim += _unroll({key: val})
-            elif val['TIP'] == 'R':
+            elif val['TYPE'] == 'R':
                 # (Re)evaluate calculated columns
                 try:
-                    self._DF[key] = self.eval(self._VD[key]['ELA'])
+                    self._df[key] = self.eval(self._meta[key]['ELAB'])
                 except AttributeError:
-                    self._DF[key] = self.eval_polish(self._VD[key]['ELA'])
+                    self._df[key] = self.eval_polish(self._meta[key]['ELAB'])
                 self._cal.append(key)
-            elif val['TIP'] == 'N':
+            elif val['TYPE'] == 'N':
                 # TODO: check that dtypes are really numeric types
                 self._num.append(key)
-            elif val['TIP'] == 'S':
+            elif val['TYPE'] == 'S':
                 # TODO: check that dtypes are str or unicode
                 self._str.append(key)
 
     @property
-    def VD(self):
-        return self._VD
+    def meta(self):
+        return self._meta
 
-    @VD.setter
-    def VD(self, vd):
+    @meta.setter
+    def meta(self, meta):
         ''' VD setter:
         Just check VD/DF consistency before proceding.
         ''' 
-        if vd is None:
-            vd = {}
-        self._VD = vd
+        if meta is None:
+            meta = {}
+        self._meta = meta
         self._update()
 
     @property
-    def DF(self):
-        return self._DF
+    def df(self):
+        return self._df
 
-    @DF.setter
-    def DF(self, df):
+    @df.setter
+    def df(self, df):
         ''' DF settre:
         Just check VD/DF consistency before proceding.
         '''
-        self._DF = df.copy()
-        # DF changed, re-evaluate calculated data
+        self._df = df.copy()
+        # df changed, re-evaluate calculated data
         self._update()
 
-    def update_vd(self, key, entry):
+    def update_meta(self, key, entry):
         ''' Update VD dictionary with a new entry.
         
         @ param key: new key in the dictionary
@@ -194,7 +196,7 @@ class Stark(GenericPickler):
 
         '''
         # Check key consistency
-        self._VD[key] = entry
+        self._meta[key] = entry
         self._update()
 
     def update_df(self, col, series=None, var_type='N', expr=None, des=None,
@@ -220,9 +222,9 @@ class Stark(GenericPickler):
         @ raise ValueError: when parameters are inconsistent
 
         '''
-        if var_type not in TIP_VALS:
+        if var_type not in TYPE_VALS:
             raise ValueError("var_type mut be one of [%s]" % \
-                                 '|'.join(TIP_VALS))
+                                 '|'.join(TYPE_VALS))
         if expr is None and var_type == 'R':
             raise ValueError(
                 "You must specify an expression for var_type = 'R'")
@@ -230,24 +232,24 @@ class Stark(GenericPickler):
             raise ValueError(
                 "You must pass a series or list for var_type != 'R'")        
         if var_type != 'R':
-            self._DF[col] = series
-        self.update_vd(col, {
-                'TIP' : var_type,
-                'ORD' : order,
-                'DES' : des,
-                'MIS' : mis,
-                'ELA' : expr})
+            self._df[col] = series
+        self.update_meta(col, {
+                'TYPE': var_type,
+                'ORD': order,
+                'DES': des,
+                'MIS': mis,
+                'ELAB': expr})
 
     def save(self, file_=None):
         ''' Save object as pickle file.
         
-        If a filename is not provided, the one stored in self.LD will be used.
+        If a filename is not provided, the one stored in self.path will be used.
 
         @ param file_: destination file path 
         
         '''
         if file_ is None:
-            file_ = self.LD
+            file_ = self.path
         if not os.path.exists(os.path.dirname(file_)):
             os.makedirs(os.path.dirname(file_))
         super(Stark, self).save(file_)
@@ -257,7 +259,7 @@ class Stark(GenericPickler):
         
         Without placeholders this function is just a common python eval; when
         func contains column's names preceded by '$', this will be substituted
-        with actual column's reference bevore passing the whole string to
+        with actual column's reference before passing the whole string to
         eval().
 
         @ param func: a string rappresenting a valid python statement; the
@@ -277,7 +279,7 @@ class Stark(GenericPickler):
         ph_dict = dict()
         ph_list = [ph[1] for ph in string.Template.pattern.findall(func)]
         for ph in ph_list:
-            ph_dict[ph] = str().join(["self._DF['", ph, "']"])
+            ph_dict[ph] = str().join(["self._df['", ph, "']"])
         return eval(templ.substitute(ph_dict), self._env, {'self': self})
 
     def eval_polish(self, func):
@@ -304,7 +306,8 @@ class Stark(GenericPickler):
                     type(func).__name__)
         if len(func) < 2:
             raise AttributeError(
-                'func must have at last two elements (an operator and a term), received %s' % len(func))
+                'func must have at last two elements (an operator and a \
+                term), received %s' % len(func))
         op = func[0]
         if op in OPERATORS.keys():
             op = OPERATORS[op]
@@ -315,8 +318,8 @@ class Stark(GenericPickler):
         for elem in func[1:]:
             if hasattr(elem, '__iter__'): # recursive step
                 terms.append(self.eval_polish(elem))
-            elif elem in self._DF.columns: # df col
-                terms.append(self._DF[elem])
+            elif elem in self._df.columns: # df col
+                terms.append(self._df[elem])
             else: # literal
                 terms.append(elem)
         try:
@@ -353,26 +356,26 @@ class Stark(GenericPickler):
         if isinstance(dim, str) or isinstance(dim, unicode):
             dim = [dim]
         outkeys = dim + var
-        group = self._DF.groupby(dim)
+        group = self._df.groupby(dim)
         # Create aggregate df
         # Trying to avoid dispatching ambiguity
         try:
             df = group.aggregate(func)[var].reset_index()
         except AttributeError:
             df = group.aggregate(eval(func))[var].reset_index()
-        # Set up output VD
+        # Set up output meta
         vd = dict()
         for key in outkeys:
             try:
-                vd[key] = copy.deepcopy(self._VD[key])
+                vd[key] = copy.deepcopy(self._meta[key])
             except KeyError:
                 # Nested dimension case: item has already been copied by a
                 # previous deepcopy() call.
                 pass
-        return Stark(df, VD=vd, env=self._env)
+        return Stark(df, meta=vd, env=self._env)
 
 
-if __name__ == '__main__' :
+if __name__ == '__main__':
     ''' Test
     ''' 
     cols = ['B', 'C']
@@ -390,43 +393,40 @@ if __name__ == '__main__' :
         ('samerica', 'BR', 'Rio'),
         ])
     nelems = 100
-    key = map(tuple, countries[numpy.random.randint(0, len(countries), nelems)])
-    index = pandas.MultiIndex.from_tuples(key, names=['region', 'country', 'city'])
+    key = map(tuple, countries[
+            numpy.random.randint(0, len(countries), nelems)])
+    index = pandas.MultiIndex.from_tuples(key, names=[
+            'region', 'country', 'city'])
 
     # DataFrame with two numeric columns...
     df = pandas.DataFrame(
         numpy.random.randn(nelems, len(cols)), columns=cols,
         index=index).sortlevel().reset_index()
     # ... and a string column
-    df['A'] = nelems*['test']
+    df['A'] = nelems * ['test']
 
-    vd = {
-        'region' : {
-            'TIP': 'D',
+    meta = {
+        'region': {
+            'TYPE': 'D',
             'child': {
                 'country': {
-                    'TIP': 'D',
+                    'TYPE': 'D',
                     'DES': 'country',
                     'child': {
                         'city': {
-                            'TIP': 'D',
-                            'DES': 'city'}
-                        }
-                    }
-                }
-            },
-        'A' : {'TIP': 'S'},
-        'B' : {'TIP': 'N',
-               'ELA': None,},
-        'C' : {'TIP': 'N',
-               'ELA': None,},
-        'D' : {'TIP': 'R',
+                            'TYPE': 'D',
+                            'DES': 'city'}}}}},
+        'A': {'TYPE': 'S'},
+        'B': {'TYPE': 'N',
+               'ELAB': None},
+        'C': {'TYPE': 'N',
+               'ELAB': None},
+        'D': {'TYPE': 'R',
                'ORD': 0,
-               'ELA': "$B / $C * 100"},
-        'E' : {'TIP': 'R',
+               'ELAB': "$B / $C * 100"},
+        'E': {'TYPE': 'R',
                'ORD': 1, 
-               'ELA': ('/', ('+', 'C', 'D'), 100)}
-        }
+               'ELAB': ('/', ('+', 'C', 'D'), 100)}}
 
-    s = Stark(df, VD=vd)
+    s = Stark(df, meta=meta)
     s1 = s.aggregate(numpy.sum)
