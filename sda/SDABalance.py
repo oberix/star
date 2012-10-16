@@ -41,11 +41,11 @@ if str(config.options.get('only_validated_moves',True))=='False':
 #lettura degli oggetti stark di interesse
 companyPathPkl = os.path.join(picklesPath,comNam)
 moveLineStarK = Stark.load(os.path.join(companyPathPkl,"MVL.pickle"))
-moveLineDf = moveLineStarK.DF
+moveLineDf = moveLineStarK.df
 accountStarK = Stark.load(os.path.join(companyPathPkl,"ACC.pickle"))
-accountDf = accountStarK.DF
+accountDf = accountStarK.df
 periodStarK = Stark.load(os.path.join(companyPathPkl,"PERIOD.pickle"))
-periodDf = periodStarK.DF
+periodDf = periodStarK.df
 
 #leggo il file csv contenente la mappatura tra il piano dei conti Servabit e la IV Direttiva CEE e calcolo del saldo dei conti foglia
 corrispIfoDf = pandas.read_csv(PathCsv+"corrisp_ifo.csv", sep=",", header=0)
@@ -101,7 +101,7 @@ Y2010=Y2010.rename(columns={'SALDO':'2010'})
 Y2011=SDABalanceLib.CreDatYear ('2011', periodDf,moveLineDf,accountDf,DIZP1M1,TUTPDC, contiIfoDf, taxonomyDf, maxLevel)
 Y2011=Y2011[['name','SALDO']]
 Y2011=Y2011.rename(columns={'SALDO':'2011'})
-#combino i tre DF
+#combino i tre df
 FINDF=pandas.merge(UNO,Y2010, on=['name'])
 FINDF=pandas.merge(FINDF,Y2011, on=['name'])
 FINDF=FINDF[['_OR_','NewLab','2011','2010']]
@@ -128,18 +128,18 @@ lm = {
     '2010': [2,'r','2010',],
     }
 
-# Creo un oggetto Bag usando come Dataframe df, come LM lm e come TITLE 'Libro
+# Creo un oggetto Bag usando come Dataframe df, come LM lm e come title 'Libro
 # Giornale'. Il parametro TIP='tab' indica al sistama che si intende generare
 # una tabella da questi dati, presto sarà supportato anche TIP='graph' per
 # generare un grafico.
 BG01 = Bag(dfSP, os.path.join(OUT_PATH, 'StaPatr.pickle'), 
-           LM=lm, TITLE="Stato Patrimoniale", TI='tab')
+           meta=lm, title="Stato Patrimoniale", bag_type='tab')
 BG02 = Bag(dfCE, os.path.join(OUT_PATH, 'ConEco.pickle'), 
-           LM=lm, TITLE="Conto Economico", TI='tab')
+           meta=lm, title="Conto Economico", bag_type='tab')
 
 anag = Bag(pandas.DataFrame(), 
            os.path.join(OUT_PATH, 'anag.pickle'), 
-           TITLE='Dati anagrafici',
+           title='Dati anagrafici',
            ragsoc='Studiabo Srl')
 # Infine salvo l'oggetto bag in un file pickle
 BG01.save()

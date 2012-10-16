@@ -110,33 +110,33 @@ def main(dirname):
     companyStarK = Stark.load(os.path.join(companyPathPkl,"COMP.pickle"))
     invoiceStark = Stark.load(os.path.join(companyPathPkl,"INV.pickle"))
     voucherStark = Stark.load(os.path.join(companyPathPkl,"VOU.pickle"))
-    companyDf = companyStarK.DF
+    companyDf = companyStarK.df
     companyString = companyDf['NAME'][0]+" - "+companyDf['ADDRESS'][0]+" \linebreak "+companyDf['ZIP'][0]+" "+companyDf['CITY'][0]+" P.IVA "+companyDf['VAT'][0]
     #lettura csv
     linesDf = pandas.read_csv(linesCsvFilePath, sep=";", header=0)
     matchingsDf = pandas.read_csv(matchingsCsvFilePath, sep=";", header=0)
     fixedCostsDf = pandas.read_csv(fixedCostsCsvFilePath, sep=";", header=0)
     #controllo conti
-    FlussiCassaLib.checkAccounts(matchingsDf,accountStark.DF)
+    FlussiCassaLib.checkAccounts(matchingsDf,accountStark.df)
     #calcolo flussi effettivi
-    results = FlussiCassaLib.computeCashFlows(fiscalyearName,moveLineStark.DF,accountStark.DF,
-                    periodStark.DF,linesDf,matchingsDf,fixedCostsDf,onlyValidatedMoves,
+    results = FlussiCassaLib.computeCashFlows(fiscalyearName,moveLineStark.df,accountStark.df,
+                    periodStark.df,linesDf,matchingsDf,fixedCostsDf,onlyValidatedMoves,
                     defaultIncomingsFlowLineCode,defaultExpensesFlowLineCode,
                     printWarnings=False)
     companyString = companyDf['NAME'][0]+" - "+companyDf['ADDRESS'][0]+" \linebreak "+companyDf['ZIP'][0]+" "+companyDf['CITY'][0]+" P.IVA "+companyDf['VAT'][0]
     OUT_PATH = os.path.join(SRE_PATH, 'flussi_cassa')
     concatDf = pandas.concat([results['cashFlows'],results['diffEntUsc'],results['saldoAgg']])
-    bagFlows = Bag(concatDf, os.path.join(OUT_PATH, 'cash_flows.pickle'), TI='tab',LM=lm_flussi)
+    bagFlows = Bag(concatDf, os.path.join(OUT_PATH, 'cash_flows.pickle'), bag_type='tab',meta=lm_flussi)
     setattr(bagFlows,"YEAR",fiscalyearName)
     setattr(bagFlows,"COMPANY_STRING",companyString)
     setattr(bagFlows,"COMPANY",companyName)
     bagFlows.save()
-    bagJournals = Bag(results['saldoJournals'], os.path.join(OUT_PATH, 'journals.pickle'), TI='tab',LM=lm_journals)
+    bagJournals = Bag(results['saldoJournals'], os.path.join(OUT_PATH, 'journals.pickle'), bag_type='tab',meta=lm_journals)
     bagJournals.save()
     #calcolo flussi previsionali
-    expiries = ScadenziarioLib.computeExpiries(invoiceStark.DF,voucherStark.DF,periodStark.DF,moveLineStark.DF,fiscalyearName)
+    expiries = ScadenziarioLib.computeExpiries(invoiceStark.df,voucherStark.df,periodStark.df,moveLineStark.df,fiscalyearName)
     forecastedFlowsDf = FlussiCassaLib.computeForecastedFlows(results['cashFlows'],referenceDate,expiries)
-    bagForecastedFlows = Bag(forecastedFlowsDf, os.path.join(OUT_PATH, 'forecasted_flows.pickle'), TI='tab',LM=lm_flussi)
+    bagForecastedFlows = Bag(forecastedFlowsDf, os.path.join(OUT_PATH, 'forecasted_flows.pickle'), bag_type='tab',meta=lm_flussi)
     bagForecastedFlows.save()
     return 0
     

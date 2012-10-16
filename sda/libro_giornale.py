@@ -66,7 +66,7 @@ from share import Stark
 ST01 = Stark.load(os.path.join(PKL_PATH, COMPANY, 'MVL.pickle'))
 
 # Estraggo il DataFrame dall'oggetto Stark e lo salvo in DF01
-DF01 = ST01.DF
+DF01 = ST01.df
 
 #considero un sottoinsieme di DF01, estaendo solo le variabili di interesse
 DF01 = DF01[['DAT_MVL','NAM_PAR', 'NAM_MVL','COD_CON','NAM_MOV','NAM_CON','DBT_MVL','CRT_MVL',]]
@@ -154,11 +154,11 @@ lm = {
     'CRT_MVL': [7,   '0.75r|'  , 'Avere|'],
 }
 
-# Creo un oggetto Bag usando come Dataframe df, come LM lm e come TITLE 'Libro
+# Creo un oggetto Bag usando come Dataframe df, come LM lm e come title 'Libro
 # Giornale'. Il parametro TIP='tab' indica al sistema che si intende generare
 # una tabella da questi dati, presto sarà supportato anche TIP='graph' per
 # generare un grafico.
-BG01 = Bag(DF04, os.path.join(OUT_PATH, 'table0.pickle'), LM=lm, TITLE='Libro Giornale', TI='tab')
+BG01 = Bag(DF04, os.path.join(OUT_PATH, 'table0.pickle'), meta=lm, title='Libro Giornale', bag_type='tab')
 BG01.year = FY
 BG01.company = COMPANY +' Srl'
 BG01.partiva = PC

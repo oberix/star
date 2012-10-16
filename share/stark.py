@@ -72,7 +72,7 @@ class Stark(GenericPickler):
     Stark has the following attributes:
         DF: a pandas DataFrame
         path: the path where the object will be saved as pickle
-        TI: type (just 'elab' for now)
+        TYPE: type (just 'elab' for now)
         VD: a a dictionary of various info for the user; keys are DF columns
         names, each key contain a dictionary with the following keys.
             TYPE: data use, one of (D|N|S|R), that stands for:

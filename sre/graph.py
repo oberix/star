@@ -47,12 +47,13 @@ class Graph(object):
                 'columnspacing': 1, 
                 'borderpad': 0,
                 })
-        self._title = data.TITLE
-        self._footnote = data.FOOTNOTE
-        self._df = data.DF
+        self._title = data.title
+        self._footnote = data.footnote
+        self._df = data.Fdf
         self._y_meta = list()
         self._x_meta = list()
         self._fontsize = data.fontsize
+        self._lax = None
         try:
             self._size = FIGSIZE[data.size]
         except KeyError, e:
@@ -62,7 +63,7 @@ class Graph(object):
                 raise e
         self._legend = data.legend
         self._plotters = plotters.Plotters(self)
-        self.parse_lm(data.LM)
+        self.parse_lm(data.meta)
         self._figure = self.make_graph()
 
     def _make_legend(self, figure, handles, labels):
@@ -114,6 +115,7 @@ class Graph(object):
         '''
         # TODO: handle line styles
         for key, val in lm.iteritems():
+            # TODO: apply translation
             if val['type'] == 'lax':
                 self._lax = self._df[key]
                 self._x_meta.append(val)
@@ -272,19 +274,19 @@ if __name__ == '__main__':
             'b': [13.6, 7.1, 2],
             })
 
-    bar = Bag(df, LM=lm_bar, TI='graph', TITLE='USRobotics', 
+    bar = Bag(df, meta=lm_bar, bag_type='graph', title='USRobotics', 
               size='stamp',
               legend=True,
               fontsize=10.0)
-    barh = Bag(df,  LM=lm_barh, TI='graph', TITLE='USRobotics', 
+    barh = Bag(df,  meta=lm_barh, bag_type='graph', title='USRobotics', 
               size='stamp',
               legend=True,
               fontsize=10.0)
-    plot = Bag(df,  LM=lm_plot, TI='graph', TITLE='USRobotics', 
+    plot = Bag(df,  meta=lm_plot, bag_type='graph', title='USRobotics', 
               size='stamp',
               legend=True,
               fontsize=10.0)
-    scat = Bag(df_sc, LM=lm_sc, TI='graph', TITLE='USRobotics', 
+    scat = Bag(df_sc, meta=lm_sc, bag_type='graph', title='USRobotics', 
               size='stamp',
               legend=False,
               fontsize=10.0)

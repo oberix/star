@@ -125,11 +125,11 @@ def main(dirname):
     #lettura degli oggetti stark di interesse
     companyPathPkl = os.path.join(picklesPath,comNam)
     vatStarK = Stark.load(os.path.join(companyPathPkl,"VAT.pickle"))
-    vatDf = vatStarK.DF
+    vatDf = vatStarK.df
     periodStarK = Stark.load(os.path.join(companyPathPkl,"PERIOD.pickle"))
-    periodDf = periodStarK.DF
+    periodDf = periodStarK.df
     companyStarK = Stark.load(os.path.join(companyPathPkl,"COMP.pickle"))
-    companyDf = companyStarK.DF
+    companyDf = companyStarK.df
     companyString = companyDf['NAME'][0]+" - "+companyDf['ADDRESS'][0]+" \linebreak "+companyDf['ZIP'][0]+" "+companyDf['CITY'][0]+" P.IVA "+companyDf['VAT'][0]
     #in  base al tipo di report scelto dall'utente, il programma lancia la funzione corrispondente
     try:
@@ -138,7 +138,7 @@ def main(dirname):
             vatRegister = getVatRegister(vatDf, comNam, onlyValML, fiscalyearName=fiscalyearName, sequenceName=sequenceName)
             OUT_PATH = os.path.join(SRE_PATH, 'registro_iva')
             bagVatRegister = Bag(vatRegister, os.path.join(OUT_PATH, 'vat_register.pickle'), 
-                                 TI='tab',LM=lm_registri_iva)
+                                 bag_type='tab',meta=lm_registri_iva)
             setattr(bagVatRegister,"SEQUENCE",sequenceName)
             setattr(bagVatRegister,"YEAR",fiscalyearName)
             setattr(bagVatRegister,"COMPANY_STRING",companyString)
@@ -149,7 +149,7 @@ def main(dirname):
                                        periodName=periodName, sequenceName=sequenceName)
             OUT_PATH = os.path.join(SRE_PATH, 'riepilogo_iva')
             bagVatSummary = Bag(vatSummary,os.path.join(OUT_PATH, 'vat_summary.pickle'), 
-                                TI='tab',LM=lm_riepiloghi_iva)
+                                bag_type='tab',meta=lm_riepiloghi_iva)
             setattr(bagVatSummary,"SEQUENCE",sequenceName)
             setattr(bagVatSummary,"PERIOD",periodName)
             setattr(bagVatSummary,"COMPANY_STRING",companyString)
@@ -159,13 +159,13 @@ def main(dirname):
             OUT_PATH = os.path.join(SRE_PATH, 'dettaglio_iva')
             vatRegister = getVatRegister(vatDf, comNam, onlyValML, periodName=periodName, sequenceName=sequenceName)
             bagVatRegister = Bag(vatRegister, os.path.join(OUT_PATH, 'vat_register.pickle'),
-                                 TI='tab', LM=lm_registri_iva)
+                                 bag_type='tab', meta=lm_registri_iva)
             setattr(bagVatRegister,"SEQUENCE",sequenceName)
             setattr(bagVatRegister,"PERIOD",periodName)
             setattr(bagVatRegister,"COMPANY_STRING",companyString)
             vatSummary=getVatSummary(vatDf, comNam, onlyValML, periodName=periodName, sequenceName=sequenceName)
             bagVatSummary = Bag(vatSummary, os.path.join(OUT_PATH, 'vat_summary.pickle'),
-                                TI='tab',LM=lm_riepiloghi_iva,TITLE='Riepilogo')
+                                bag_type='tab',meta=lm_riepiloghi_iva,title='Riepilogo')
             bagVatRegister.save()
             bagVatSummary.save()
         #deferred vat detail
@@ -174,11 +174,11 @@ def main(dirname):
             notPayed = getDeferredVatDetailNotPayed(vatDf, comNam, onlyValML, periodDf, paymentsPeriodName=periodName)
             OUT_PATH = os.path.join(SRE_PATH, 'dettaglio_iva_differita')
             bagPayments = Bag(payments, os.path.join(OUT_PATH, 'payments.pickle'),
-                              TI='tab', LM=lm_pagamenti_iva_differita)
+                              bag_type='tab', meta=lm_pagamenti_iva_differita)
             setattr(bagPayments,"PERIOD",periodName)
             setattr(bagPayments,"COMPANY_STRING",companyString)
             bagNotPayed = Bag(notPayed, os.path.join(OUT_PATH, 'not_payed.pickle'),
-                              TI='tab',LM=lm_da_pagare_iva_differita)
+                              bag_type='tab',meta=lm_da_pagare_iva_differita)
             bagPayments.save()
             bagNotPayed.save()
         #deferred vat summary
@@ -188,12 +188,12 @@ def main(dirname):
                                                             periodDf, paymentsPeriodName=periodName)
             bagSummary= Bag(deferredVatSummaryDf['dfSummary'], 
                             os.path.join(OUT_PATH, 'deferred_vat_summary.pickle'),
-                            TI='tab',LM=lm_riepilogo_differita,TITLE="Riepilogo")
+                            bag_type='tab',meta=lm_riepilogo_differita,title="Riepilogo")
             setattr(bagSummary,"PERIOD",periodName)
             setattr(bagSummary,"COMPANY_STRING",companyString)
             bagSynthesis= Bag(deferredVatSummaryDf['dfSynthesis'],
                               os.path.join(OUT_PATH, 'deferred_vat_synthesis.pickle'),
-                              TI='tab',LM=lm_riepilogo_differita,TITLE="Sintesi")
+                              bag_type='tab',meta=lm_riepilogo_differita,title="Sintesi")
             bagSummary.save()
             bagSynthesis.save()
         #vat liquidation
@@ -203,7 +203,7 @@ def main(dirname):
                                                                 comNam, onlyValML, treasuryVatAccountCode, periodName=periodName)
             bagLiquidationSummary = Bag(liquidationSummary, 
                                         os.path.join(OUT_PATH, 'liquidation_summary.pickle'),
-                                        TI='tab',LM=lm_liquidazione_iva,TITLE='Prospetto liquidazione Iva')
+                                        bag_type='tab',meta=lm_liquidazione_iva,title='Prospetto liquidazione Iva')
             setattr(bagLiquidationSummary,"PERIOD",periodName)
             setattr(bagLiquidationSummary,"COMPANY_STRING",companyString)
             bagLiquidationSummary.save()
@@ -215,17 +215,17 @@ def main(dirname):
             OUT_PATH = os.path.join(SRE_PATH, 'controllo_esercizio')
             bagVatSummary = Bag(vatSummary,
                                 os.path.join(OUT_PATH, 'vat_summary.pickle'),
-                                TI='tab',LM=lm_riepiloghi_iva,TITLE='Riepilogo IVA')
+                                bag_type='tab',meta=lm_riepiloghi_iva,title='Riepilogo IVA')
             setattr(bagVatSummary,"YEAR",fiscalyearName)
             setattr(bagVatSummary,"COMPANY_STRING",companyString)
             bagVatSummary.save()
             bagSummary2 = Bag(vatControlSummaryDf['summary'],
                               os.path.join(OUT_PATH, 'vat_summary_2.pickle'),
-                              TI='tab',LM=lm_controllo_esercizio,TITLE='Riepilogo con IVA diventata esigibile')
+                              bag_type='tab',meta=lm_controllo_esercizio,title='Riepilogo con IVA diventata esigibile')
             bagSummary2.save()
             bagLiquidationSummary = Bag(vatControlSummaryDf['liquidationSummary'],
                                         os.path.join(OUT_PATH, 'liquidation_summary.pickle'),
-                                        TI='tab',LM=lm_controllo_esercizio,TITLE='Liquidazione IVA')
+                                        bag_type='tab',meta=lm_controllo_esercizio,title='Liquidazione IVA')
             bagLiquidationSummary.save()
     except:
         raise

@@ -70,21 +70,21 @@ def main(dirname):
     periodStark = Stark.load(os.path.join(companyPathPkl,"PERIOD.pickle"))
     moveLineStark = Stark.load(os.path.join(companyPathPkl,"MVL.pickle"))
     companyStarK = Stark.load(os.path.join(companyPathPkl,"COMP.pickle"))
-    companyDf = companyStarK.DF
+    companyDf = companyStarK.df
     companyString = companyDf['NAME'][0]+" - "+companyDf['ADDRESS'][0]+" \linebreak "+companyDf['ZIP'][0]+" "+companyDf['CITY'][0]+" P.IVA "+companyDf['VAT'][0]
     #calcolo
-    expiries = ScadenziarioLib.computeExpiries(invoiceStark.DF,voucherStark.DF,periodStark.DF,moveLineStark.DF,fiscalyearName)
+    expiries = ScadenziarioLib.computeExpiries(invoiceStark.df,voucherStark.df,periodStark.df,moveLineStark.df,fiscalyearName)
     #generazione e salvataggio bag
     OUT_PATH = os.path.join(SRE_PATH, 'scadenziario')
     inInvoicesBag = Bag(expiries['inInvoiceDf'],
                       os.path.join(OUT_PATH, 'in_invoices.pickle'),
-                      TI='tab',LM=lm_fatture,TITLE="Fatture acquisto")
+                      bag_type='tab',meta=lm_fatture,title="Fatture acquisto")
     outInvoicesBag = Bag(expiries['outInvoiceDf'],
                       os.path.join(OUT_PATH, 'out_invoices.pickle'),
-                      TI='tab',LM=lm_fatture,TITLE="Fatture vendita")
+                      bag_type='tab',meta=lm_fatture,title="Fatture vendita")
     purchaseVoucherBag = Bag(expiries['purchaseVoucherDf'],
                       os.path.join(OUT_PATH, 'purchase_vouchers.pickle'),
-                      TI='tab',LM=lm_liquidazioni,TITLE="Liquidazioni costo")
+                      bag_type='tab',meta=lm_liquidazioni,title="Liquidazioni costo")
     setattr(inInvoicesBag,"YEAR",fiscalyearName)
     setattr(inInvoicesBag,"COMPANY",companyName)
     setattr(inInvoicesBag,"COMPANY_STRING",companyString)

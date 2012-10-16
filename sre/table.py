@@ -98,10 +98,10 @@ class Table(object):
         """
         self._logger = logging.getLogger(type(self).__name__)
         self._data = data
-        self.parse_lm(data.LM)
+        self.parse_lm(data.meta)
         
     def parse_lm(self, lm):
-        ''' Parse Bag's LM dictionary and estract the following non-public
+        ''' Parse Bag's meta dictionary and estract the following non-public
         attrubutes:
 
         _ncols: number of table columns
@@ -112,7 +112,7 @@ class Table(object):
         '''
         self._ncols = len(lm.keys())
 
-        # Transpose LM
+        # Transpose meta
         self._align = list() # alignment
         
         # Extract df columns names
@@ -177,6 +177,7 @@ class TexTable(Table):
                }
         if title.strip().strip('|').startswith('@v'):
             ret['title'] = str()
+        # TODO: apply translation
         return ret
 
     def _make_header(self, level):
@@ -194,6 +195,7 @@ class TexTable(Table):
         title_list = copy(level)
         unique_list(title_list)
         for title in title_list:
+            # TODO: apply translation
             colspan = level.count(title)
             params = self._get_col_format(title, colspan)
             params['span'] = colspan
@@ -233,10 +235,11 @@ class TexTable(Table):
         '''
         ret = "\\tabucline- \\endfoot \n"
         span = len(self._align)
-        if self._data.FOOTNOTE is not None:
+        if self._data.footnote is not None:
+            # TODO: apply translation
             ret = str().join([
                     '\multicolumn{%s}{|c|}{'% span, 
-                    self._data.FOOTNOTE, 
+                    self._data.footnote, 
                     '} \\\ \\tabucline- \\endfoot \n'])
         return ret
 
@@ -248,25 +251,25 @@ class TexTable(Table):
         '''
         out = str()
         try:
-            self._data.DF = self._data.DF.sort(columns='_OR_')
+            self._data.df = self._data.df.sort(columns='_OR_')
         except KeyError:
             # keep it unsorted
             pass
         try:
             self._keys.append('_FR_')
-            records = self._data.DF[self._keys].to_records()
+            records = self._data.df[self._keys].to_records()
             # End is used to remove _FR_ values when generating the output
             # string.
             end = -1
         except KeyError:
             self._keys.remove('_FR_')
-            records = self._data.DF[self._keys].to_records()
+            records = self._data.df[self._keys].to_records()
             end = None
         for record in records:
             rowstart = str()
             if end is not None:
                 rowstart = FORMATS.get(record[end], str())
-            # Remove first element because it's the DF index and eventually
+            # Remove first element because it's the df index and eventually
             # last value if it contains _FR_ values.
             out_record = list()
             for elem in list(record)[1:end]:
@@ -274,6 +277,7 @@ class TexTable(Table):
                     out_record.append(str())
                 else:
                     try:
+                        # TODO: apply translation
                         out_record.append(escape(elem.encode('utf-8')))
                     except AttributeError:
                         # element is not a string
@@ -339,7 +343,7 @@ class HTMLTable(Table):
         '''
 
         out = '''<tbody>\n'''
-        records = self._data.DF[self._keys].to_records()
+        records = self._data.df[self._keys].to_records()
         #self._logger.info("In Make Body %s", records)
         for line in list(records):
 	    out += '''<tr>\n'''
@@ -368,8 +372,8 @@ class HTMLTable(Table):
 
         ret = str()
         span = self._align
-        if self._data.FOOTNOTE is not None:
-            ret = "<hr/>" + self._data.FOOTNOTE
+        if self._data.footnote is not None:
+            ret = "<hr/>" + self._data.footnote
         return str().join(ret)
 
 

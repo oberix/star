@@ -71,6 +71,7 @@ class AbstractSreTemplate(string.Template):
         fd = codecs.open(path, mode='r', encoding='utf-8')
         try:
             templ = fd.read()
+            # Remove comments
             templ = re.sub(re.compile(self.comment), str(), templ)
             super(AbstractSreTemplate, self).__init__(templ)
         except IOError, err:
@@ -112,20 +113,21 @@ class AbstractSreTemplate(string.Template):
                     self._logger.warning('%s; skipping...', err)
                     continue
             # Generate string to substitute to the placeholder
-            if bags[base].TI == 'tab':
+            if bags[base].type == 'tab':
                 ret[base] = self._make_table(bags[base], **kwargs).out()
-            elif bags[base].TI == 'graph':
+            elif bags[base].type == 'graph':
                 ret[base], fd = self._make_graph(bags[base], **kwargs).out()
                 self._fds.append(fd)
             else: # TODO: handle other types
                 self._logger.debug('bags = %s', bags)
                 self._logger.warning(
-                    "Unhandled bag TI '%s' found in %s, skipping...", 
-                    bags[base].TI, base)
+                    "Unhandled bag type '%s' found in %s, skipping...", 
+                    bags[base].type, base)
                 continue
             if len(ph_parts) > 1 and \
                     hasattr(bags[base], '.'.join(ph_parts[1:])):
                 # extract attribute
+                # TODO: apply translation
                 ret[ph] = bags[base].__getattribute__('.'.join(ph_parts[1:]))
         return ret
 

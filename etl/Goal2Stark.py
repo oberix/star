@@ -165,7 +165,7 @@ def createDWComp(companyName,picklesPath,immediateVatCreditAccountCode,
     #movelineDf=movelineDf[movelineDf['NAM_IMP']==companyName]
     del movelineDf['NAM_IMP']
     #del movelineDf['TYP_CON']
-    MVL = Stark(movelineDf, os.path.join(path, 'MVL.pickle'), TI='elab')
+    MVL = Stark(movelineDf, os.path.join(path, 'MVL.pickle'), stark_type='elab')
     #effettuo il primo abbellimento di Stark
     MVL.VD = {
         'ID0_MVL': {'DES': unicode('ID identificativo della move line','utf-8')},
@@ -240,7 +240,7 @@ def createDWComp(companyName,picklesPath,immediateVatCreditAccountCode,
     #partnerDf=partnerDf[partnerDf['NAM_IMP']==companyName]
     del partnerDf['NAM_IMP']
     #del partnerDf['TYP_CON']
-    PAR = Stark(partnerDf, os.path.join(path, 'PAR.pickle'), TI='elab')
+    PAR = Stark(partnerDf, os.path.join(path, 'PAR.pickle'), stark_type='elab')
     #effettuo il primo abbellimento di Stark
     PAR.VD = {
         'ID0_PAR': {'DES': unicode('ID identificativo del partner','utf-8')},
@@ -273,7 +273,7 @@ def createDWComp(companyName,picklesPath,immediateVatCreditAccountCode,
     #taxDf=taxDf[taxDf['NAM_IMP']==companyName]
     del taxDf['NAM_IMP']
     #del taxDf['TYP_CON']
-    TAX = Stark(taxDf, os.path.join(path, 'TAX.pickle'), TI='elab')
+    TAX = Stark(taxDf, os.path.join(path, 'TAX.pickle'), stark_type='elab')
     #effettuo il primo abbellimento di Stark
     TAX.VD = {
         'NAM_TAX': {'DES': unicode("nome della tassa",'utf-8')},
@@ -306,7 +306,7 @@ def createDWComp(companyName,picklesPath,immediateVatCreditAccountCode,
     #periodDf=periodDf[periodDf['NAM_IMP']==companyName]
     del periodDf['NAM_IMP']
     #del periodDf['TYP_CON']
-    PERIOD = Stark(periodDf, os.path.join(path, 'PERIOD.pickle'), TI='elab')
+    PERIOD = Stark(periodDf, os.path.join(path, 'PERIOD.pickle'), stark_type='elab')
     #effettuo il primo abbellimento di Stark
     PERIOD.VD = {
         'P_DATE_STR': {'DES': unicode("data di inizio del periodo",'utf-8')},
@@ -491,7 +491,7 @@ def createDWComp(companyName,picklesPath,immediateVatCreditAccountCode,
                             'T_ACC','T_TAX','T_CRED','T_DET','T_IMM','T_EXI','AMOUNT'
                             ]]
     vatDatasDf = vatDatasDf.sort(columns=['M_NAME'])
-    vatDatasStark = Stark(vatDatasDf, os.path.join(path, 'VAT.pickle'), TI='elab')
+    vatDatasStark = Stark(vatDatasDf, os.path.join(path, 'VAT.pickle'), stark_type='elab')
     vatDatasStark.VD = {
         'ESER': {'DES': unicode("anno fiscale",'utf-8')},
         'M_NUM': {'DES': unicode("numero di protocollo",'utf-8')},
@@ -541,7 +541,7 @@ def createDWComp(companyName,picklesPath,immediateVatCreditAccountCode,
     #Seleziono i dati per l'impresa Servabit
     companyDf = companyDf[companyDf['NAME']==companyName]
     companyDf = companyDf.reset_index(drop=True)
-    ResCompanyStark = Stark(companyDf, os.path.join(path, 'COMP.pickle'), TI='elab')
+    ResCompanyStark = Stark(companyDf, os.path.join(path, 'COMP.pickle'), stark_type='elab')
     #effettuo il primo abbellimento di Stark
     ResCompanyStark.VD = {
         'NAME': {'DES': unicode("nome dell'azienda",'utf-8')},
@@ -579,7 +579,7 @@ def createDWComp(companyName,picklesPath,immediateVatCreditAccountCode,
     invoiceDict = create_dict(invoiceClass, invoiceDict, companyName)
     invoiceDf = pandas.DataFrame(invoiceDict)
     #invoiceDf=invoiceDf[invoiceDf['NAM_IMP']==companyName]
-    invoiceStark = Stark(invoiceDf,os.path.join(path, 'INV.pickle'), TI='elab')
+    invoiceStark = Stark(invoiceDf,os.path.join(path, 'INV.pickle'), stark_type='elab')
     #effettuo il primo abbellimento di Stark
     invoiceStark.VD = {
         'NUM': {'DES': unicode('numero fattura','utf-8')},
@@ -613,7 +613,7 @@ def createDWComp(companyName,picklesPath,immediateVatCreditAccountCode,
     voucherDict = create_dict(voucherClass, voucherDict, companyName)
     voucherDf = pandas.DataFrame(voucherDict)
     #voucherDf=voucherDf[voucherDf['NAM_IMP']==companyName]
-    voucherStark = Stark(voucherDf,os.path.join(path, 'VOU.pickle'), TI='elab')
+    voucherStark = Stark(voucherDf,os.path.join(path, 'VOU.pickle'), stark_type='elab')
     #effettuo il primo abbellimento di Stark
     voucherStark.VD = {
         'NUM': {'DES': unicode('numero voucher','utf-8')},
