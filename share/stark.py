@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 ##############################################################################
-#    
 #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
-#    Author: Luigi Cirillo (<luigi.cirillo@servabit.it>)
+#    Author: Marco Pattaro (<marco.pattaro@servabit.it>)
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU Affero General Public License as
@@ -16,17 +15,13 @@
 #
 #    You should have received a copy of the GNU Affero General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
-#
 ##############################################################################
-__version__ = '0.9'
-__author__ = ['Luigi Cirillo (<luigi.cirillo@servabit.it>)',
-              'Marco Pattaro (<marco.pattaro@servabit.it>)']
+__author__ = 'Marco Pattaro (<marco.pattaro@servabit.it>)'
 __all__ = ['Stark']
 
 import os 
 import pandas
 import numpy
-import copy 
 import string
 
 from generic_pickler import GenericPickler
@@ -64,6 +59,29 @@ def _unroll(dict_):
             ret += _unroll(val['child'])
     return ret
 
+def _filter_tree(meta, outlist):
+    ''' Create a new tree selecting only those elements present in a list and
+    keeping origninal parent-child relastionship, if a parent is missing from
+    the target tree, all of it's childrens are inherited from the parent's
+    parent.
+
+    @ param meta: a dictionary 
+    @ param outlist: a list of keys
+    @ return: a new dictionary
+
+    '''
+    ret = dict()
+    items = meta.items()
+    for key, val in items:
+        if key in outlist:
+            ret[key] = val.copy()
+            if val.get('child'):
+                ret[key]['child'] = _filter_tree(val['child'], outlist)
+        else:
+            if val.get('child'):
+                ret.update(_filter_tree(val['child'], outlist))
+    return ret
+ 
 
 class Stark(GenericPickler):
     ''' This is the artifact that outputs mainly from etl procedures. It is a
@@ -86,7 +104,7 @@ class Stark(GenericPickler):
 
     '''
 
-    def __init__(self, df, path=None, stark_type='elab', meta=None, env=None):
+    def __init__(self, df, meta=None, path=None, env=None, stark_type='elab'):
         '''
         @ param df: DataFrame
         @ param path: save path
@@ -110,6 +128,11 @@ class Stark(GenericPickler):
         # Start from clean lists
         self._update()
 
+    def __repr__(self):
+        ''' Delegate to DataFrame.__repr__().
+        '''
+        return repr(self._df)
+
     def __getitem__(self, key):
         ''' Delegate to DataFrame.__setitem__().
         '''
@@ -128,6 +151,15 @@ class Stark(GenericPickler):
                 self.update_df(key, series=value, var_type='S')
         else: # FIXME: a type check woudn't be bad here!
             self.update_df(key, series=value, var_type='N')
+
+    def __delitem__(self, key):
+        del self._df[key]
+        target = _unroll(self._meta)
+        target.remove(key)
+        self._meta = _filter_tree(self._meta, target)
+
+    def __len__(self):
+        return len(self._df)
 
     def _update(self):
         ''' Call this method every time VD is changed to update Stark data.
@@ -364,20 +396,13 @@ class Stark(GenericPickler):
         except AttributeError:
             df = group.aggregate(eval(func))[var].reset_index()
         # Set up output meta
-        vd = dict()
-        for key in outkeys:
-            try:
-                vd[key] = copy.deepcopy(self._meta[key])
-            except KeyError:
-                # Nested dimension case: item has already been copied by a
-                # previous deepcopy() call.
-                pass
-        return Stark(df, meta=vd, env=self._env)
+        meta = _filter_tree(self._meta, outkeys)
+        return Stark(df, meta=meta, env=self._env)
 
 
 if __name__ == '__main__':
-    ''' Test
-    ''' 
+    """ Test
+    """ 
     cols = ['B', 'C']
     countries = numpy.array([
         ('namerica', 'US', 'Washington DC'),

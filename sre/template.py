@@ -32,6 +32,8 @@ from graph import TexGraph, HTMLGraph
 
 __all__ = ['HTMLSreTemplate', 'TexSreTemplate']
 
+# pylint: disable=W1401
+
 class AbstractSreTemplate(string.Template):
     ''' Abstract Class for Sre template parsing
     '''
@@ -42,6 +44,8 @@ class AbstractSreTemplate(string.Template):
         self._src_path = os.path.abspath(src_path)
 	self._logger = logging.getLogger(type(self).__name__)
         self._fds = list() # list of opened file descriptors
+        self._suffix = None
+        self._suffix_out = None
 	# load template
 	try:
 	    self._templ_path = config['template']

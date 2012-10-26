@@ -30,6 +30,8 @@ __all__ = ['TexTable', 'unique_list', 'escape']
 OPEN_TEX_TAB = """\\begin{longtabu} spread \\linewidth"""
 CLOSE_TEX_TAB = """\\end{longtabu}"""
 
+# pylint: disable=W1401
+
 FORMATS = {
     '@n' : str(),
     '@g' : "\\rowfont{\\bfseries}\n",
@@ -74,7 +76,7 @@ def unique_list(list_):
             i += 1
 
 # TODO: move this to template.py
-def escape(string, patterns=TEX_ESCAPE):
+def escape(string, patterns=None):
     ''' Escape string to work with LaTeX.
     The function calls TEX_ESCAPE dictionary to metch regexp with their escaped
     version.
@@ -84,6 +86,8 @@ def escape(string, patterns=TEX_ESCAPE):
     @ return: escaped version of string
 
     '''
+    if patterns is None:
+        patterns = TEX_ESCAPE
     for pattern, sub in patterns.iteritems():
         string = re.sub(pattern, sub, string)
     return string
@@ -347,7 +351,7 @@ class HTMLTable(Table):
         #self._logger.info("In Make Body %s", records)
         for line in list(records):
 	    out += '''<tr>\n'''
-	    for idx,i in enumerate(list(line)[1:]):
+	    for idx, i in enumerate(list(line)[1:]):
                 if i is None or i == 'None':
 	            out += '''<td>&nbsp;</td>'''
 		else:

@@ -49,7 +49,7 @@ class Graph(object):
                 })
         self._title = data.title
         self._footnote = data.footnote
-        self._df = data.Fdf
+        self._df = data.df
         self._y_meta = list()
         self._x_meta = list()
         self._fontsize = data.fontsize
