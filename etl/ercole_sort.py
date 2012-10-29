@@ -13,7 +13,7 @@ sys.path = list(set(sys.path))
 #import etl
 from share import Config
 from share import parallel_jobs
-# from share import Stark
+from share import Stark
 
 
 BASE_IN = '/home/mpattaro/workspace/sql/ercole/'
@@ -25,6 +25,8 @@ COLUMNS = [
     'R', 
     'YEAR', 
     'UL3000',
+    # 'XER',
+    # 'AREAX',
     'MER', 
     'AREAM', 
     'X', 
@@ -104,6 +106,9 @@ _logger = logging.getLogger(sys.argv[0])
 
 
 def by_country(files, country, out_path, prod_mapping, start_year='1995'):
+    """ Generate a dataframe with trade flow of a signle country, reading data
+    from dataframes containing trade flow by product.
+    """
     _logger.info('Extracting %s', ' '.join(country))
     if not os.path.isdir(out_path):
         os.makedirs(out_path)
@@ -125,12 +130,21 @@ def by_country(files, country, out_path, prod_mapping, start_year='1995'):
                   'pickle']))
 
 def build_tree(src, root, struct):
+    """ Create output directory structure as defined with a metadata
+    dictionary.
+    """
     full_path = os.path.join(root, *struct)
     files = os.walk(src).next()[2]
     for file_ in files:
         os.renames(os.path.join(src, file_), os.path.join(full_path, file_))
 
+
 def init(input_dir, ulisse_codes, countries):
+    """ Init environment:
+    - UL3000 mapping
+    - country list
+    - input file list
+    """
     ul3000 = pandas.DataFrame.from_csv(ulisse_codes).reset_index()
     reader = csv.reader(open(countries, 'r'))
     reader.next() # skip header
@@ -139,10 +153,24 @@ def init(input_dir, ulisse_codes, countries):
                  for file_ in os.walk(input_dir).next()[2]]
     return (file_list,  country_list, ul3000)
 
+def aggregate(filename):
+    dirname = os.path.dirname(filename)
+    outdir = os.path.join(os.path.pardir, dirname)
+#    outname = #????
+    meta = eval(open(os.path.join(dirname, '__meta__.py'), 'r').read())
+    df = pandas.load(filename)
+    stark = Stark(df, meta)
+    aggregated = stark.aggregate()
+ #   stark.save(os.path.join(outdir, outname)
+
+
 def main(input_dir=None, root=None, start_year=None,
          countries=None, ulisse_codes=None, meta=None,
          product_tree=None, country_tree=None, 
          **kwargs):
+    """
+    Main procedure:
+    """
 
     # if _logger.getEffectiveLevel() == logging.DEBUG:
     #     import ipdb; ipdb.set_trace()
@@ -159,11 +187,11 @@ def main(input_dir=None, root=None, start_year=None,
                 for country in country_list]
         parallel_jobs.do_jobs_efficiently(args)
 
-    # aggregate countries by prod
-    build_tree(root, root, STRUCT_PROD)
+    # # aggregate countries by prod
+    # build_tree(root, root, STRUCT_PROD)
 
-    # aggregate prod by cuuntry
-    build_tree(input_dir, root, STRUCT_COUNTRY)
+    # # aggregate prod by cuuntry
+    # build_tree(input_dir, root, STRUCT_COUNTRY)
 
     return 0
 
