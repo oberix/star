@@ -75,7 +75,7 @@ class Bag(GenericPickler):
 
     '''   
     
-    def __init__(self, df, path=None, bag_type='tab', meta=None, 
+    def __init__(self, df, meta=None, path=None, bag_type='tab',  
                  title=None, footnote=None, 
                  size='square', fontsize=10.0,
                  legend=False, **kwargs):

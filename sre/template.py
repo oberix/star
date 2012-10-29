@@ -39,19 +39,19 @@ class AbstractSreTemplate(string.Template):
     '''
 
     comment = "#.*" # just an example with Python comments.
+    _suffix = None
+    _suffix_out = None
 
     def __init__(self, src_path, config=None):
         self._src_path = os.path.abspath(src_path)
 	self._logger = logging.getLogger(type(self).__name__)
         self._fds = list() # list of opened file descriptors
-        self._suffix = None
-        self._suffix_out = None
 	# load template
 	try:
 	    self._templ_path = config['template']
 	except KeyError:
             self._templ_path = os.path.join(
-                src_path, '.'.join(['main', self._suffix]))
+                src_path, ''.join(['main', self._suffix]))
 	self._load_template(self._templ_path)
 	# load Bags
 	try:
@@ -98,7 +98,10 @@ class AbstractSreTemplate(string.Template):
         # Make a placeholders list to fetch only needed files and to let access
         # to single Pickle attributes.
         ph_list = [ph[2] for ph in self.pattern.findall(self.template)]
-        ph_list.remove(str()) # Remove placeholder command definition.
+        try:
+            ph_list.remove(str()) # Remove placeholder command definition.
+        except ValueError:
+            pass
         # In case of multiple instance of a placeholder, evaluate only once.
         ph_list = list(set(ph_list))
         self._logger.info("Reading pickles...")
@@ -196,11 +199,8 @@ class TexSreTemplate(AbstractSreTemplate):
     delimiter = '\SRE'
     idpattern = '[_a-z][_a-z0-9.]*' 
     comment = "%.*"
-
-    def __init__(self, src_path, config=None):
-        self._suffix = '.tex'
-        self._suffix_out = '_out.tex'
-        super(TexSreTemplate, self).__init__(src_path, config=config)
+    _suffix = '.tex'
+    _suffix_out = '_out.tex'
 
     def _make_table(self, data, **kwargs):
         return  TexTable(data, **kwargs)
@@ -225,14 +225,12 @@ class HTMLSreTemplate(AbstractSreTemplate):
 
     '''
     # TODO: change delimiter for HTML
+    # TODO: check comment
     delimiter = '\SRE'
     idpattern = '[_a-z][_a-z0-9.]*' 
     comment = "<!--.*-->"
-
-    def __init__(self, src_path, config=None):
-        self._suffix = '.html'
-        self._suffix_out = '_out.html'
-        super(HTMLSreTemplate, self).__init__(src_path, config=config)
+    _suffix = '.html'
+    _suffix_out = '_out.html'
 
     def _make_table(self, data, **kwargs):
         return  HTMLTable(data, **kwargs)

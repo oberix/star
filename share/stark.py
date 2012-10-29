@@ -42,13 +42,13 @@ OPERATORS = {
 
 
 def _unroll(dict_):
-    ''' Unroll tree-like nested dictionary in depth-first order, following
+    """ Unroll tree-like nested dictionary in depth-first order, following
     'child' keys. Siblings order can be defined with 'ORD' key.
 
     @ param dict_: python dictionary
     @ return: ordered list
 
-    '''
+    """
     ret = list()
     # Sort items to preserve order between siblings
     items = dict_.items()
@@ -60,7 +60,7 @@ def _unroll(dict_):
     return ret
 
 def _filter_tree(meta, outlist):
-    ''' Create a new tree selecting only those elements present in a list and
+    """ Create a new tree selecting only those elements present in a list and
     keeping origninal parent-child relastionship, if a parent is missing from
     the target tree, all of it's childrens are inherited from the parent's
     parent.
@@ -69,7 +69,7 @@ def _filter_tree(meta, outlist):
     @ param outlist: a list of keys
     @ return: a new dictionary
 
-    '''
+    """
     ret = dict()
     items = meta.items()
     for key, val in items:
@@ -84,7 +84,7 @@ def _filter_tree(meta, outlist):
  
 
 class Stark(GenericPickler):
-    ''' This is the artifact that outputs mainly from etl procedures. It is a
+    """ This is the artifact that outputs mainly from etl procedures. It is a
     collection of meta-information around datas inside a pandas DataFrame.
 
     Stark has the following attributes:
@@ -102,16 +102,16 @@ class Stark(GenericPickler):
             MIS: unit of measure
             ELAB: elaboration that ptocuced the data (if TYPE == 'R')
 
-    '''
+    """
 
     def __init__(self, df, meta=None, path=None, env=None, stark_type='elab'):
-        '''
+        """
         @ param df: DataFrame
         @ param path: save path
         @ param stark_type: type
         @ param meta: metadata dictionary
         @ param env: environment dictionary (usually globals() from caller)
-        '''
+        """
         self._df = df.copy()
         self.path = path
         if env is None:
@@ -129,21 +129,21 @@ class Stark(GenericPickler):
         self._update()
 
     def __repr__(self):
-        ''' Delegate to DataFrame.__repr__().
-        '''
+        """ Delegate to DataFrame.__repr__().
+        """
         return repr(self._df)
 
     def __getitem__(self, key):
-        ''' Delegate to DataFrame.__setitem__().
-        '''
+        """ Delegate to DataFrame.__setitem__().
+        """
         return self._df.__getitem__(key)
 
     def __setitem__(self, key, value):
-        ''' Delegate to DataFrame.__setitem__(). The purpose of this method it
+        """ Delegate to DataFrame.__setitem__(). The purpose of this method it
         to permit a DataFrame-like syntax when assigning a new column, while
         keeping the VD consistent.
 
-        '''
+        """
         if isinstance(value, str) or isinstance(value, unicode):
             try:
                 self.update_df(key, expr=value, var_type='R')
@@ -162,11 +162,11 @@ class Stark(GenericPickler):
         return len(self._df)
 
     def _update(self):
-        ''' Call this method every time VD is changed to update Stark data.
+        """ Call this method every time VD is changed to update Stark data.
         Iter over VD and fill up different lists of keys, each list contains
         names from each data type.
 
-        ''' 
+        """ 
         # Start from clean lists
         self._dim = list()
         self._cal = list()
@@ -198,9 +198,9 @@ class Stark(GenericPickler):
 
     @meta.setter
     def meta(self, meta):
-        ''' VD setter:
+        """ VD setter:
         Just check VD/DF consistency before proceding.
-        ''' 
+        """ 
         if meta is None:
             meta = {}
         self._meta = meta
@@ -212,28 +212,40 @@ class Stark(GenericPickler):
 
     @df.setter
     def df(self, df):
-        ''' DF settre:
+        """ DF settre:
         Just check VD/DF consistency before proceding.
-        '''
+        """
         self._df = df.copy()
         # df changed, re-evaluate calculated data
         self._update()
 
+    @property
+    def dim(self):
+        return self._dim
+
+    @property
+    def num(self):
+        return self._num
+
+    @property
+    def cal(self):
+        return self._cal
+
     def update_meta(self, key, entry):
-        ''' Update VD dictionary with a new entry.
+        """ Update VD dictionary with a new entry.
         
         @ param key: new key in the dictionary
         @ param entry: value to assign
         @ raise ValueError: if DF/VD consistency would broke
 
-        '''
+        """
         # Check key consistency
         self._meta[key] = entry
         self._update()
 
     def update_df(self, col, series=None, var_type='N', expr=None, des=None,
                   mis=None, order=0):
-        ''' Utility method to safely add/update a DataFrame column.
+        """ Utility method to safely add/update a DataFrame column.
         
         Add or modify a column of the DataFrame trying to preserve DF/VD
         consistency. This method has two main beheviours:
@@ -253,7 +265,7 @@ class Stark(GenericPickler):
         @ param mis: Unit of measure.
         @ raise ValueError: when parameters are inconsistent
 
-        '''
+        """
         if var_type not in TYPE_VALS:
             raise ValueError("var_type mut be one of [%s]" % \
                                  '|'.join(TYPE_VALS))
@@ -273,13 +285,13 @@ class Stark(GenericPickler):
                 'ELAB': expr})
 
     def save(self, file_=None):
-        ''' Save object as pickle file.
+        """ Save object as pickle file.
         
         If a filename is not provided, the one stored in self.path will be used.
 
         @ param file_: destination file path 
         
-        '''
+        """
         if file_ is None:
             file_ = self.path
         if not os.path.exists(os.path.dirname(file_)):
@@ -287,7 +299,7 @@ class Stark(GenericPickler):
         super(Stark, self).save(file_)
 
     def eval(self, func):
-        ''' Evaluate a function with DataFrame columns'es placeholders.
+        """ Evaluate a function with DataFrame columns'es placeholders.
         
         Without placeholders this function is just a common python eval; when
         func contains column's names preceded by '$', this will be substituted
@@ -302,7 +314,7 @@ class Stark(GenericPickler):
         Example:
             "$B / $C * 100"
         
-        '''
+        """
         if not isinstance(func, str) or isinstance(func, unicode):
             raise AttributeError(
                 'func must be a string, %s received instead.' % \
@@ -315,7 +327,7 @@ class Stark(GenericPickler):
         return eval(templ.substitute(ph_dict), self._env, {'self': self})
 
     def eval_polish(self, func):
-        ''' Parse and execute a statement in polish notation.
+        """ Parse and execute a statement in polish notation.
 
         Statemenst must be expressed in a Lisp-like manner, but uing python
         tuples. If any dataframe's column is part of the statement, the
@@ -330,7 +342,7 @@ class Stark(GenericPickler):
         Is the same as:
             df['B'] / df['C'] * 100
 
-        '''
+        """
         # Some input checks
         if not hasattr(func, '__iter__'):
             raise AttributeError(
@@ -360,7 +372,7 @@ class Stark(GenericPickler):
             return terms[0].__getattribute__(op)()
             
     def aggregate(self, func='sum', dim=None, var=None):
-        ''' Apply an aggregation function to the DataFrame. If the DataFrame
+        """ Apply an aggregation function to the DataFrame. If the DataFrame
         contains datas that are calculated as a transformation of other columns
         from the same DataFrame, this will be re-calculated in the output one.
 
@@ -377,7 +389,7 @@ class Stark(GenericPickler):
             present.
         @ return: a new Stark instance with aggregated data
 
-        '''
+        """
         if dim is None:
             dim = self._dim
         if var is None:

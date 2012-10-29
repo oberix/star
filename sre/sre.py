@@ -145,7 +145,7 @@ def sre(src_path, config=None, **kwargs):
     elif templ_path.endswith('.html'):
         templ = template.HTMLSreTemplate(src_path, config=config)
         report = templ.report()
-        if not isinstance(report, str()):
+        if not isinstance(report, str):
             # Error, return errno
             return report
     else:
