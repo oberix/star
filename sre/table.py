@@ -59,7 +59,9 @@ TEX_ESCAPE = {
     }
 
 # TODO: fill this up
-HTML_ESCAPE = {}
+HTML_ESCAPE = {
+    re.compile("€"): "EURO",
+    }
 
 def unique_list(list_):
     """ Remove all duplicate elements from a list inplace, keeping the order
@@ -333,7 +335,7 @@ class HTMLTable(Table):
         records = self._heading
         #self._logger.info("In Make Header Table %s", records)
 	out += '''<tr>'''
-        for i in records[1]:
+        for i in records[0]:
 	    out += '''<th>%s</th>''' % i.replace("|","").replace(" ","")
 	out += '''</tr>'''
         out += '''</thead>\n'''
@@ -384,7 +386,7 @@ class HTMLTable(Table):
         ''' Return a string that contains valid Html code for a table.
         '''
         out = [
-	    self._make_header_table(),
+            escape(self._make_header_table(), HTML_ESCAPE),
 	    self._make_body(),
 	    self._make_footer(),
             ]
