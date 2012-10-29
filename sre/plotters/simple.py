@@ -22,7 +22,7 @@ import numpy as np
 from base_plotter import BasePlotter
 
 class Plot(BasePlotter):
-    ''' The most simple of the Simples :) 
+    ''' The simpler of Simples :) 
     Implement a line plot.
     ''' 
 

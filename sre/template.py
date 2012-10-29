@@ -32,11 +32,15 @@ from graph import TexGraph, HTMLGraph
 
 __all__ = ['HTMLSreTemplate', 'TexSreTemplate']
 
+# pylint: disable=W1401
+
 class AbstractSreTemplate(string.Template):
     ''' Abstract Class for Sre template parsing
     '''
 
     comment = "#.*" # just an example with Python comments.
+    _suffix = None
+    _suffix_out = None
 
     def __init__(self, src_path, config=None):
         self._src_path = os.path.abspath(src_path)
@@ -47,7 +51,7 @@ class AbstractSreTemplate(string.Template):
 	    self._templ_path = config['template']
 	except KeyError:
             self._templ_path = os.path.join(
-                src_path, '.'.join(['main', self._suffix]))
+                src_path, ''.join(['main', self._suffix]))
 	self._load_template(self._templ_path)
 	# load Bags
 	try:
@@ -71,6 +75,7 @@ class AbstractSreTemplate(string.Template):
         fd = codecs.open(path, mode='r', encoding='utf-8')
         try:
             templ = fd.read()
+            # Remove comments
             templ = re.sub(re.compile(self.comment), str(), templ)
             super(AbstractSreTemplate, self).__init__(templ)
         except IOError, err:
@@ -93,7 +98,10 @@ class AbstractSreTemplate(string.Template):
         # Make a placeholders list to fetch only needed files and to let access
         # to single Pickle attributes.
         ph_list = [ph[2] for ph in self.pattern.findall(self.template)]
-        ph_list.remove(str()) # Remove placeholder command definition.
+        try:
+            ph_list.remove(str()) # Remove placeholder command definition.
+        except ValueError:
+            pass
         # In case of multiple instance of a placeholder, evaluate only once.
         ph_list = list(set(ph_list))
         self._logger.info("Reading pickles...")
@@ -126,6 +134,7 @@ class AbstractSreTemplate(string.Template):
             if len(ph_parts) > 1 and \
                     hasattr(bags[base], '.'.join(ph_parts[1:])):
                 # extract attribute
+                # TODO: apply translation
                 ret[ph] = bags[base].__getattribute__('.'.join(ph_parts[1:]))
         return ret
 
@@ -190,11 +199,8 @@ class TexSreTemplate(AbstractSreTemplate):
     delimiter = '\SRE'
     idpattern = '[_a-z][_a-z0-9.]*' 
     comment = "%.*"
-
-    def __init__(self, src_path, config=None):
-        self._suffix = '.tex'
-        self._suffix_out = '_out.tex'
-        super(TexSreTemplate, self).__init__(src_path, config=config)
+    _suffix = '.tex'
+    _suffix_out = '_out.tex'
 
     def _make_table(self, data, **kwargs):
         return  TexTable(data, **kwargs)
@@ -219,14 +225,12 @@ class HTMLSreTemplate(AbstractSreTemplate):
 
     '''
     # TODO: change delimiter for HTML
+    # TODO: check comment
     delimiter = '\SRE'
     idpattern = '[_a-z][_a-z0-9.]*' 
     comment = "<!--.*-->"
-
-    def __init__(self, src_path, config=None):
-        self._suffix = '.html'
-        self._suffix_out = '_out.html'
-        super(HTMLSreTemplate, self).__init__(src_path, config=config)
+    _suffix = '.html'
+    _suffix_out = '_out.html'
 
     def _make_table(self, data, **kwargs):
         return  HTMLTable(data, **kwargs)

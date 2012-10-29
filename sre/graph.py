@@ -53,6 +53,7 @@ class Graph(object):
         self._y_meta = list()
         self._x_meta = list()
         self._fontsize = data.fontsize
+        self._lax = None
         try:
             self._size = FIGSIZE[data.size]
         except KeyError, e:
@@ -114,6 +115,7 @@ class Graph(object):
         '''
         # TODO: handle line styles
         for key, val in lm.iteritems():
+            # TODO: apply translation
             if val['type'] == 'lax':
                 self._lax = self._df[key]
                 self._x_meta.append(val)
