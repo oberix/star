@@ -332,11 +332,10 @@ class HTMLTable(Table):
         '''
 
         out = '''<thead>'''
-        records = self._heading
-        #self._logger.info("In Make Header Table %s", records)
 	out += '''<tr>'''
-        for i in records[0]:
-	    out += '''<th>%s</th>''' % i.replace("|","").replace(" ","")
+        for level in self._heading:
+            for i in level:
+                out += '''<th>%s</th>''' % i.replace("|","").replace(" ","")
 	out += '''</tr>'''
         out += '''</thead>\n'''
         return out
