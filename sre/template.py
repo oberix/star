@@ -166,7 +166,6 @@ class AbstractSreTemplate(string.Template):
             os.makedirs(os.path.dirname(self._dest_path))
 
         # substitute placeholders
-        import ipdb; ipdb.set_trace()
         templ_out = self.safe_substitute(self.bags, encoding='utf-8')
         # save final document
         template_out = self._templ_path.replace(self._suffix, self._suffix_out)
