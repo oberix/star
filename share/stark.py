@@ -19,6 +19,7 @@
 __author__ = 'Marco Pattaro (<marco.pattaro@servabit.it>)'
 __all__ = ['Stark']
 
+import sys
 import os 
 import pandas
 import numpy
@@ -122,8 +123,6 @@ class Stark(GenericPickler):
         self._DF = DF.copy()
         self.LD = LD
         self._env = env
-        if env is None:
-            self._env = globals()
         if TI not in TI_VALS:
             raise ValueError("TI must be one of %s" % TI_VALS)
         self.TI = TI
@@ -434,15 +433,17 @@ if __name__ == '__main__' :
         ('samerica', 'BR', 'Rio'),
         ])
     nelems = 100
-    key = map(tuple, countries[numpy.random.randint(0, len(countries), nelems)])
-    index = pandas.MultiIndex.from_tuples(key, names=['region', 'country', 'city'])
+    key = map(tuple, countries[
+            numpy.random.randint(0, len(countries), nelems)])
+    index = pandas.MultiIndex.from_tuples(key, names=[
+            'region', 'country', 'city'])
 
     # DataFrame with two numeric columns...
     df = pandas.DataFrame(
         numpy.random.randn(nelems, len(cols)), columns=cols,
         index=index).sortlevel().reset_index()
     # ... and a string column
-    df['A'] = nelems*['test']
+    df['A'] = nelems * ['test']
 
     vd = {
         'region' : {

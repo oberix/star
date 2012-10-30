@@ -31,13 +31,17 @@ logger = logging.getLogger("parallel_jobs")
 logger.setLevel(logging.INFO)
 logger.addHandler(hconsole)
 
-def do_jobs_efficiently(processes=[]):
+def do_jobs_efficiently(processes=None):
+    if processes is None:
+        processes = []
+    
     if not isinstance(processes, (list, tuple)):
         logger.error("l'argomento 'procesess' deve essere una lista/tupla di "
                      "coppie processo/argomenti")
         return
 
     njobs = multiprocessing.cpu_count() + 1
+    logger.info('njobs = %d', njobs)
     child_fd = -1
     parent_fd = -1
     parent_stream = None
@@ -49,12 +53,13 @@ def do_jobs_efficiently(processes=[]):
             logger.error("la funzione {0} non è una chiamabile".format(func))
             continue
         # IPC init
-        if len(child_pids) == njobs:
+        if len(child_pids) >= njobs:
             (_rfds,_wfds,_xfds) = select.select(rfds,[],[])
             for done_fd in _rfds:
                 idx = rfds.index(done_fd)
                 rfds.pop(idx)
                 cpid = child_pids.pop(idx)
+                os.waitpid(cpid, 0)
                 stream = streams.pop(idx)
                 assert(len(rfds) == len(child_pids))
                 assert(len(child_pids) == len(streams))
@@ -74,16 +79,18 @@ def do_jobs_efficiently(processes=[]):
                 my_pid = os.getpid()
                 os.close(parent_fd)
                 ## faccio l'effetivo lavoro
-                if isinstance(args, (list, tuple)):
-                    func(*args)
-                elif isinstance(args, dict):
-                    func(**args)
-                else:
-                    func(args)
-                ## comunico la fine del lavoro
-                os.write(child_fd, "({0})\n".format(my_pid))
-                os.close(child_fd)
-                os._exit(0)
+                try:
+                    if isinstance(args, (list, tuple)):
+                        func(*args)
+                    elif isinstance(args, dict):
+                        func(**args)
+                    else:
+                        func(args)
+                finally:
+                    ## comunico la fine del lavoro
+                    os.write(child_fd, "({0})\n".format(my_pid))
+                    os.close(child_fd)
+                    os._exit(os.EX_OK)
             else:
                 parent_stream = os.fdopen(parent_fd, 'r')
                 os.close(child_fd)
@@ -96,6 +103,7 @@ def do_jobs_efficiently(processes=[]):
             idx = rfds.index(done_fd)
             rfds.pop(idx)
             cpid = child_pids.pop(idx)
+            os.waitpid(cpid, 0)
             stream = streams.pop(idx)
             assert(len(rfds) == len(child_pids))
             assert(len(child_pids) == len(streams))
