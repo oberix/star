@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 ##############################################################################
-#    
 #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
-#    Author: Luigi Cirillo (<luigi.cirillo@servabit.it>)
+#    Author: Marco Pattaro (<marco.pattaro@servabit.it>)
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU Affero General Public License as
@@ -16,18 +15,13 @@
 #
 #    You should have received a copy of the GNU Affero General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
-#
 ##############################################################################
-__version__ = '0.9'
-__author__ = ['Luigi Cirillo (<luigi.cirillo@servabit.it>)',
-              'Marco Pattaro (<marco.pattaro@servabit.it>)']
+__author__ = 'Marco Pattaro (<marco.pattaro@servabit.it>)'
 __all__ = ['Stark']
 
-import sys
 import os 
 import pandas
 import numpy
-import copy 
 import string
 
 BASEPATH = os.path.abspath(os.path.join(
@@ -44,23 +38,24 @@ TI_VALS = (
 TIP_VALS = ['D', 'N', 'S', 'R']
 
 OPERATORS = {
-    '+' : '__add__',
-    '-' : '__sub__',
-    '*' : '__mul__',
-    '/' : '__div__',
+    '+': '__add__',
+    '-': '__sub__',
+    '*': '__mul__',
+    '/': '__div__',
     '//': '__floordiv__',
     '**': '__pow__',
-    '%' : '__mod__',
+    '%': '__mod__',
 }
 
+
 def _unroll(dict_):
-    ''' Unroll tree-like nested dictionary in depth-first order, following
+    """ Unroll tree-like nested dictionary in depth-first order, following
     'child' keys. Siblings order can be defined with 'ORD' key.
 
     @ param dict_: python dictionary
     @ return: ordered list
 
-    '''
+    """
     ret = list()
     # Sort items to preserve order between siblings
     items = dict_.items()
@@ -71,8 +66,32 @@ def _unroll(dict_):
             ret += _unroll(val['child'])
     return ret
 
+def _filter_tree(meta, outlist):
+    """ Create a new tree selecting only those elements present in a list and
+    keeping origninal parent-child relastionship, if a parent is missing from
+    the target tree, all of it's childrens are inherited from the parent's
+    parent.
+
+    @ param meta: a dictionary 
+    @ param outlist: a list of keys
+    @ return: a new dictionary
+
+    """
+    ret = dict()
+    items = meta.items()
+    for key, val in items:
+        if key in outlist:
+            ret[key] = val.copy()
+            if val.get('child'):
+                ret[key]['child'] = _filter_tree(val['child'], outlist)
+        else:
+            if val.get('child'):
+                ret.update(_filter_tree(val['child'], outlist))
+    return ret
+ 
+
 class Stark(GenericPickler):
-    ''' This is the artifact that outputs mainly from etl procedures. It is a
+    """ This is the artifact that outputs mainly from etl procedures. It is a
     collection of meta-information around datas inside a pandas DataFrame.
 
     Stark has the following attributes:
@@ -90,9 +109,16 @@ class Stark(GenericPickler):
             MIS: unit of measure
             ELA: elaboration that ptocuced the data (if TIP == 'R')
 
-    '''
+    """
 
-    def __init__(self, DF, LD=None, TI='elab', VD=None, env=None):
+    def __init__(self, DF, VD=None, LD=None, env=None, TI='elab'):
+        """
+        @ param DF: DataFrame
+        @ param LD: save path
+        @ param TI: type
+        @ param VD: metadata dictionary
+        @ param env: environment dictionary (usually globals() from caller)
+        """
         self._DF = DF.copy()
         self.LD = LD
         self._env = env
@@ -103,10 +129,13 @@ class Stark(GenericPickler):
         self.TI = TI
         if VD is None:
             VD = {}
-        # if not set(VD.keys()).issubset(set(DF.columns.tolist())):
-        #     raise ValueError("VD.keys() must be a subset of DF.columns")
         self._VD = VD
         self._update()
+
+    def __repr__(self):
+        """ Delegate to DataFrame.__repr__().
+        """
+        return repr(self._DF)
 
     def __getitem__(self, key):
         ''' Delegate to DataFrame.__setitem__().
@@ -126,6 +155,15 @@ class Stark(GenericPickler):
                 self.update_df(key, series=value, var_type='S')
         else: # FIXME: a type check woudn't be bad here!
             self.update_df(key, series=value, var_type='N')
+
+    def __delitem__(self, key):
+        del self._DF[key]
+        target = _unroll(self._VD)
+        target.remove(key)
+        self._VD = _filter_tree(self._VD, target)
+
+    def __len__(self):
+        return len(self._DF)
 
     def _update(self):
         ''' Call this method every time VD is changed to update Stark data.
@@ -184,6 +222,18 @@ class Stark(GenericPickler):
         self._DF = df.copy()
         # DF changed, re-evaluate calculated data
         self._update()
+
+    @property
+    def dim(self):
+        return self._dim
+
+    @property
+    def num(self):
+        return self._num
+
+    @property
+    def cal(self):
+        return self._cal
 
     def update_vd(self, key, entry):
         ''' Update VD dictionary with a new entry.
@@ -257,7 +307,7 @@ class Stark(GenericPickler):
         
         Without placeholders this function is just a common python eval; when
         func contains column's names preceded by '$', this will be substituted
-        with actual column's reference bevore passing the whole string to
+        with actual column's reference before passing the whole string to
         eval().
 
         @ param func: a string rappresenting a valid python statement; the
@@ -304,7 +354,8 @@ class Stark(GenericPickler):
                     type(func).__name__)
         if len(func) < 2:
             raise AttributeError(
-                'func must have at last two elements (an operator and a term), received %s' % len(func))
+                'func must have at last two elements (an operator and a \
+                term), received %s' % len(func))
         op = func[0]
         if op in OPERATORS.keys():
             op = OPERATORS[op]
@@ -361,14 +412,7 @@ class Stark(GenericPickler):
         except AttributeError:
             df = group.aggregate(eval(func))[var].reset_index()
         # Set up output VD
-        vd = dict()
-        for key in outkeys:
-            try:
-                vd[key] = copy.deepcopy(self._VD[key])
-            except KeyError:
-                # Nested dimension case: item has already been copied by a
-                # previous deepcopy() call.
-                pass
+        vd = _filter_tree(self._vd, outkeys)
         return Stark(df, VD=vd, env=self._env)
 
 

@@ -24,11 +24,6 @@ import os
 import logging
 
 # Servabit libraries
-BASEPATH = os.path.abspath(os.path.join(
-        os.path.dirname(__file__),
-        os.path.pardir))
-sys.path.append(BASEPATH)
-sys.path = list(set(sys.path))
 from share import GenericPickler
 
 __all__ = ['Bag']
@@ -86,7 +81,6 @@ class Bag(GenericPickler):
 
     '''   
     
-    #definisco la funzione __init__ 
     def __init__(self, DF, LD=None, TI='tab', LM=None, 
                  TITLE=None, FOOTNOTE=None, 
                  size='square', fontsize=10.0,
