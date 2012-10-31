@@ -41,6 +41,7 @@ COLUMNS = [
     'YEAR', 
     'UL1000',
     'XER',
+    # 'UMS',
     # 'AREAX',
     'MER', 
     # 'AREAM', 
@@ -57,7 +58,7 @@ STRUCT_COUNTRY = ['geo', 'area', 'country', 'region', 'province']
 _logger = logging.getLogger(sys.argv[0])
 
 
-def by_country(files, country, out_path, prod_mapping, start_year=None):
+def by_country(files, country, out_path, prod_mapping, ums, start_year=None):
     """ Generate a dataframe with trade flow of a signle country, reading data
     from dataframes containing trade flow by product.
     """
@@ -66,20 +67,24 @@ def by_country(files, country, out_path, prod_mapping, start_year=None):
     for file_ in files:
         try:
             df = pandas.load(file_).groupby(
-                ['XER']).get_group(country).reset_index()
+                ['AREAX', 'XER']).get_group(country).reset_index()
         except KeyError: # contry not found in this file_
             continue
         if start_year is not None:
             df = df.ix[df['YEAR'] >= start_year]
+        # Add prod code
         df['HS07'] = len(df) * [os.path.basename(file_.split('.')[0])]
         df.consolidate(inplace=True) # should reduce memory usage
         df = df.merge(prod_mapping, on='HS07')
-        out_df = out_df.append(df)
+        # FIXME: Consider Unit of Measure
+#        df = df.merge(ums, on='HS07')
+        out_df = out_df.append(df, ignore_index=True)
     filename = '.'.join([os.path.join(out_path, *[name.replace(' ', '_') for name in country]), 'pickle'])
+    # Create dir if it does not already exist
     if not os.path.isdir(os.path.dirname(filename)):
         os.makedirs(os.path.dirname(filename))
-    out_df.groupby(['UL1000', 'YEAR', 'R', 'MER']).\
-        sum().reset_index()[COLUMNS].save(filename)
+    out_df.groupby(['UL1000', 'YEAR', 'R', 'XER', 'MER']).sum().reset_index()[COLUMNS].save(filename)
+
 
 def build_tree(src, root, struct):
     """ Create output directory structure as defined with a metadata
@@ -104,23 +109,24 @@ def build_tree(src, root, struct):
 #     aggregated = stark.aggregate()
 #  #   stark.save(os.path.join(outdir, outname)
 
-def init(input_dir, ulisse_codes, countries):
+def init(input_dir, ulisse_codes, countries, ums):
     """ Init environment:
     - UL3000 mapping
     - country list
     - input file list
     """
     ul3000 = pandas.DataFrame.from_csv(ulisse_codes).reset_index()
+    ums_df = pandas.DataFrame.from_csv(ums).reset_index()
     reader = csv.reader(open(countries, 'r'))
     reader.next() # skip header
     country_list = [tuple(row) for row in reader]
     file_list = [os.path.join(input_dir, file_)
                  for file_ in os.walk(input_dir).next()[2]]
-    return (file_list,  country_list, ul3000)
+    return (file_list, country_list, ul3000, ums_df)
 
 def main(input_dir=None, root=None, start_year=None,
-         countries=None, ulisse_codes=None, meta=None,
-         product_tree=None, country_tree=None, 
+         countries=None, ulisse_codes=None, ums=None, 
+         meta=None, product_tree=None, country_tree=None, 
          **kwargs):
     """
     Main procedure:
@@ -132,20 +138,14 @@ def main(input_dir=None, root=None, start_year=None,
     # TODO: handle default Nones
 
     # pivot by contry
-    file_list, country_list, ul3000 = init(input_dir, ulisse_codes, countries)
+    file_list, country_list, ul3000, ums_df = init(input_dir, ulisse_codes, countries, ums)
 
     if _logger.getEffectiveLevel() == logging.DEBUG:
-        by_country(file_list, country_list[0], root, ul3000, start_year)
+        by_country(file_list, country_list[0], root, ul3000, ums_df, start_year)
     else:
-        args = [(by_country, [file_list, country, root, ul3000, start_year])
+        args = [(by_country, [file_list, country, root, ul3000, ums_df, start_year])
                 for country in country_list]
         parallel_jobs.do_jobs_efficiently(args)
-
-    # # aggregate countries by prod
-    # build_tree(root, root, STRUCT_PROD)
-
-    # # aggregate prod by cuuntry
-    # build_tree(input_dir, root, STRUCT_COUNTRY)
 
     return 0
 
@@ -155,5 +155,4 @@ if __name__ == '__main__':
     config = Config(os.path.join(BASEPATH, 'config/ercole/ercole_sort.cfg'))
     config.parse()
     _logger = logging.getLogger(sys.argv[0])
-
     sys.exit(main(**config.options))
