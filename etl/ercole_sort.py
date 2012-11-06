@@ -39,26 +39,26 @@ from share import parallel_jobs
 COLUMNS = [
     'R', 
     'YEAR', 
-    'UL1000',
+    'CODE',
     'XER',
-    # 'UMS',
-    # 'AREAX',
     'MER', 
-    # 'AREAM', 
     'X', 
     'M', 
     'K', 
     'U',
     'Q']
 
+DIMENSIONS = ['XER', 'MER', 'YEAR', 'R', 'CODE']
+
 # TODO: evaluate from meta
-STRUCT_PROD = ['product', 'ul20', 'ul200', 'ul1000', 'ul3000']
+STRUCT_PROD = ['UL20', 'UL200', 'UL1000', 'UL3000']
 STRUCT_COUNTRY = ['geo', 'area', 'country', 'region', 'province']
+AGGR_LVL = 'UL1000'
 
 _logger = logging.getLogger(sys.argv[0])
 
 
-def by_country(files, country, out_path, prod_mapping, ums, start_year=None):
+def by_country(files, country, out_path, prod_mapping, ums=None, start_year=None):
     """ Generate a dataframe with trade flow of a signle country, reading data
     from dataframes containing trade flow by product.
     """
@@ -85,29 +85,51 @@ def by_country(files, country, out_path, prod_mapping, ums, start_year=None):
         os.makedirs(os.path.dirname(filename))
     out_df.groupby(['UL1000', 'YEAR', 'R', 'XER', 'MER']).sum().reset_index()[COLUMNS].save(filename)
 
+def from_hs(level, in_path, root, prod_map, uom):
+    '''
+    @ param level: aggregation level
+    @ param in_path: list of input files
+    @ param root: root directory for output
+    @ param prod_map: product codes mapping DataFrame
+    @ param uom: product units of measure DataFrame
+    ''' 
+    # TODO: use Starks!
+    df_out = pandas.DataFrame(columns=COLUMNS)
+    prod_groups = prod_map.groupby(level)
+    for code, group in prod_groups:
+        for hs in group['HS07']:
+            try:
+                df = pandas.load(os.path.join(in_path, '.'.join([hs, 'pickle'])))
+            except IOError:
+                # File does not exists
+                continue
+            df['CODE'] = len(df) * [code]
+            df.consolidate(inplace=True) # Should reduce memory usage
+            # TODO: Handle non summable quantities
+            df_out = df_out.append(df[COLUMNS], verify_integrity=False).groupby(DIMENSIONS).sum().reset_index()
+        path = group.set_index('HS07')[STRUCT_PROD[:STRUCT_PROD.index(level)]].ix[0].tolist()
+        path.insert(0, root)
+        path.append(code)
+        filename = '.'.join([os.path.join(*path), 'pickle'])
+        if not os.path.isdir(os.path.dirname(filename)):
+            os.makedirs(os.path.dirname(filename))
+        df_out.save(filename)
+        
+# def aggregate(root, mapping):
+#     '''
+#     @ param root: output root dir
+#     @ param mapping: product codes mapping DataFrame
+#     '''
+#     walker = os.walk(root, topdown=False)
+#     for current, dirs, files in walker:
+#         df_out = pandas.DataFrame(columns=COLUMNS)
+#         for file_ in files:
+#             df_out = df_out.append(pandas.load(file_))
+#         # level = current.split(file_)[0].replace('.pickle', '')
+#         level_idx = STRUCT_PROD.index(os.path.split(current)[1])
+# #        df_out.merge(
 
-def build_tree(src, root, struct):
-    """ Create output directory structure as defined with a metadata
-    dictionary.
-    """
-    full_path = os.path.join(root, *struct)
-    files = os.walk(src).next()[2]
-    for file_ in files:
-        os.renames(os.path.join(src, file_), os.path.join(full_path, file_))
-
-# def aggregate(filename):
-#     """ Aggregation magic
-#     - 
-#     """
-#     # FIXME: This is just a draft implementaton
-#     dirname = os.path.dirname(filename)
-#     outdir = os.path.join(os.path.pardir, dirname)
-# #    outname = #????
-#     meta = eval(open(os.path.join(dirname, '__meta__.py'), 'r').read())
-#     df = pandas.load(filename)
-#     stark = Stark(df, meta)
-#     aggregated = stark.aggregate()
-#  #   stark.save(os.path.join(outdir, outname)
+            
 
 def init(input_dir, ulisse_codes, countries, ums):
     """ Init environment:
@@ -140,12 +162,15 @@ def main(input_dir=None, root=None, start_year=None,
     # pivot by contry
     file_list, country_list, ul3000, ums_df = init(input_dir, ulisse_codes, countries, ums)
 
-    if _logger.getEffectiveLevel() == logging.DEBUG:
-        by_country(file_list, country_list[0], root, ul3000, ums_df, start_year)
-    else:
-        args = [(by_country, [file_list, country, root, ul3000, ums_df, start_year])
-                for country in country_list]
-        parallel_jobs.do_jobs_efficiently(args)
+    from_hs('UL3000', input_dir, root, ul3000, ums)
+    
+    # if _logger.getEffectiveLevel() == logging.DEBUG:
+    #     for country in country_list[40:]:
+    #         by_country(file_list, country, root, ul3000, ums_df, start_year)
+    # else:
+    #     args = [(by_country, [file_list, country, root, ul3000, ums_df, start_year])
+    #             for country in country_list]
+    #     parallel_jobs.do_jobs_efficiently(args)
 
     return 0
 
