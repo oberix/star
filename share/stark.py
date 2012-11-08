@@ -233,6 +233,10 @@ class Stark(GenericPickler):
     def cal(self):
         return self._cal
 
+    @property
+    def columns(self):
+        return self._DF.columns
+
     def update_vd(self, key, entry):
         ''' Update VD dictionary with a new entry.
         
