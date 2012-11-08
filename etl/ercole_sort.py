@@ -36,24 +36,23 @@ from share import Config
 from share import parallel_jobs
 from share import Stark
 
-COLUMNS = [
-    'R', 
-    'YEAR', 
-    'CODE',
-    'XER',
-    'MER', 
-    'X', 
-    'M', 
-    'K', 
-    'U',
-    'Q']
-
+COLUMNS = ['YEAR', 'CODE', 'XER', 'MER', 'R', 'X', 'M', 'K', 'U', 'Q']
 DIMENSIONS = ['XER', 'MER', 'YEAR', 'R', 'CODE']
+META = {
+    'YEAR': {},
+    'CODE': {},
+    'XER': {},
+    'MER': {},
+    'R': {},
+    'X': {},
+    'M': {},
+    'K': {},
+    'U': {},
+    'Q': {},
+}
 
-# TODO: evaluate from meta
 STRUCT_PROD = ['UL20', 'UL200', 'UL1000', 'UL3000']
 STRUCT_COUNTRY = ['area', 'country', 'region', 'province']
-AGGR_LVL = 'UL1000'
 
 _logger = logging.getLogger(sys.argv[0])
 
@@ -82,6 +81,27 @@ def _list_files(level, root):
             out.extend(_list_files(level-1, dir_))
     return out
 
+def _by_country(df, root, country, mapping):
+    ''' This function is userfull to run by_country in parallel jobs, but since
+    most of it's work is IO, it's not a real gain unless u have appropriate IO
+    hardware.
+    '''
+    try:
+        area = mapping.ix[country].replace(' ', '_')
+    except KeyError:
+        _logger.debug('Unused country %s in file %s', country, file_)
+        return
+    out_file = os.path.join(root, area, '.'.join([country, 'pickle']))
+    if not os.path.isfile(out_file):
+        out_df = pandas.DataFrame(columns=COLUMNS)
+    else:
+        out_df = pandas.load(out_file)
+    out_df = out_df.append(df, ignore_index=True, verify_integrity=False)
+    out_df = out_df.groupby(DIMENSIONS).sum().reset_index()
+    if not os.path.isdir(os.path.dirname(out_file)):
+        os.makedirs(os.path.dirname(out_file))
+    out_df.save(out_file)
+
 def by_country(level, in_path, root, mapping):
     ''' Reshape DataFrames classified by product code into DataFrame organized
     by country (ISO3 code). A product aggregation level can be specified.
@@ -91,28 +111,30 @@ def by_country(level, in_path, root, mapping):
     @ param root: output root path
     @ mapping: ISO3 code mapping DataFrame
     '''
-    files = _list_files(STRUCT_PROD.index(level), in_path)
+    out_files = {}
     # Make sure mapping is indicized by country
     mapping = mapping.reset_index().set_index('ISO3', drop=True)['AREA']
-    for country in mapping.index:
-        _logger.info('Aggregating by %s', country)
+    files = _list_files(STRUCT_PROD.index(level), in_path)
+    for idx, file_ in enumerate(files):
+        _logger.info('Inspecting file %s: %s', idx, file_)
         out_df = pandas.DataFrame(columns=COLUMNS)
-        area = mapping.ix[country].replace(' ', '_')
-        filename = '.'.join([country, 'pickle'])
-        fullpath = os.path.join(root, area, filename)
-        for file_ in files:
+        df = pandas.load(file_)
+        for country, group in df.groupby('XER'):
             try:
-                df = pandas.load(file_).groupby('XER').get_group(country).reset_index()
+                area = mapping.ix[country].replace(' ', '_')
             except KeyError:
-                # Country not present in the current df
+                _logger.debug('Unused country %s in file %s', country, file_)
                 continue
-            out_df = out_df.append(df, ignore_index=True, verify_integrity=False)
-            out_df = out_df.groupby(DIMENSIONS).sum()
-        _logger.debug('Writing %s', fullpath)
-        # If output path does not exists, create it
-        if not os.path.isdir(os.path.dirname(fullpath)):
-            os.makedirs(os.path.dirname(fullpath))
-        out_df.save(fullpath)
+            if not out_files.get(country):
+                out_files[country] = os.path.join(root, area, '.'.join([country, 'pickle']))
+                out_df = pandas.DataFrame(columns=COLUMNS)
+            else:
+                out_df = pandas.load(out_files[country])
+            out_df = out_df.append(group, ignore_index=True, verify_integrity=False)
+            out_df = out_df.groupby(DIMENSIONS).sum().reset_index()
+            if not os.path.isdir(os.path.dirname(out_files[country])):
+                os.makedirs(os.path.dirname(out_files[country]))
+            out_df.save(out_files[country])
 
 def _from_hs(level, in_path, root, code, group):
     ''' Aggregate form HS6digit into Ulisse classification.
@@ -213,6 +235,8 @@ def aggregate(root, mapping, struct=None):
                 raise ValueError("Struct must be one of (STRUCT_PROD | STRUCT_COUNTRY)")
             df = pandas.load(os.path.join(current, file_))
             df = df.merge(curr_mapping, left_on=fk, right_on=prev_level_name)
+            # df = df.merge(curr_mapping, left_on=fk, right_on=prev_level_name, how='left')
+            # df.fillna(0.0, inplace=True)
             # Drop old CODE and substitute with new one
             if struct is STRUCT_PROD:
                 del df[fk]
@@ -257,7 +281,7 @@ def main(input_dir=None, root=None, start_year=None,
     # Transform by ISO3 code and aggregate
     iso3_root = os.path.join(root, 'country')
     by_country('UL1000', ul_root, iso3_root, country_map)
-    aggregate(iso3_root, country_mapping, struct=STRUCT_CONTRY)
+    aggregate(iso3_root, country_map, struct=STRUCT_COUNTRY)
     
     return 0
 
