@@ -39,16 +39,16 @@ from share import Stark
 COLUMNS = ['YEAR', 'CODE', 'XER', 'MER', 'R', 'X', 'M', 'K', 'U', 'Q']
 DIMENSIONS = ['XER', 'MER', 'YEAR', 'R', 'CODE']
 META = {
-    'YEAR': {},
-    'CODE': {},
-    'XER': {},
-    'MER': {},
-    'R': {},
-    'X': {},
-    'M': {},
-    'K': {},
-    'U': {},
-    'Q': {},
+    'YEAR': {'TIP': 'D'},
+    'CODE': {'TIP': 'D'},
+    'XER': {'TIP': 'D'},
+    'MER': {'TIP': 'D'},
+    'R': {'TIP': 'D'},
+    'X': {'TIP': 'N'},
+    'M': {'TIP': 'N'},
+    'K': {'TIP': 'N'},
+    'U': {'TIP': 'N'},
+    'Q': {'TIP': 'N'},
 }
 
 STRUCT_PROD = ['UL20', 'UL200', 'UL1000', 'UL3000']
@@ -81,27 +81,6 @@ def _list_files(level, root):
             out.extend(_list_files(level-1, dir_))
     return out
 
-def _by_country(df, root, country, mapping):
-    ''' This function is userfull to run by_country in parallel jobs, but since
-    most of it's work is IO, it's not a real gain unless u have appropriate IO
-    hardware.
-    '''
-    try:
-        area = mapping.ix[country].replace(' ', '_')
-    except KeyError:
-        _logger.debug('Unused country %s in file %s', country, file_)
-        return
-    out_file = os.path.join(root, area, '.'.join([country, 'pickle']))
-    if not os.path.isfile(out_file):
-        out_df = pandas.DataFrame(columns=COLUMNS)
-    else:
-        out_df = pandas.load(out_file)
-    out_df = out_df.append(df, ignore_index=True, verify_integrity=False)
-    out_df = out_df.groupby(DIMENSIONS).sum().reset_index()
-    if not os.path.isdir(os.path.dirname(out_file)):
-        os.makedirs(os.path.dirname(out_file))
-    out_df.save(out_file)
-
 def by_country(level, in_path, root, mapping):
     ''' Reshape DataFrames classified by product code into DataFrame organized
     by country (ISO3 code). A product aggregation level can be specified.
@@ -117,9 +96,9 @@ def by_country(level, in_path, root, mapping):
     files = _list_files(STRUCT_PROD.index(level), in_path)
     for idx, file_ in enumerate(files):
         _logger.info('Inspecting file %s: %s', idx, file_)
-        out_df = pandas.DataFrame(columns=COLUMNS)
-        df = pandas.load(file_)
-        for country, group in df.groupby('XER'):
+        stark_curr = Stark.load(file_)
+        for country, group in stark_curr.DF.groupby('XER'):
+            stark_group = Stark(group, META)
             try:
                 area = mapping.ix[country].replace(' ', '_')
             except KeyError:
@@ -127,14 +106,13 @@ def by_country(level, in_path, root, mapping):
                 continue
             if not out_files.get(country):
                 out_files[country] = os.path.join(root, area, '.'.join([country, 'pickle']))
-                out_df = pandas.DataFrame(columns=COLUMNS)
+                stark_out = Stark(pandas.DataFrame(columns=COLUMNS), META)
             else:
-                out_df = pandas.load(out_files[country])
-            out_df = out_df.append(group, ignore_index=True, verify_integrity=False)
-            out_df = out_df.groupby(DIMENSIONS).sum().reset_index()
+                stark_out = Stark.load(out_files[country])
+            stark_out += stark_group
             if not os.path.isdir(os.path.dirname(out_files[country])):
                 os.makedirs(os.path.dirname(out_files[country]))
-            out_df.save(out_files[country])
+            stark_out.save(out_files[country])
 
 def _from_hs(level, in_path, root, code, group):
     ''' Aggregate form HS6digit into Ulisse classification.
@@ -145,8 +123,10 @@ def _from_hs(level, in_path, root, code, group):
     @ param code: target product code
     @ param group: other code converging into code.
     '''
-    _logger.info('Processing %s', code)
+    _logger.info('Aggregating by %s', code)
     df_out = pandas.DataFrame(columns=COLUMNS)
+    stark_out = Stark(df_out, META)
+    # Make the aggregation
     for hs in group['HS07']:
         try:
             df = pandas.load(os.path.join(in_path, '.'.join([hs, 'pickle'])))
@@ -155,9 +135,9 @@ def _from_hs(level, in_path, root, code, group):
             continue
         df['CODE'] = len(df) * [code]
         df.consolidate(inplace=True) # Should reduce memory usage
-        # TODO: Handle non summable quantities
-        df_out = df_out.append(df[COLUMNS], ignore_index=True, verify_integrity=False)
-        df_out = df_out.groupby(DIMENSIONS).sum().reset_index()
+        stark_tmp = Stark(df, META)
+        stark_out += stark_tmp
+    # Handle out path
     try:
         path = group[STRUCT_PROD[:STRUCT_PROD.index(level)]].ix[group.index[0]].tolist()
     except IndexError:
@@ -169,7 +149,8 @@ def _from_hs(level, in_path, root, code, group):
     # If output path does not exists, create it
     if not os.path.isdir(os.path.dirname(filename)):
         os.makedirs(os.path.dirname(filename))
-    df_out.save(filename)
+    _logger.debug('Saving %s', filename)
+    stark_out.save(filename)
 
 def from_hs(level, in_path, root, prod_map):
     ''' Convert DataFrames from HS6digit classification to Ulisse
@@ -183,10 +164,13 @@ def from_hs(level, in_path, root, prod_map):
     @ param root: root directory for output
     @ param prod_map: product codes mapping DataFrame
     ''' 
-    # TODO: use Starks!
     prod_groups = prod_map.groupby(level)
-    args = [(_from_hs, [level, in_path, root, code, group]) for code, group in prod_groups]
-    parallel_jobs.do_jobs_efficiently(args)
+    if _logger.getEffectiveLevel() <= logging.DEBUG:
+        for code, group in prod_groups:
+            _from_hs(level, in_path, root, code, group)
+    else:
+        args = [(_from_hs, [level, in_path, root, code, group]) for code, group in prod_groups]
+        parallel_jobs.do_jobs_efficiently(args)
         
 def aggregate(root, mapping, struct=None):
     ''' Aggregates DataFrames stored in Python pickle files. This function
@@ -221,6 +205,7 @@ def aggregate(root, mapping, struct=None):
                 prev_level_name = struct[idx + 1]
                 break
         df_out = pandas.DataFrame(columns=COLUMNS)
+        stark_out = Stark(df_out, META)
         # Select the mapping informations strictly needed for the current
         # aggregation. Merging with unnecessary data is a huge memory sink
         curr_mapping = mapping.groupby(level_name).get_group(out_code)
@@ -233,21 +218,17 @@ def aggregate(root, mapping, struct=None):
                 fk = 'XER'
             else: # pragma: no cover
                 raise ValueError("Struct must be one of (STRUCT_PROD | STRUCT_COUNTRY)")
-            df = pandas.load(os.path.join(current, file_))
+            df = pandas.load(os.path.join(current, file_)).DF
             df = df.merge(curr_mapping, left_on=fk, right_on=prev_level_name)
-            # df = df.merge(curr_mapping, left_on=fk, right_on=prev_level_name, how='left')
-            # df.fillna(0.0, inplace=True)
             # Drop old CODE and substitute with new one
             if struct is STRUCT_PROD:
                 del df[fk]
                 df.rename(columns={level_name: fk}, inplace=True)
-            # TODO: check if it's needed
-            #df.consolidate(inplace=True)
-            df_out = df_out.append(df[COLUMNS], ignore_index=True, verify_integrity=False)
-            df_out = df_out.groupby(DIMENSIONS).sum().reset_index()
+            stark_tmp = Stark(df, META)
+            stark_out += stark_tmp
         full_path = os.path.join(current, os.path.pardir, out_file)
         _logger.debug('Saving %s', full_path)
-        df_out.save(full_path)
+        stark_out.save(full_path)
 
 def init(input_dir, ulisse_codes, countries, ums):
     """ Init environment:
@@ -260,6 +241,7 @@ def init(input_dir, ulisse_codes, countries, ums):
     country_map = pandas.DataFrame.from_csv(countries).reset_index()
     file_list = [os.path.join(input_dir, file_)
                  for file_ in os.walk(input_dir).next()[2]]
+    # TODO: extend META with country_map and UL info
     return (file_list, country_map, ul3000, ums_df)
 
 def main(input_dir=None, root=None, start_year=None,
@@ -282,7 +264,7 @@ def main(input_dir=None, root=None, start_year=None,
     iso3_root = os.path.join(root, 'country')
     by_country('UL1000', ul_root, iso3_root, country_map)
     aggregate(iso3_root, country_map, struct=STRUCT_COUNTRY)
-    
+   
     return 0
 
 

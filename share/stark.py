@@ -25,19 +25,12 @@ import pandas
 import numpy
 import string
 
-BASEPATH = os.path.abspath(os.path.join(
-        os.path.dirname(__file__),
-        os.path.pardir))
-sys.path.append(BASEPATH)
-sys.path = list(set(sys.path))
-from share import GenericPickler
+from generic_pickler import GenericPickler
 
 TI_VALS = (
-    'elab'
+    'elab',
 )
-
 TIP_VALS = ['D', 'N', 'S', 'R']
-
 OPERATORS = {
     '+': '__add__',
     '-': '__sub__',
@@ -85,9 +78,8 @@ def _filter_tree(meta, outlist):
             ret[key] = val.copy()
             if val.get('child'):
                 ret[key]['child'] = _filter_tree(val['child'], outlist)
-        else:
-            if val.get('child'):
-                ret.update(_filter_tree(val['child'], outlist))
+        elif val.get('child'):
+            ret.update(_filter_tree(val['child'], outlist))
     return ret
  
 
@@ -135,6 +127,13 @@ class Stark(GenericPickler):
         """ Delegate to DataFrame.__repr__().
         """
         return repr(self._DF)
+
+    def __add__(self, other):
+        df = self._DF.append(other.DF, ignore_index=True, verify_integrity=False)
+        vd = self._VD
+        out_stark = Stark(df, VD=vd, env=self._env, LD=self.LD, TI=self.TI)
+        out_stark.rollup(inplace=True)
+        return out_stark
 
     def __getitem__(self, key):
         ''' Delegate to DataFrame.__setitem__().
@@ -299,7 +298,18 @@ class Stark(GenericPickler):
             file_ = self.LD
         if not os.path.exists(os.path.dirname(file_)):
             os.makedirs(os.path.dirname(file_))
+        self._env = None # cannot pickle finctions
         super(Stark, self).save(file_)
+
+    # TODO: Find a way to handle function calls accross namespaces (_env) and
+    # restore them when saving/loading pickles (maybe this is just not possible
+    # without reimplementing serialization)
+
+    # @staticmethod
+    # def load(file_):
+    #     """ Load object from a pickle """
+    #     ret = GenericPickler.load(file_)
+    #     ret._env = 
 
     def eval(self, func):
         ''' Evaluate a function with DataFrame columns'es placeholders.
@@ -308,6 +318,7 @@ class Stark(GenericPickler):
         func contains column's names preceded by '$', this will be substituted
         with actual column's reference before passing the whole string to
         eval().
+
 
         @ param func: a string rappresenting a valid python statement; the
             string can containt DataFrame columns'es placeholders in the form
@@ -374,7 +385,7 @@ class Stark(GenericPickler):
         except (IndexError, TypeError):
             return terms[0].__getattribute__(op)()
             
-    def aggregate(self, func='sum', dim=None, var=None):
+    def rollup(self, func='sum', dim=None, var=None, inplace=False):
         ''' Apply an aggregation function to the DataFrame. If the DataFrame
         contains datas that are calculated as a transformation of other columns
         from the same DataFrame, this will be re-calculated in the output one.
@@ -411,7 +422,12 @@ class Stark(GenericPickler):
         except AttributeError:
             df = group.aggregate(eval(func))[var].reset_index()
         # Set up output VD
-        vd = _filter_tree(self._vd, outkeys)
+        vd = _filter_tree(self._VD, outkeys)
+        if inplace:
+            self._DF = df
+            self._VD = vd
+            self._update()
+            return
         return Stark(df, VD=vd, env=self._env)
 
 
@@ -442,8 +458,12 @@ if __name__ == '__main__' :
     df = pandas.DataFrame(
         numpy.random.randn(nelems, len(cols)), columns=cols,
         index=index).sortlevel().reset_index()
+    df1 = pandas.DataFrame(
+        numpy.random.randn(nelems, len(cols)), columns=cols,
+        index=index).sortlevel().reset_index()
     # ... and a string column
     df['A'] = nelems * ['test']
+    df1['A'] = nelems * ['test']
 
     vd = {
         'region' : {
@@ -470,8 +490,37 @@ if __name__ == '__main__' :
                'ELA': "$B / $C * 100"},
         'E' : {'TIP': 'R',
                'ORD': 1, 
-               'ELA': ('/', ('+', 'C', 'D'), 100)}
+               'ELA': ('/', ('+', 'C', 'D'), 100)},
         }
 
-    s = Stark(df, VD=vd)
-    s1 = s.aggregate(numpy.sum)
+    vd1 = {
+        'region' : {
+            'TIP': 'D',
+            'child': {
+                'country': {
+                    'TIP': 'D',
+                    'DES': 'country',
+                    'child': {
+                        'city': {
+                            'TIP': 'D',
+                            'DES': 'city'}
+                        }
+                    }
+                }
+            },
+        'A' : {'TIP': 'S'},
+        'B' : {'TIP': 'N',
+               'ELA': None,},
+        'C' : {'TIP': 'N',
+               'ELA': None,},
+        'D' : {'TIP': 'R',
+               'ORD': 0,
+               'ELA': "$B / $C * 100"},
+        'E' : {'TIP': 'R',
+               'ORD': 1, 
+               'ELA': ('/', ('+', 'C', 'D'), 100)},
+        }
+
+
+    s = Stark(df, VD=vd, env=globals())
+    s1 = Stark(df1, VD=vd1, env=globals())

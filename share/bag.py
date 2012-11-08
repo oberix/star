@@ -24,7 +24,7 @@ import os
 import logging
 
 # Servabit libraries
-from share import GenericPickler
+from generic_pickler import GenericPickler
 
 __all__ = ['Bag']
 

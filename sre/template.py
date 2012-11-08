@@ -26,7 +26,8 @@ import os
 import string
 import logging
 
-from share import Bag
+import sre
+from share.bag import Bag
 from table import TexTable, HTMLTable
 from graph import TexGraph, HTMLGraph
 

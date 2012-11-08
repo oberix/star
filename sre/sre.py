@@ -25,12 +25,13 @@ import sys
 import subprocess
 import logging
 
-BASEPATH = os.path.abspath(os.path.join(
-        os.path.dirname(sys.argv[0]),
-        os.path.pardir))
-sys.path.append(BASEPATH)
-sys.path = list(set(sys.path))
+# BASEPATH = os.path.abspath(os.path.join(
+#         os.path.dirname(sys.argv[0]),
+#         os.path.pardir))
+# sys.path.append(BASEPATH)
+# sys.path = list(set(sys.path))
 
+import sre
 from share import Config
 import template
 
