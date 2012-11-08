@@ -244,7 +244,7 @@ def aggregate(root, mapping, struct=None):
             # Drop old CODE and substitute with new one
             if struct is STRUCT_PROD:
                 del df[fk]
-                df.rename(columns={level_name: fk}, inplace=True)
+                df = df.rename(columns={level_name: fk})
             stark_tmp = Stark(df, META)
             stark_out += stark_tmp
         full_path = os.path.join(current, os.path.pardir, out_file)
