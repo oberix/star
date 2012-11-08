@@ -50,8 +50,9 @@ META = {
     'Q': {'TIP': 'N'},
 }
 
-STRUCT_PROD = ['UL20', 'UL200', 'UL1000', 'UL3000']
-STRUCT_COUNTRY = ['AREA', 'ISO3']
+STRUCT_PROD = ('UL20', 'UL200', 'UL1000', 'UL3000')
+STRUCT_COUNTRY = ('AREA', 'ISO3')
+PRIMARYK = {STRUCT_PROD: 'CODE', STRUCT_COUNTRY: 'XER'}
 
 _logger = logging.getLogger(sys.argv[0])
 
@@ -145,7 +146,7 @@ def _from_hs(level, in_path, root, code, group):
         stark_out += stark_tmp
     # Handle out path
     try:
-        path = group[STRUCT_PROD[:STRUCT_PROD.index(level)]].ix[group.index[0]].tolist()
+        path = group[list(STRUCT_PROD[:STRUCT_PROD.index(level)])].ix[group.index[0]].tolist()
     except IndexError:
         # empty group
         return
@@ -179,6 +180,8 @@ def from_hs(level, in_path, root, prod_map):
         parallel_jobs.do_jobs_efficiently(args)
         
 def _total(root, files):
+    ''' 
+    '''
     stark_out = Stark(pandas.DataFrame(columns=COLUMNS), META)
     for file_ in files:
         stark_tmp = Stark.load(os.path.join(root, file_))
@@ -232,13 +235,7 @@ def aggregate(root, mapping, struct=None):
         curr_mapping = curr_mapping[[level_name, prev_level_name]].drop_duplicates()
         # Aggregate files
         for file_ in files:
-            # FIXME: Handle this choice with a global dict
-            if struct is STRUCT_PROD:
-                fk = 'CODE'
-            elif struct is STRUCT_COUNTRY:
-                fk = 'XER'
-            else: # pragma: no cover
-                raise ValueError("Struct must be one of (STRUCT_PROD | STRUCT_COUNTRY)")
+            fk = PRIMARYK[struct]
             df = pandas.load(os.path.join(current, file_)).DF
             df = df.merge(curr_mapping, left_on=fk, right_on=prev_level_name)
             # Drop old CODE and substitute with new one
@@ -251,22 +248,22 @@ def aggregate(root, mapping, struct=None):
         _logger.debug('Saving %s', full_path)
         stark_out.save(full_path)
 
-def init(input_dir, ulisse_codes, countries, ums):
+def init(input_dir, ulisse_codes, countries, uom):
     """ Init environment:
     - UL3000 mapping
     - country list
     - input file list
     """
     ul3000 = pandas.DataFrame.from_csv(ulisse_codes).reset_index()
-    ums_df = pandas.DataFrame.from_csv(ums).reset_index()
+    uom_df = pandas.DataFrame.from_csv(uom).reset_index()
     country_map = pandas.DataFrame.from_csv(countries).reset_index()
     file_list = [os.path.join(input_dir, file_)
                  for file_ in os.walk(input_dir).next()[2]]
     # TODO: extend META with country_map and UL info
-    return (file_list, country_map, ul3000, ums_df)
+    return (file_list, country_map, ul3000, uom_df)
 
 def main(input_dir=None, root=None, start_year=None,
-         countries=None, ulisse_codes=None, ums=None, 
+         countries=None, ulisse_codes=None, uom=None, 
          meta=None, product_tree=None, country_tree=None, 
          **kwargs):
     """
@@ -274,7 +271,7 @@ def main(input_dir=None, root=None, start_year=None,
     """
 
     # pivot by contry
-    file_list, country_map, ul3000, ums_df = init(input_dir, ulisse_codes, countries, ums)
+    file_list, country_map, ul3000, uom_df = init(input_dir, ulisse_codes, countries, uom)
 
     # Transform by UL codes and aggregate
     ul_root = os.path.join(root, 'prod')
