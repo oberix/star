@@ -108,7 +108,7 @@ def by_country(level, in_path, root, mapping):
     # Make sure mapping is indicized by country
     mapping = mapping.reset_index().set_index('ISO3', drop=True)['AREA']
     files = _list_files(STRUCT_PROD.index(level), in_path)
-    for idx, file_ in enumerate(files[:10]): # DEBUG: remove slice!
+    for idx, file_ in enumerate(files):
         _logger.info('Inspecting file %s: %s', idx, file_)
         stark_curr = Stark.load(file_)
         
@@ -232,6 +232,7 @@ def aggregate(root, mapping, struct=None):
         curr_mapping = curr_mapping[[level_name, prev_level_name]].drop_duplicates()
         # Aggregate files
         for file_ in files:
+            # FIXME: Handle this choice with a global dict
             if struct is STRUCT_PROD:
                 fk = 'CODE'
             elif struct is STRUCT_COUNTRY:
@@ -277,12 +278,12 @@ def main(input_dir=None, root=None, start_year=None,
 
     # Transform by UL codes and aggregate
     ul_root = os.path.join(root, 'prod')
-#    from_hs('UL3000', input_dir, ul_root, ul3000)
-#    aggregate(ul_root, ul3000)
+    from_hs('UL3000', input_dir, ul_root, ul3000)
+    aggregate(ul_root, ul3000)
  
     # Transform by ISO3 code and aggregate
     iso3_root = os.path.join(root, 'country')
-#    by_country('UL1000', ul_root, iso3_root, country_map)
+    by_country('UL1000', ul_root, iso3_root, country_map)
     aggregate(iso3_root, country_map, struct=STRUCT_COUNTRY)
    
     return 0
