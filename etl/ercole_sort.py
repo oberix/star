@@ -21,7 +21,6 @@
 
 import os
 import sys
-import csv
 import pandas
 import logging
 
@@ -31,7 +30,7 @@ BASEPATH = os.path.abspath(os.path.join(
 sys.path.append(BASEPATH)
 sys.path = list(set(sys.path))
 
-import etl
+#import etl
 from share import Config
 from share import parallel_jobs
 from share import Stark
@@ -50,6 +49,8 @@ META = {
     'Q': {'TIP': 'N'},
 }
 
+# This are tuples because they are used as dict keys (and don't need to be
+# changed anyway)
 STRUCT_PROD = ('UL20', 'UL200', 'UL1000', 'UL3000')
 STRUCT_COUNTRY = ('AREA', 'ISO3')
 PRIMARYK = {STRUCT_PROD: 'CODE', STRUCT_COUNTRY: 'XER'}
@@ -65,14 +66,14 @@ def _list_files(level, root):
     @ return: a list of paths
     '''
     out = []
-    found = (root, [], [])
+    found = ([], [])
     for name in os.listdir(root):
         fullname = os.path.join(root, name)
         if os.path.isfile(fullname):
-            found[2].append(fullname)
-        elif os.path.isdir(fullname):
             found[1].append(fullname)
-    curr, dirs, files = found
+        elif os.path.isdir(fullname):
+            found[0].append(fullname)
+    dirs, files = found
     if level <= 0:
         # Target level reached
         out.extend(files)
@@ -82,6 +83,18 @@ def _list_files(level, root):
     return out
 
 def _by_country(root, mapping, country, group):
+    '''Reshape DataFrames classified by product code into DataFrame organized
+    by country (ISO3 code). A product aggregation level can be specified.
+
+    This is the actual implementation, it's meant to be called by by_country()
+    as separate process or iterativly.
+
+    @ param root: output root path
+    @ mapping: ISO3 code mapping DataFrame
+    @ country: ISO3 code on which we are aggregating
+    @ group: DataFrame containing records to be added
+
+    ''' 
     stark_group = Stark(group, META)
     try:
         area = mapping.ix[country].replace(' ', '_')
@@ -89,12 +102,15 @@ def _by_country(root, mapping, country, group):
         return
     out_file = os.path.join(root, area, '.'.join([country, 'pickle']))
     if not os.path.isfile(out_file):
+        # create dir if it does not exists
+        if not os.path.isdir(os.path.dirname(out_file)):
+            os.makedirs(os.path.dirname(out_file))
+        # Create a brand new Stark
         stark_out = Stark(pandas.DataFrame(columns=COLUMNS), META)
     else:
         stark_out = Stark.load(out_file)
     stark_out += stark_group
-    if not os.path.isdir(os.path.dirname(out_file)):
-        os.makedirs(os.path.dirname(out_file))
+    stark_out.DF.consolidate(inplace=True)
     stark_out.save(out_file)
 
 def by_country(level, in_path, root, mapping):
@@ -105,20 +121,23 @@ def by_country(level, in_path, root, mapping):
     @ param in_path: input files root path
     @ param root: output root path
     @ mapping: ISO3 code mapping DataFrame
+
     '''
     # Make sure mapping is indicized by country
     mapping = mapping.reset_index().set_index('ISO3', drop=True)['AREA']
     files = _list_files(STRUCT_PROD.index(level), in_path)
-    for idx, file_ in enumerate(files):
+    for idx, file_ in enumerate(files[14:15]):
         _logger.info('Inspecting file %s: %s', idx, file_)
-        stark_curr = Stark.load(file_)
-        
+        stark_curr = Stark.load(file_)    
+        groups = stark_curr.DF.groupby('XER')
         if _logger.getEffectiveLevel() <= logging.DEBUG:
-            for country, group in stark_curr.DF.groupby('XER'):
+            # Single process
+            for country, group in groups:
                 _by_country(root, mapping, country, group)
         else:
+            # Multiprocess
             args = [(_by_country, [root, mapping, country, group])
-                    for country, group in stark_curr.DF.groupby('XER')]
+                    for country, group in groups]
             parallel_jobs.do_jobs_efficiently(args)
 
 def _from_hs(level, in_path, root, code, group, start_year):
@@ -129,6 +148,7 @@ def _from_hs(level, in_path, root, code, group, start_year):
     @ param root: root directory for output
     @ param code: target product code
     @ param group: other code converging into code.
+
     '''
     _logger.info('Converting to %s', code)
     stark_out = Stark(pandas.DataFrame(columns=COLUMNS), META)
@@ -145,7 +165,8 @@ def _from_hs(level, in_path, root, code, group, start_year):
         df.consolidate(inplace=True) # Should reduce memory usage
         stark_tmp = Stark(df, META)
         stark_out += stark_tmp
-    # Handle out path
+    # Build the out path by fetching the current code's record and
+    # concatenating it's ancestors.
     try:
         path = group[list(STRUCT_PROD[:STRUCT_PROD.index(level)])].ix[group.index[0]].tolist()
     except IndexError:
@@ -172,6 +193,7 @@ def from_hs(level, in_path, root, prod_map, start_year):
     @ param root: root directory for output
     @ param prod_map: product codes mapping DataFrame
     @ param start_year: record must have YEAR >= start_year
+
     ''' 
     prod_groups = prod_map.groupby(level)
     if _logger.getEffectiveLevel() <= logging.DEBUG:
@@ -181,18 +203,6 @@ def from_hs(level, in_path, root, prod_map, start_year):
         args = [(_from_hs, [level, in_path, root, code, group, start_year]) for code, group in prod_groups]
         parallel_jobs.do_jobs_efficiently(args)
         
-def _total(root, files, primary_key):
-    ''' 
-    '''
-    stark_out = Stark(pandas.DataFrame(columns=COLUMNS), META)
-    for file_ in files:
-        stark_in = Stark.load(os.path.join(root, file_))
-        stark_in.DF[primary_key] = stark_in.DF[primary_key].map({stark_in.DF[primary_key].unique()[0]: 'TOT'})
-        stark_out += stark_in
-        stark_out.DF.consolidate()
-    filename = '_'.join([os.path.basename(root.rstrip(os.path.sep)), 'TOT.pickle'])
-    stark_out.save(os.path.join(root, os.path.pardir, filename))
-
 def aggregate(root, mapping, struct=None):
     ''' Aggregates DataFrames stored in Python pickle files. This function
     performs a bottom-up walk of a directory subtree, aggregating DataFrames in
@@ -216,34 +226,29 @@ def aggregate(root, mapping, struct=None):
             for fname in os.listdir(current):
                 if os.path.isfile(os.path.join(current, fname)):
                     files.append(fname)
+        # FIXME: Relay on file names to find codes is not very safe.
         if current == root:
-            # root reached: evaluate total and exit
-            _total(root, files, primary_key)
-            return
-        out_code = os.path.split(current)[1]
-        _logger.info('Aggregating by %s', out_code)
-        out_file = '.'.join([out_code, 'pickle'])
-        level_name = ''
-        prev_level_name = ''
-        # Determine what's the level of aggregation
-        for idx, name in enumerate(struct):
-            # FIXME: replacing '_' is needed for current AREA names, will change in future verions
-            if len(mapping.ix[mapping[name] == out_code.replace('_', ' ')]) > 0:
-                level_name = name
-                prev_level_name = struct[idx + 1]
-                break
+            # root reached: evaluate total
+            out_code = 'TOT'
+            out_file = '_'.join([os.path.basename(root.rstrip(os.path.sep)), 'TOT.pickle'])
+        else:
+            out_code = os.path.split(current)[1]
+            out_file = '.'.join([out_code, 'pickle'])
         # Aggregate files
+        _logger.info('Aggregating by %s', out_code)
         stark_out = Stark(pandas.DataFrame(columns=COLUMNS), META)
         for file_ in files:
-            df = Stark.load(os.path.join(current, file_)).DF
-            # FIXME: code is determined by the file name, this is not very reliable!
-            code = os.path.basename(file_).replace('.pickle', '')
-            df[level_name] = df[primary_key].map({code: out_code})
-            # Drop old CODE and substitute with new one
-            del df[primary_key]
-            df = df.rename(columns={level_name: primary_key})
-            stark_tmp = Stark(df, META)
-            stark_out += stark_tmp
+            # Find in_code
+            stark_in = Stark.load(os.path.join(current, file_))
+            try:
+                in_code = stark_in.DF[primary_key].unique()[0]
+            except IndexError:
+                # Empty DataFrame
+                continue
+            # Sunstitute in_code with out_code in source DF
+            stark_in.DF[primary_key] = stark_in.DF[primary_key].map({in_code: out_code})
+            stark_out += stark_in
+            stark_in.DF.consolidate(inplace=True) # Saves a lot of memory here!
         full_path = os.path.join(current, os.path.pardir, out_file)
         _logger.debug('Saving %s', full_path)
         stark_out.save(full_path)
@@ -253,25 +258,23 @@ def init(input_dir, ulisse_codes, countries, uom):
     - UL3000 mapping
     - country list
     - input file list
+
     """
     ul3000 = pandas.DataFrame.from_csv(ulisse_codes).reset_index()
     uom_df = pandas.DataFrame.from_csv(uom).reset_index()
     country_map = pandas.DataFrame.from_csv(countries).reset_index()
-    file_list = [os.path.join(input_dir, file_)
-                 for file_ in os.walk(input_dir).next()[2]]
     # TODO: extend META with country_map and UL info
-    return (file_list, country_map, ul3000, uom_df)
+    return (country_map, ul3000, uom_df)
 
 def main(input_dir=None, root=None, start_year=None,
          countries=None, ulisse_codes=None, uom=None, 
-         meta=None, product_tree=None, country_tree=None, 
-         **kwargs):
+         meta=None, **kwargs):
     """
     Main procedure:
     """
 
     # pivot by contry
-    file_list, country_map, ul3000, uom_df = init(input_dir, ulisse_codes, countries, uom)
+    country_map, ul3000, uom_df = init(input_dir, ulisse_codes, countries, uom)
 
     # Transform by UL codes and aggregate
     ul_root = os.path.join(root, 'prod')
