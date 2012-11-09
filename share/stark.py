@@ -24,6 +24,7 @@ import os
 import pandas
 import numpy
 import string
+import copy
 
 from generic_pickler import GenericPickler
 

@@ -121,7 +121,7 @@ def by_country(level, in_path, root, mapping):
                     for country, group in stark_curr.DF.groupby('XER')]
             parallel_jobs.do_jobs_efficiently(args)
 
-def _from_hs(level, in_path, root, code, group):
+def _from_hs(level, in_path, root, code, group, start_year):
     ''' Aggregate form HS6digit into Ulisse classification.
 
     @ param level: aggregation level
@@ -130,16 +130,17 @@ def _from_hs(level, in_path, root, code, group):
     @ param code: target product code
     @ param group: other code converging into code.
     '''
-    _logger.info('Aggregating by %s', code)
-    df_out = pandas.DataFrame(columns=COLUMNS)
-    stark_out = Stark(df_out, META)
+    _logger.info('Converting to %s', code)
+    stark_out = Stark(pandas.DataFrame(columns=COLUMNS), META)
     # Make the aggregation
     for hs in group['HS07']:
+        in_file = os.path.join(in_path, '.'.join([hs, 'pickle']))
         try:
-            df = pandas.load(os.path.join(in_path, '.'.join([hs, 'pickle'])))
+            df = pandas.load(in_file)
         except IOError:
             # File does not exists
             continue
+        df = df.ix[df['YEAR'] >= start_year]
         df['CODE'] = len(df) * [code]
         df.consolidate(inplace=True) # Should reduce memory usage
         stark_tmp = Stark(df, META)
@@ -159,7 +160,7 @@ def _from_hs(level, in_path, root, code, group):
     _logger.debug('Saving %s', filename)
     stark_out.save(filename)
 
-def from_hs(level, in_path, root, prod_map):
+def from_hs(level, in_path, root, prod_map, start_year):
     ''' Convert DataFrames from HS6digit classification to Ulisse
     classification.
 
@@ -170,23 +171,26 @@ def from_hs(level, in_path, root, prod_map):
     @ param in_path: list of input files
     @ param root: root directory for output
     @ param prod_map: product codes mapping DataFrame
+    @ param start_year: record must have YEAR >= start_year
     ''' 
     prod_groups = prod_map.groupby(level)
     if _logger.getEffectiveLevel() <= logging.DEBUG:
         for code, group in prod_groups:
-            _from_hs(level, in_path, root, code, group)
+            _from_hs(level, in_path, root, code, group, start_year)
     else:
-        args = [(_from_hs, [level, in_path, root, code, group]) for code, group in prod_groups]
+        args = [(_from_hs, [level, in_path, root, code, group, start_year]) for code, group in prod_groups]
         parallel_jobs.do_jobs_efficiently(args)
         
-def _total(root, files):
+def _total(root, files, primary_key):
     ''' 
     '''
     stark_out = Stark(pandas.DataFrame(columns=COLUMNS), META)
     for file_ in files:
-        stark_tmp = Stark.load(os.path.join(root, file_))
-        stark_out += stark_tmp
-    filename = '_'.join([os.path.basename(root), 'TOT.pickle'])
+        stark_in = Stark.load(os.path.join(root, file_))
+        stark_in.DF[primary_key] = stark_in.DF[primary_key].map({stark_in.DF[primary_key].unique()[0]: 'TOT'})
+        stark_out += stark_in
+        stark_out.DF.consolidate()
+    filename = '_'.join([os.path.basename(root.rstrip(os.path.sep)), 'TOT.pickle'])
     stark_out.save(os.path.join(root, os.path.pardir, filename))
 
 def aggregate(root, mapping, struct=None):
@@ -200,6 +204,7 @@ def aggregate(root, mapping, struct=None):
     walker = os.walk(root, topdown=False)
     if struct is None:
         struct = STRUCT_PROD
+    primary_key = PRIMARYK[struct]
     for current, dirs, files in walker:
         if len(files) == 0:
             # XXX: Cludgy workaround to os.walk() behaviour: when doing a bottom-up
@@ -213,30 +218,30 @@ def aggregate(root, mapping, struct=None):
                     files.append(fname)
         if current == root:
             # root reached: evaluate total and exit
-            _total(root, files)
+            _total(root, files, primary_key)
             return
         out_code = os.path.split(current)[1]
         _logger.info('Aggregating by %s', out_code)
         out_file = '.'.join([out_code, 'pickle'])
         level_name = ''
         prev_level_name = ''
+        # Determine what's the level of aggregation
         for idx, name in enumerate(struct):
             # FIXME: replacing '_' is needed for current AREA names, will change in future verions
             if len(mapping.ix[mapping[name] == out_code.replace('_', ' ')]) > 0:
                 level_name = name
                 prev_level_name = struct[idx + 1]
                 break
-        stark_out = Stark(pandas.DataFrame(columns=COLUMNS), META)
         # Aggregate files
-        fk = PRIMARYK[struct]
+        stark_out = Stark(pandas.DataFrame(columns=COLUMNS), META)
         for file_ in files:
             df = Stark.load(os.path.join(current, file_)).DF
             # FIXME: code is determined by the file name, this is not very reliable!
             code = os.path.basename(file_).replace('.pickle', '')
-            df[level_name] = df[fk].map({code: out_code})
+            df[level_name] = df[primary_key].map({code: out_code})
             # Drop old CODE and substitute with new one
-            del df[fk]
-            df = df.rename(columns={level_name: fk})
+            del df[primary_key]
+            df = df.rename(columns={level_name: primary_key})
             stark_tmp = Stark(df, META)
             stark_out += stark_tmp
         full_path = os.path.join(current, os.path.pardir, out_file)
@@ -269,8 +274,8 @@ def main(input_dir=None, root=None, start_year=None,
     file_list, country_map, ul3000, uom_df = init(input_dir, ulisse_codes, countries, uom)
 
     # Transform by UL codes and aggregate
-    ul_root = os.path.join(root, 'prod/E3')
-    from_hs('UL3000', input_dir, ul_root, ul3000)
+    ul_root = os.path.join(root, 'prod')
+    from_hs('UL3000', input_dir, ul_root, ul3000, start_year)
     aggregate(ul_root, ul3000)
  
     # Transform by ISO3 code and aggregate
