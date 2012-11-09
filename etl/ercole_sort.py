@@ -207,7 +207,7 @@ def aggregate(root, mapping, struct=None):
             # iteration itself is subsequent to a depth-first walk through the
             # directory tree; files are not listed when the algorithm yields a
             # parent node, but when it reach it in the initial depth-first
-            # walk.
+            # exploration.
             for fname in os.listdir(current):
                 if os.path.isfile(os.path.join(current, fname)):
                     files.append(fname)
@@ -226,22 +226,17 @@ def aggregate(root, mapping, struct=None):
                 level_name = name
                 prev_level_name = struct[idx + 1]
                 break
-        df_out = pandas.DataFrame(columns=COLUMNS)
-        stark_out = Stark(df_out, META)
-        # Select the mapping informations strictly needed for the current
-        # aggregation. Merging with unnecessary data is a huge memory sink
-        # FIXME: replacing '_' is needed for current AREA names, will change in future verions
-        curr_mapping = mapping.groupby(level_name).get_group(out_code.replace('_', ' '))
-        curr_mapping = curr_mapping[[level_name, prev_level_name]].drop_duplicates()
+        stark_out = Stark(pandas.DataFrame(columns=COLUMNS), META)
         # Aggregate files
+        fk = PRIMARYK[struct]
         for file_ in files:
-            fk = PRIMARYK[struct]
-            df = pandas.load(os.path.join(current, file_)).DF
-            df = df.merge(curr_mapping, left_on=fk, right_on=prev_level_name)
+            df = Stark.load(os.path.join(current, file_)).DF
+            # FIXME: code is determined by the file name, this is not very reliable!
+            code = os.path.basename(file_).replace('.pickle', '')
+            df[level_name] = df[fk].map({code: out_code})
             # Drop old CODE and substitute with new one
-            if struct is STRUCT_PROD:
-                del df[fk]
-                df = df.rename(columns={level_name: fk})
+            del df[fk]
+            df = df.rename(columns={level_name: fk})
             stark_tmp = Stark(df, META)
             stark_out += stark_tmp
         full_path = os.path.join(current, os.path.pardir, out_file)
@@ -274,7 +269,7 @@ def main(input_dir=None, root=None, start_year=None,
     file_list, country_map, ul3000, uom_df = init(input_dir, ulisse_codes, countries, uom)
 
     # Transform by UL codes and aggregate
-    ul_root = os.path.join(root, 'prod')
+    ul_root = os.path.join(root, 'prod/E3')
     from_hs('UL3000', input_dir, ul_root, ul3000)
     aggregate(ul_root, ul3000)
  
