@@ -23,6 +23,10 @@ import os
 import sys
 import pandas
 import logging
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 
 BASEPATH = os.path.abspath(os.path.join(
         os.path.dirname(__file__),
@@ -105,13 +109,42 @@ def _by_country(root, mapping, country, group):
         # create dir if it does not exists
         if not os.path.isdir(os.path.dirname(out_file)):
             os.makedirs(os.path.dirname(out_file))
-        # Create a brand new Stark
-        stark_out = Stark(pandas.DataFrame(columns=COLUMNS), META)
+        # Create a brand new Stark        
+        stark_group.save(out_file)
     else:
-        stark_out = Stark.load(out_file)
-    stark_out += stark_group
-    stark_out.DF.consolidate(inplace=True)
-    stark_out.save(out_file)
+        fd = open(out_file, 'ab')
+        try:
+            pickle.dump(stark_group, fd, protocol=pickle.HIGHEST_PROTOCOL)
+        finally:
+            fd.close()
+
+def _consolidate(file_):
+    ''' Read Starks from a pickle and add them together, finally it saves back
+    the result in the original file.
+    
+    @ param file_: path to the file to consolidate.
+    '''
+    _logger.debug('Consolidating %s', file_)
+    stark_out = Stark(pandas.DataFrame(columns=COLUMNS), META)
+    fd = open(file_, 'r')
+    while True:
+        try:
+            stark_curr = pickle.load(fd)
+        except EOFError:
+            # EOF reached
+            break
+        stark_out += stark_curr
+    fd.close()
+    stark_out.save(file_)
+
+def _test_by_country(file_, root, mapping):
+    ''' Utility function to debug _by_country() procedure.
+    '''
+    stark_curr = Stark.load(file_)    
+    groups = stark_curr.DF.groupby('XER')
+    # Single process
+    for country, group in groups:
+        _by_country(root, mapping, country, group)
 
 def by_country(level, in_path, root, mapping):
     ''' Reshape DataFrames classified by product code into DataFrame organized
@@ -126,19 +159,30 @@ def by_country(level, in_path, root, mapping):
     # Make sure mapping is indicized by country
     mapping = mapping.reset_index().set_index('ISO3', drop=True)['AREA']
     files = _list_files(STRUCT_PROD.index(level), in_path)
-    for idx, file_ in enumerate(files[14:15]):
+    for idx, file_ in enumerate(files):
         _logger.info('Inspecting file %s: %s', idx, file_)
-        stark_curr = Stark.load(file_)    
-        groups = stark_curr.DF.groupby('XER')
         if _logger.getEffectiveLevel() <= logging.DEBUG:
-            # Single process
-            for country, group in groups:
-                _by_country(root, mapping, country, group)
+            # DEBUG: execute in a single process and take timig
+            import timeit
+            t = timeit.Timer(lambda: _test_by_country(file_, root, mapping), 'gc.enable()')
+            _logger.debug('Time: %s sec', t.timeit(number=1))
         else:
-            # Multiprocess
+            # Run multiprocess
+            stark_curr = Stark.load(file_)
+            groups = stark_curr.DF.groupby('XER')
             args = [(_by_country, [root, mapping, country, group])
                     for country, group in groups]
             parallel_jobs.do_jobs_efficiently(args)
+    # Consolidate pickles
+    files = _list_files(STRUCT_COUNTRY.index('ISO3'), root)
+    if _logger.getEffectiveLevel() <= logging.DEBUG:
+        for file_ in files:
+            t = timeit.Timer(lambda: _consolidate(file_), 'gc.enable()')
+            _logger.debug('Time: %s sec', t.timeit(number=1))
+    else:
+        # Run multiprocess
+        args = [(_consolidate, [file_]) for file_ in files]
+        parallel_jobs.do_jobs_efficiently(args)
 
 def _from_hs(level, in_path, root, code, group, start_year):
     ''' Aggregate form HS6digit into Ulisse classification.
@@ -268,7 +312,8 @@ def init(input_dir, ulisse_codes, countries, uom):
 
 def main(input_dir=None, root=None, start_year=None,
          countries=None, ulisse_codes=None, uom=None, 
-         meta=None, **kwargs):
+         country_aggr_level='UL20', prod_aggr_level='UL3000',
+         **kwargs):
     """
     Main procedure:
     """
@@ -278,12 +323,12 @@ def main(input_dir=None, root=None, start_year=None,
 
     # Transform by UL codes and aggregate
     ul_root = os.path.join(root, 'prod')
-    from_hs('UL3000', input_dir, ul_root, ul3000, start_year)
+    from_hs(prod_aggr_level, input_dir, ul_root, ul3000, start_year)
     aggregate(ul_root, ul3000)
  
     # Transform by ISO3 code and aggregate
     iso3_root = os.path.join(root, 'country')
-    by_country('UL1000', ul_root, iso3_root, country_map)
+    by_country(country_aggr_level, ul_root, iso3_root, country_map)
     aggregate(iso3_root, country_map, struct=STRUCT_COUNTRY)
    
     return 0
