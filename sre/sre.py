@@ -25,11 +25,11 @@ import sys
 import subprocess
 import logging
 
-# BASEPATH = os.path.abspath(os.path.join(
-#         os.path.dirname(sys.argv[0]),
-#         os.path.pardir))
-# sys.path.append(BASEPATH)
-# sys.path = list(set(sys.path))
+BASEPATH = os.path.abspath(os.path.join(
+        os.path.dirname(sys.argv[0]),
+        os.path.pardir))
+sys.path.append(BASEPATH)
+sys.path = list(set(sys.path))
 
 import sre
 from share import Config
@@ -93,7 +93,8 @@ def _compile_tex(file_, template, dest, fds):
     finally:
         logfd.close()
     # close temporary files (those created by TexGraph), causing deletion.
-    map(lambda fd: fd.close(), fds)
+    for fd in fds:
+        fd.close()
     if ret > 0:
         _logger.warning(
             "texi2pdf exited with bad exit status, you can inspect what went wrong in %s", 
@@ -121,35 +122,41 @@ def sre(src_path, config=None, **kwargs):
 
     '''
     config = _load_config(src_path, confpath=config)
-    templ_path = 'main.tex'
+    templ_file = 'main.tex'
     global _logger
     _logger = logging.getLogger('sre')
-
     try:
-        templ_path = config['template']
+        templ_file = config['template']
+        templ_path = os.path.dirname(templ_file)
     except KeyError:
         if os.path.isfile(os.path.join(src_path, 'main.tex')):
-            templ_path = os.path.join(src_path, 'main.tex')
+            templ_file = os.path.join(src_path, 'main.tex')
 	elif os.path.isfile(os.path.join(src_path, 'main.html')):
-            templ_path = os.path.join(src_path, 'main.html')
+            templ_file = os.path.join(src_path, 'main.html')
+        templ_path = src_path
     
     # Identify type just from filename suffix
-    if templ_path.endswith('.tex'):
-        templ = template.TexSreTemplate(src_path, config=config)
-        report, fd_list = templ.report()
-        if not isinstance(report, str):
-            # Error, return errno
-            return report
-        return _compile_tex(report, templ_path, 
-                            config.get('dest_path', os.path.dirname(templ_path)), 
+    # FIXME: this part is a bit messy, expetially for LaTeX with multiple files
+    if templ_file.endswith('.tex'):
+        for file_ in os.listdir(templ_path):
+            if not file_.endswith('_out.tex') and file_.endswith('.tex'):
+                templ = template.TexSreTemplate(os.path.join(templ_path, file_), config=config)
+                report, fd_list = templ.report()
+                if not isinstance(report, str):
+                    # Error, return errno
+                    return report
+        return _compile_tex(templ_file.replace('.tex', '_out.tex'), templ_file, 
+                            config.get('dest_path', os.path.dirname(templ_file)), 
                             fd_list)
-    elif templ_path.endswith('.html'):
-        templ = template.HTMLSreTemplate(src_path, config=config)
-        report = templ.report()
-        if not isinstance(report, str):
-            # Error, return errno
-            return report
-    else:
+    elif templ_file.endswith('.html'):
+        for file_ in os.listdir(templ_path):
+            if file_.endswith('.html'):
+                templ = template.HTMLSreTemplate(file_, config=config)
+                report = templ.report()
+                if not isinstance(report, str):
+                    # Error, return errno
+                    return report
+    else: 
         _logger.error("Could not find a valid template, exiting.")
         return 1
     return 0

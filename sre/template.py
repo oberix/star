@@ -43,16 +43,12 @@ class AbstractSreTemplate(string.Template):
     _suffix = None
     _suffix_out = None
 
-    def __init__(self, src_path, config=None):
-        self._src_path = os.path.abspath(src_path)
+    def __init__(self, templ_path, config=None):
+        self._src_path = os.path.dirname(os.path.abspath(templ_path))
 	self._logger = logging.getLogger(type(self).__name__)
         self._fds = list() # list of opened file descriptors
 	# load template
-	try:
-	    self._templ_path = config['template']
-	except KeyError:
-            self._templ_path = os.path.join(
-                src_path, ''.join(['main', self._suffix]))
+        self._templ_path = templ_path
 	self._load_template(self._templ_path)
 	# load Bags
 	try:
@@ -203,12 +199,31 @@ class TexSreTemplate(AbstractSreTemplate):
     _suffix = '.tex'
     _suffix_out = '_out.tex'
 
+    input_re = [re.compile("\\import{.*}"), 
+                re.compile("\\input{.*}")]
+
+    def _substitute_includes(self):
+        ''' Change input and includes LaTeX statements inside a template to
+        refere to the _out files
+        ''' 
+        for regexp in TexSreTemplate.input_re:
+            matches = re.findall(regexp, self.template)
+            for match in matches:
+                repl = match.split('}')
+                repl.remove('')
+                repl.append('out')
+                repl = ''.join(['_'.join(repl), '}'])
+                self.template = self.template.replace(match, repl)
+
     def _make_table(self, data, **kwargs):
         return  TexTable(data, **kwargs)
 
     def _make_graph(self, data, **kwargs):
         return  TexGraph(data, **kwargs)
 
+    def report(self, **kwargs):
+        self._substitute_includes()
+        return super(TexSreTemplate, self).report(**kwargs)
 
 class HTMLSreTemplate(AbstractSreTemplate):
     ''' A custom template class to match the SRE placeholders.
