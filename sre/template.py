@@ -40,8 +40,8 @@ class AbstractSreTemplate(string.Template):
     '''
 
     comment = "#.*" # just an example with Python comments.
-    _suffix = None
-    _suffix_out = None
+    _suffix = None # Template file suffix
+    _suffix_out = None # Output file suffix
 
     def __init__(self, templ_path, config=None):
         self._src_path = os.path.dirname(os.path.abspath(templ_path))
@@ -195,7 +195,7 @@ class TexSreTemplate(AbstractSreTemplate):
 
     delimiter = '\SRE'
     idpattern = '[_a-z][_a-z0-9.]*' 
-    comment = "%.*"
+    comment = "%.*" 
     _suffix = '.tex'
     _suffix_out = '_out.tex'
 

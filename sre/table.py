@@ -27,8 +27,8 @@ __author__ = "Marco Pattaro <marco.pattaro@servabit.it>"
 __version__ = "1.0"
 __all__ = ['TexTable', 'unique_list', 'escape']
 
-OPEN_TEX_TAB = """\\begin{longtabu} spread \\linewidth"""
-CLOSE_TEX_TAB = """\\end{longtabu}"""
+OPEN_TEX_TAB = """\\begin{tabu} spread \\linewidth"""
+CLOSE_TEX_TAB = """\\end{tabu}"""
 
 # pylint: disable=W1401
 
@@ -248,7 +248,7 @@ class TexTable(Table):
                     '} \\\ \\tabucline- \\endfoot \n'])
         return ret
 
-    def _make_data(self):
+    def _make_body(self):
         ''' Prepare data for TeX table 
         
         @ return: str
@@ -308,7 +308,7 @@ class TexTable(Table):
             self._make_preamble(),
             headers,
             self._make_footer(),
-            self._make_data(),
+            self._make_body(),
             ]
         out.append(CLOSE_TEX_TAB)
         out = str().join(out)
