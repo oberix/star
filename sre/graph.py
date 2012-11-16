@@ -19,6 +19,8 @@
 #
 ##############################################################################
 
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib import rc
 import logging
@@ -35,6 +37,7 @@ FIGSIZE = { # (w, h) in inches
     'dinamic': (6.360, 2.380),
     'square': (6.360, 6.360),
     'flag': (3.180, 9.52),
+    'scpaese': (8.417, 5.264),
 }
 
 class Graph(object):
@@ -136,7 +139,7 @@ class Graph(object):
         ax = fig.add_subplot(1,1,1, axisbg='#eeefff', autoscale_on=True,
                              adjustable="datalim")
         # TODO: consider moving ax setting in concrete Plotter implementation
-        ax.set_xlim(self._lax.min(), self._lax.max())
+        #ax.set_xlim(self._lax.min(), self._lax.max())
         ax.grid(True)
         lines = list()
         labels = list()
