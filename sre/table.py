@@ -29,8 +29,8 @@ __all__ = ['TexTable', 'unique_list', 'escape']
 
 OPEN_TEX_TAB = {'tab': """\\begin{tabu} spread \\linewidth""",
                 'ltab': """\\begin{longtabu} spread \\linewidth"""}
-CLOSE_TEX_TAB = {"""\\end{tabu}""",
-                 """\\end{longtabu}"""}
+CLOSE_TEX_TAB = {'tab':"""\\end{tabu}""",
+                 'ltab':"""\\end{longtabu}"""}
 
 
 # pylint: disable=W1401
@@ -288,8 +288,9 @@ class TexTable(Table):
                 else:
                     try:
                         # TODO: apply translation
-                        out_record.append(escape(elem.encode('utf-8')))
-                    except AttributeError:
+#                        out_record.append(escape(elem.encode('utf-8')))
+                        out_record.append(unicode(elem, 'utf-8'))
+                    except (AttributeError, TypeError):
                         # element is not a string
                         out_record.append(escape(str(elem).encode('utf-8')))
             out += rowstart + """ & """.join(out_record) + \
@@ -317,7 +318,8 @@ class TexTable(Table):
             ]
         out.append(CLOSE_TEX_TAB[self._type])
         out = str().join(out)
-        return unicode(out, 'utf-8')
+#        return unicode(out, 'utf-8')
+        return out
 
 
 class HTMLTable(Table):
