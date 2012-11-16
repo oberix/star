@@ -145,8 +145,9 @@ def sre(src_path, config=None, **kwargs):
                 if not isinstance(report, str):
                     # Error, return errno
                     return report
-        return _compile_tex(templ_file.replace('.tex', '_out.tex'), templ_file, 
-                            config.get('dest_path', os.path.dirname(templ_file)), 
+        return _compile_tex(templ_file.replace('.tex', '_out.tex'), 
+                            templ_file, 
+                            os.path.dirname(templ_file), 
                             fd_list)
     elif templ_file.endswith('.html'):
         for file_ in os.listdir(templ_path):
