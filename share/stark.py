@@ -152,7 +152,7 @@ class Stark(GenericPickler):
                 self.update_df(key, expr=value, var_type='R')
             except NameError:
                 self.update_df(key, series=value, var_type='S')
-        else: # FIXME: a type check woudn't be bad here!
+        else: # TODO: a type check woudn't be bad here!
             self.update_df(key, series=value, var_type='N')
 
     def __delitem__(self, key):
@@ -171,8 +171,8 @@ class Stark(GenericPickler):
 
         ''' 
         # Start from clean lists
-        self._dim = list()
-        self._cal = list()
+        self._dim = list() # dimensions
+        self._cal = list() # 
         self._num = list()
         self._str = list()
         # Sort VD.items() by 'ORD' to have output lists already ordered.
@@ -218,6 +218,9 @@ class Stark(GenericPickler):
         ''' DF settre:
         Just check VD/DF consistency before proceding.
         '''
+        if not isinstance(df, DataFrame):
+            raise TypeError(
+                "DF must be a pandas.DataFrame object, %s received instead", type(df))
         self._DF = df.copy()
         # DF changed, re-evaluate calculated data
         self._update()
@@ -299,11 +302,12 @@ class Stark(GenericPickler):
         @ param file_: destination file path 
         
         '''
+        # FIXME: This is redundant with Bag.save()
         if file_ is None:
             file_ = self.LD
         if not os.path.exists(os.path.dirname(file_)):
             os.makedirs(os.path.dirname(file_))
-        self._env = None # cannot pickle finctions
+        self._env = None # cannot pickle finctions declared outside this scope
         super(Stark, self).save(file_)
 
     # TODO: Find a way to handle function calls accross namespaces (_env) and
@@ -496,6 +500,7 @@ if __name__ == '__main__' :
         'E' : {'TIP': 'R',
                'ORD': 1, 
                'ELA': ('/', ('+', 'C', 'D'), 100)},
+        'F': {'TIP': 'I'}
         }
 
     vd1 = {

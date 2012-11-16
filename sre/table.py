@@ -27,8 +27,11 @@ __author__ = "Marco Pattaro <marco.pattaro@servabit.it>"
 __version__ = "1.0"
 __all__ = ['TexTable', 'unique_list', 'escape']
 
-OPEN_TEX_TAB = """\\begin{tabu} spread \\linewidth"""
-CLOSE_TEX_TAB = """\\end{tabu}"""
+OPEN_TEX_TAB = {'tab': """\\begin{tabu} spread \\linewidth""",
+                'ltab': """\\begin{longtabu} spread \\linewidth"""}
+CLOSE_TEX_TAB = {"""\\end{tabu}""",
+                 """\\end{longtabu}"""}
+
 
 # pylint: disable=W1401
 
@@ -151,16 +154,18 @@ class Table(object):
         '''
         raise NotImplementedError
 
+
 class TexTable(Table):
     """ Constitute a table that can span over multiple pages """ 
 
-    def __init__(self, data, hsep=False, **kwargs):
+    def __init__(self, data, tab_type='tab', hsep=False, **kwargs):
         """
         @ param data: Transport object
         @ param hsep: True if you want hrizontal lines after every record
         """
         super(TexTable, self).__init__(data, **kwargs)
         self._hsep = str()
+        self._type = tab_type
         if hsep:
             self._hsep = "\\tabucline-"
            
@@ -225,7 +230,7 @@ class TexTable(Table):
 
         '''
         # table preamble
-        out = OPEN_TEX_TAB + """ {"""
+        out = OPEN_TEX_TAB[self._type] + """ {"""
         for col in self._align:
             col_format = self._get_col_format(col, 1)
             out += """%(sep1)sX[%(title)s]%(sep2)s""" % col_format
@@ -310,9 +315,10 @@ class TexTable(Table):
             self._make_footer(),
             self._make_body(),
             ]
-        out.append(CLOSE_TEX_TAB)
+        out.append(CLOSE_TEX_TAB[self._type])
         out = str().join(out)
         return unicode(out, 'utf-8')
+
 
 class HTMLTable(Table):
 
@@ -326,7 +332,7 @@ class HTMLTable(Table):
         super(HTMLTable, self).__init__(data, **kwargs)
 
 
-    def _make_header_table(self):
+    def _make_header(self):
         '''
         sezione che costruisce l'header della tabella: thead
         '''
@@ -339,7 +345,6 @@ class HTMLTable(Table):
 	out += '''</tr>'''
         out += '''</thead>\n'''
         return out
-
 
     def _make_body(self):
         '''
@@ -380,16 +385,13 @@ class HTMLTable(Table):
             ret = "<hr/>" + self._data.FOOTNOTE
         return str().join(ret)
 
-
     def out(self):
         ''' Return a string that contains valid Html code for a table.
         '''
         out = [
-            escape(self._make_header_table(), HTML_ESCAPE),
+            escape(self._make_header(), HTML_ESCAPE),
 	    self._make_body(),
 	    self._make_footer(),
             ]
         out = unicode(str().join(out))
         return out
-
-

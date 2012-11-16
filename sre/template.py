@@ -119,6 +119,8 @@ class AbstractSreTemplate(string.Template):
             # Generate string to substitute to the placeholder
             if bags[base].TI == 'tab':
                 ret[base] = self._make_table(bags[base], **kwargs).out()
+            elif: bags[base].TI == 'ltab':
+                ret[base] = self._make_table(bags[base], tab_type='ltab', **kwargs).out()
             elif bags[base].TI == 'graph':
                 ret[base], fd = self._make_graph(bags[base], **kwargs).out()
                 self._fds.append(fd)

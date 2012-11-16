@@ -104,6 +104,7 @@ class Bag(GenericPickler):
             setattr(self, key, val)
 
     def save(self, file_=None):
+        # FIXME: This is redundant with Stark.save()
         if file_ is None:
             file_ = self.LD
         if not os.path.exists(os.path.dirname(file_)):
@@ -126,6 +127,10 @@ class Bag(GenericPickler):
         If DF has '_OR_' column, its values will be reordered.
 
         '''
+        # TODO: Why this complexity? Isn't it just:
+        #     1) Build a df from modlist with modlist[n][0] as index
+        #     2) join DF with modlistdf on index
+        #     3) DF[_FR_].fillna('@n')
         def cmp_to_key(cmp_or):
             'Convert a cmp= function into a key= function'
             class K(object):

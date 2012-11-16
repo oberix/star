@@ -65,8 +65,9 @@ def _list_files(level, root):
     ''' Make a list of files at a given level of directory nesting, starting
     from root.
     
-    @ param level: the nesting level to search
+    @ param level: the nesting level to search as an integer
     @ param root: the directories tree root
+
     @ return: a list of paths
     '''
     out = []
@@ -124,7 +125,7 @@ def _consolidate(file_):
     
     @ param file_: path to the file to consolidate.
     '''
-    _logger.debug('Consolidating %s', file_)
+    _logger.info('Consolidating %s', file_)
     stark_out = Stark(pandas.DataFrame(columns=COLUMNS), META)
     fd = open(file_, 'r')
     while True:
@@ -146,7 +147,7 @@ def _test_by_country(file_, root, mapping):
     for country, group in groups:
         _by_country(root, mapping, country, group)
 
-def by_country(level, in_path, root, mapping):
+def by_country(level, in_path, root, mapping, key):
     ''' Reshape DataFrames classified by product code into DataFrame organized
     by country (ISO3 code). A product aggregation level can be specified.
     
@@ -154,6 +155,7 @@ def by_country(level, in_path, root, mapping):
     @ param in_path: input files root path
     @ param root: output root path
     @ mapping: ISO3 code mapping DataFrame
+    @ key: variabla to group by
 
     '''
     # Make sure mapping is indicized by country
@@ -169,7 +171,7 @@ def by_country(level, in_path, root, mapping):
         else:
             # Run multiprocess
             stark_curr = Stark.load(file_)
-            groups = stark_curr.DF.groupby('XER')
+            groups = stark_curr.DF.groupby(key)
             args = [(_by_country, [root, mapping, country, group])
                     for country, group in groups]
             parallel_jobs.do_jobs_efficiently(args)
@@ -247,7 +249,7 @@ def from_hs(level, in_path, root, prod_map, start_year):
         args = [(_from_hs, [level, in_path, root, code, group, start_year]) for code, group in prod_groups]
         parallel_jobs.do_jobs_efficiently(args)
         
-def aggregate(root, mapping, struct=None):
+def aggregate(root, mapping, pkey=None):
     ''' Aggregates DataFrames stored in Python pickle files. This function
     performs a bottom-up walk of a directory subtree, aggregating DataFrames in
     each directory and storing the resulting DataFrame in the parent folder.
@@ -256,9 +258,8 @@ def aggregate(root, mapping, struct=None):
     @ param mapping: product codes mapping DataFrame
     '''
     walker = os.walk(root, topdown=False)
-    if struct is None:
-        struct = STRUCT_PROD
-    primary_key = PRIMARYK[struct]
+    if pkey is None:
+        pkey = 'CODE'
     for current, dirs, files in walker:
         if len(files) == 0:
             # XXX: Cludgy workaround to os.walk() behaviour: when doing a bottom-up
@@ -285,12 +286,12 @@ def aggregate(root, mapping, struct=None):
             # Find in_code
             stark_in = Stark.load(os.path.join(current, file_))
             try:
-                in_code = stark_in.DF[primary_key].unique()[0]
+                in_code = stark_in.DF[pkey].unique()[0]
             except IndexError:
                 # Empty DataFrame
                 continue
-            # Sunstitute in_code with out_code in source DF
-            stark_in.DF[primary_key] = stark_in.DF[primary_key].map({in_code: out_code})
+            # Substitute in_code with out_code in source DF
+            stark_in.DF[pkey] = stark_in.DF[pkey].map({in_code: out_code})
             stark_out += stark_in
             stark_in.DF.consolidate(inplace=True) # Saves a lot of memory here!
         full_path = os.path.join(current, os.path.pardir, out_file)
@@ -326,11 +327,16 @@ def main(input_dir=None, root=None, start_year=None,
     from_hs(prod_aggr_level, input_dir, ul_root, ul3000, start_year)
     aggregate(ul_root, ul3000)
  
-    # Transform by ISO3 code and aggregate
-    iso3_root = os.path.join(root, 'country')
-    by_country(country_aggr_level, ul_root, iso3_root, country_map)
-    aggregate(iso3_root, country_map, struct=STRUCT_COUNTRY)
-   
+    # # Transform by ISO3 code and aggregate
+    iso3_root = os.path.join(root, 'country_MER')
+    by_country(country_aggr_level, ul_root, iso3_root, country_map, 'MER')
+    aggregate(iso3_root, country_map, pkey='MER')
+
+    # # FIXME: this is redundant
+    iso3_root = os.path.join(root, 'country_XER')
+    by_country(country_aggr_level, ul_root, iso3_root, country_map, 'XER')
+    aggregate(iso3_root, country_map, pkey='XER')
+
     return 0
 
 
