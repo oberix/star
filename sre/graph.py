@@ -25,6 +25,7 @@ import matplotlib.pyplot as plt
 from matplotlib import rc
 import logging
 from tempfile import NamedTemporaryFile, TemporaryFile
+import pandas
 
 import plotters
 
@@ -37,7 +38,7 @@ FIGSIZE = { # (w, h) in inches
     'dinamic': (6.360, 2.380),
     'square': (6.360, 6.360),
     'flag': (3.180, 9.52),
-    'scpaese': (8.417, 5.264),
+    'scpaese': (3.5, 2.2),
 }
 
 class Graph(object):
@@ -120,7 +121,8 @@ class Graph(object):
         for key, val in lm.iteritems():
             # TODO: apply translation
             if val['type'] == 'lax':
-                self._lax = self._df[key]
+#                self._lax = self._df[key]
+                self._lax = pandas.Series([float(e) for e in self._df[key].tolist()])
                 self._x_meta.append(val)
             else:
                 val['key'] = key
@@ -139,7 +141,8 @@ class Graph(object):
         ax = fig.add_subplot(1,1,1, axisbg='#eeefff', autoscale_on=True,
                              adjustable="datalim")
         # TODO: consider moving ax setting in concrete Plotter implementation
-        #ax.set_xlim(self._lax.min(), self._lax.max())
+#        import ipdb; ipdb.set_trace()
+
         ax.grid(True)
         lines = list()
         labels = list()
@@ -153,6 +156,11 @@ class Graph(object):
                 continue
             lines.append(line)
             labels.append(col['label'])
+
+        # set axes ticks and labels
+        ax.set_xticks(self._lax)
+        ax.set_xlim(self._lax.min() - 1, self._lax.max() + 1)
+
         if self._legend:
             handles = [line[0] for line in lines]
             leg = self._make_legend(fig, handles, labels)
@@ -188,7 +196,7 @@ class TexGraph(Graph):
         delete = True
         if self._logger.getEffectiveLevel() <= logging.DEBUG:
             delete = False
-        fd = NamedTemporaryFile(suffix='.pdf', delete=delete)        
+        fd = NamedTemporaryFile(suffix='.pdf', delete=delete)
         self._figure.savefig(fd, format='pdf')
 
         ret = "\\includegraphics{%s}" % fd.name

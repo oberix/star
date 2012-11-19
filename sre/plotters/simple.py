@@ -28,7 +28,7 @@ class Plot(BasePlotter):
 
     def plot(self, ax, col):
         ret = ax.plot(self._graph._lax, self._graph._df[col['key']],
-                       color=col['color'])
+                       color=col.get('color', None))
 
         if col.get('ax') == 'dx':
             ax = ax.get_figure().add_axes(
@@ -74,12 +74,14 @@ class AbstractBar(BasePlotter):
         border = dim + margin
 
         # Generate graph calling template method.
-        ret = self._plot(ax, col, color=col['color'], align='center', bottom=bottom, dim=dim, border=border)
+        ret = self._plot(ax, col, color=col.get('color', None), align='center', bottom=bottom, dim=dim, border=border)
 
         ax.relim()
         ax.autoscale_view(tight=False, scalex=True, scaley=True)
 
         return ret
+
+import pandas
 
 class Bar(AbstractBar):
     ''' Simple Bar graph, it support cumulative data.
@@ -106,8 +108,8 @@ class Barh(AbstractBar):
 
     def _plot(self, ax, col, **kwargs):
         ret = ax.barh( self._graph._lax, self._graph._df[col['key']],
-                       color=kwargs['color'], align=kwargs['align'],
-                       left=kwargs['bottom'], height=kwargs['dim'])
+                       color=kwargs.get('color', None), align=kwargs.get('align', None),
+                       left=kwargs.get('bottom', None), height=kwargs.get('dim', None))
 
         if col.get('ax') == 'dx':
             ax = ax.get_figure().add_axes(
@@ -118,9 +120,3 @@ class Barh(AbstractBar):
             ax.xaxis.tick_top()
 
         return ret
-    
-
-
-
-
-

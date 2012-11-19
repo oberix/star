@@ -218,7 +218,8 @@ class TexTable(Table):
         out += """ \\\ \n"""
         if level is self._heading[self._last_heading]:
             # end heading
-            out += """ \\tabucline- \endhead \n"""
+#            out += """ \\tabucline- \endhead \n"""
+            out += """ \\tabucline- \n"""
         return out
                 
     def _make_preamble(self):
@@ -313,7 +314,7 @@ class TexTable(Table):
         out = [
             self._make_preamble(),
             headers,
-            self._make_footer(),
+#            self._make_footer(),
             self._make_body(),
             ]
         out.append(CLOSE_TEX_TAB[self._type])
