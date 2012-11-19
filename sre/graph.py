@@ -34,6 +34,9 @@ __author__ = "Marco Pattaro <marco.pattaro@servabit.it>"
 __version__ = "0.1"
 __all__ = ['Graph']
 
+TICK_LABEL_LIMIT = 999. # xticks labels length limit
+TICK_STEP = 2  # Draw an xtick every n values
+
 FIGSIZE = { # (w, h) in inches
     'stamp': (3.200, 2.0), # (3.180, 2.380)
     'dinamic': (6.360, 2.380),
@@ -165,20 +168,23 @@ class Graph(object):
             else:
                 val['key'] = key
                 val['cumulate'] = self._unroll_cum(lm, val)
-                if val['type'] == 'bar': # Keep bars on bottom
+                if val['type'] == 'plot':
                     self._y_meta.insert(0, val)
                 else:
                     self._y_meta.append(val)
-#        self._y_meta.sort(key=lambda x: len(x['cumulate']), reverse=True)
 
     def _set_x_ax(self, ax):
         ticks = []
+        rotation = 0
+        # Draw only even ticks
         for idx, elem in enumerate(self._lax):
-            if idx % 2 == 0:
+            if idx % TICK_STEP == 0:
                 ticks.append(self._lax[idx])
+            if elem > TICK_LABEL_LIMIT:
+                rotation = 30
         ax.set_xticks(ticks)
         ax.set_xlim(self._lax.min() - 1, self._lax.max() + 1)
-        plt.setp(plt.xticks()[1], rotation=30)
+        plt.setp(plt.xticks()[1], rotation=rotation)
         plt.subplots_adjust(hspace=0, bottom=0.13)
 
     def make_graph(self):
@@ -191,10 +197,10 @@ class Graph(object):
         fig = plt.figure(figsize=self._size)
         ax = fig.add_subplot(1,1,1, axisbg='w', autoscale_on=True,
                              adjustable="datalim")
-        # TODO: consider moving ax setting in concrete Plotter implementation
         ax.grid(True)
-        lines = list()
-        labels = list()
+        self._set_x_ax(ax)
+        lines = []
+        labels = []
         for idx, col in enumerate(self._y_meta):
             try:
                 line = self._plotters[col['type']].plot(ax, col)
@@ -205,8 +211,6 @@ class Graph(object):
                 continue
             lines.append(line)
             labels.append(col['label'])
-
-#        self._set_x_ax(ax) # XXX: moved to simple.py
 
         if self._legend:
             handles = [line[0] for line in lines]

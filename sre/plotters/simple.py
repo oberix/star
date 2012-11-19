@@ -31,8 +31,8 @@ class Plot(BasePlotter):
         yvals = self._graph._df[col['key']]
         if col.get('ax') == 'dx':
             ax = ax.twinx()
-        ret = ax.plot(self._graph._lax, yvals, color=col.get('color', None), zorder=0)
-        self._graph._set_x_ax(ax)
+        ret = ax.plot(self._graph._lax, yvals, color=col.get('color', None), zorder=10)
+#        self._graph._set_x_ax(ax)
         return ret
 
 class AbstractBar(BasePlotter):
@@ -79,13 +79,10 @@ class Bar(AbstractBar):
         yvals = self._graph._df[col['key']]
         if col.get('ax') == 'dx':
             ax = ax.twinx()
-#        import ipdb; ipdb.set_trace()
         ret = ax.bar(self._graph._lax, yvals,
                      color=kwargs['color'], align=kwargs['align'],
                      bottom=kwargs['bottom'], width=kwargs['dim'],
-                     zorder=100)
-        self._graph._set_x_ax(ax)
-
+                     zorder=0)
         return ret
 
 class Barh(AbstractBar):
@@ -98,6 +95,6 @@ class Barh(AbstractBar):
             ax = ax.twinx()
         ret = ax.barh( self._graph._lax, self._graph._df[col['key']],
                        color=kwargs.get('color', None), align=kwargs.get('align', None),
-                       left=kwargs.get('bottom', None), height=kwargs.get('dim', None))
-        self._graph._set_x_ax(ax)
+                       left=kwargs.get('bottom', None), height=kwargs.get('dim', None),
+                       zorder=1)
         return ret
