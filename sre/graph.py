@@ -26,6 +26,7 @@ from matplotlib import rc
 import logging
 from tempfile import NamedTemporaryFile, TemporaryFile
 import pandas
+import re
 
 import plotters
 
@@ -40,6 +41,44 @@ FIGSIZE = { # (w, h) in inches
     'flag': (3.180, 9.52),
     'scpaese': (3.5, 2.2),
 }
+
+TEX_ESCAPE = {
+    re.compile("€"): "\\officialeuro", 
+    re.compile("%"): "\\%", 
+    re.compile("&"): "\\&",
+    re.compile("\$(?!\w+)"): "\\$",
+    re.compile(">(?!\{)"): "\\textgreater",
+    re.compile("<(?!\{)"): "\\textless",
+    re.compile("\n"): "\\\\",
+    re.compile("_"): "\_",
+#    re.compile("-"): "$-$",
+    # tell LaTeX that an hyphen can be inserted after a '/'
+    re.compile("/"): "/\-", 
+    re.compile("\^"): "\textasciicircum",
+    re.compile("~"): "\normaltilde",
+    }
+
+# TODO: fill this up
+HTML_ESCAPE = {
+    re.compile("€"): "EURO",
+    }
+
+# TODO: move this to template.py
+def escape(string, patterns=None):
+    ''' Escape string to work with LaTeX.
+    The function calls TEX_ESCAPE dictionary to metch regexp with their escaped
+    version.
+
+    @ param string: the string to escape
+    @ param patterns: a pattern/string mapping dictionary
+    @ return: escaped version of string
+
+    '''
+    if patterns is None:
+        patterns = TEX_ESCAPE
+    for pattern, sub in patterns.iteritems():
+        string = re.sub(pattern, sub, string)
+    return string
 
 class Graph(object):
 
@@ -83,10 +122,10 @@ class Graph(object):
         '''
         # Evaluate number of columns
         ncol = 3
-        if len(handles) < 5:
-            ncol = 2
-        elif len(handles) < 3:
+        if len(handles) < 3:
             ncol = 1
+        elif len(handles) < 5:
+            ncol = 2
         # Estimate new hight needed for the legend
         dheight = ((len(handles)/ncol) + 1) * self._fontsize * 0.01
         dheight_perc = dheight / figure.get_figheight() 
@@ -121,14 +160,26 @@ class Graph(object):
         for key, val in lm.iteritems():
             # TODO: apply translation
             if val['type'] == 'lax':
-#                self._lax = self._df[key]
-                self._lax = pandas.Series([float(e) for e in self._df[key].tolist()])
+                self._lax = pandas.Series([float(elem) for elem in self._df[key].tolist()])
                 self._x_meta.append(val)
             else:
                 val['key'] = key
                 val['cumulate'] = self._unroll_cum(lm, val)
-                self._y_meta.append(val)
+                if val['type'] == 'bar': # Keep bars on bottom
+                    self._y_meta.insert(0, val)
+                else:
+                    self._y_meta.append(val)
 #        self._y_meta.sort(key=lambda x: len(x['cumulate']), reverse=True)
+
+    def _set_x_ax(self, ax):
+        ticks = []
+        for idx, elem in enumerate(self._lax):
+            if idx % 2 == 0:
+                ticks.append(self._lax[idx])
+        ax.set_xticks(ticks)
+        ax.set_xlim(self._lax.min() - 1, self._lax.max() + 1)
+        plt.setp(plt.xticks()[1], rotation=30)
+        plt.subplots_adjust(hspace=0, bottom=0.13)
 
     def make_graph(self):
         ''' Create a Figure and plot a graph in it following what was specified
@@ -138,11 +189,9 @@ class Graph(object):
         
         '''
         fig = plt.figure(figsize=self._size)
-        ax = fig.add_subplot(1,1,1, axisbg='#eeefff', autoscale_on=True,
+        ax = fig.add_subplot(1,1,1, axisbg='w', autoscale_on=True,
                              adjustable="datalim")
         # TODO: consider moving ax setting in concrete Plotter implementation
-#        import ipdb; ipdb.set_trace()
-
         ax.grid(True)
         lines = list()
         labels = list()
@@ -157,9 +206,7 @@ class Graph(object):
             lines.append(line)
             labels.append(col['label'])
 
-        # set axes ticks and labels
-        ax.set_xticks(self._lax)
-        ax.set_xlim(self._lax.min() - 1, self._lax.max() + 1)
+#        self._set_x_ax(ax) # XXX: moved to simple.py
 
         if self._legend:
             handles = [line[0] for line in lines]
@@ -178,7 +225,7 @@ class TexGraph(Graph):
     method so that it produce a LaTeX tag ready to be substitued in the
     template.
     '''
-    
+
     def __init__(self, data, **kwargs):
         ''' Just set some rc params
         ''' 
@@ -186,10 +233,14 @@ class TexGraph(Graph):
         # Tell matplotlib to use LaTeX to render text
         rc('font', **{
                 'family': 'serif',
-                'sans-serif':['Computer Modern Roman'], 
+                'serif':['Computer Modern Roman'], 
                 'size':self._fontsize})
         rc('text', usetex=True)
- 
+    
+    def _make_legend(self, figure, handles, labels):
+        labels = [escape(label) for label in labels]
+        return super(TexGraph, self)._make_legend(figure, handles, labels)
+
     def out(self):
         ''' Produce a LaTeX compatible tag to be substituted in the template.
         '''
