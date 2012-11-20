@@ -32,7 +32,10 @@ class Plot(BasePlotter):
         if col.get('ax') == 'dx':
             ax = ax.twinx()
         ret = ax.plot(self._graph._lax, yvals, color=col.get('color', None), zorder=10)
-#        self._graph._set_x_ax(ax)
+        # ax.relim()
+        # ax.autoscale_view(tight=False, scalex=True, scaley=True)
+        self._logger.debug('ret = %s', [l.get_zorder() for l in ret])
+        self._graph._set_x_ax(ax)
         return ret
 
 class AbstractBar(BasePlotter):
@@ -77,12 +80,17 @@ class Bar(AbstractBar):
 
     def _plot(self, ax, col, **kwargs):
         yvals = self._graph._df[col['key']]
+
         if col.get('ax') == 'dx':
             ax = ax.twinx()
         ret = ax.bar(self._graph._lax, yvals,
                      color=kwargs['color'], align=kwargs['align'],
                      bottom=kwargs['bottom'], width=kwargs['dim'],
-                     zorder=0)
+                     zorder=0, rasterized=True, alpha=0.8)
+#        ax.relim()
+        # ax.autoscale_view(tight=False, scalex=True, scaley=True)
+        self._logger.debug('ret = %s', [p.get_zorder() for p in ret])
+        self._graph._set_x_ax(ax)
         return ret
 
 class Barh(AbstractBar):

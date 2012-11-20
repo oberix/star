@@ -172,10 +172,12 @@ class Graph(object):
                     self._y_meta.insert(0, val)
                 else:
                     self._y_meta.append(val)
+#                self._y_meta.append(val)
 
     def _set_x_ax(self, ax):
         ticks = []
         rotation = 0
+        delta = (self._lax.max() - self._lax.min()) / len(self._lax)
         # Draw only even ticks
         for idx, elem in enumerate(self._lax):
             if idx % TICK_STEP == 0:
@@ -183,7 +185,8 @@ class Graph(object):
             if elem > TICK_LABEL_LIMIT:
                 rotation = 30
         ax.set_xticks(ticks)
-        ax.set_xlim(self._lax.min() - 1, self._lax.max() + 1)
+        ax.set_xlim(self._lax.min() - delta, 
+                    self._lax.max() + delta)
         plt.setp(plt.xticks()[1], rotation=rotation)
         plt.subplots_adjust(hspace=0, bottom=0.13)
 
@@ -198,7 +201,7 @@ class Graph(object):
         ax = fig.add_subplot(1,1,1, axisbg='w', autoscale_on=True,
                              adjustable="datalim")
         ax.grid(True)
-        self._set_x_ax(ax)
+
         lines = []
         labels = []
         for idx, col in enumerate(self._y_meta):
@@ -212,6 +215,7 @@ class Graph(object):
             lines.append(line)
             labels.append(col['label'])
 
+        # self._set_x_ax(ax) # Single graphs may change this
         if self._legend:
             handles = [line[0] for line in lines]
             leg = self._make_legend(fig, handles, labels)
