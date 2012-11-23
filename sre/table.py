@@ -307,15 +307,21 @@ class TexTable(Table):
         @ return: str
 
         """
-        headers = str()
-        for heading in self._heading:
-            headers += self._make_header(heading)
+        headers = unicode()
+        preamble = unicode()
+        footer = unicode()
+
+        if not self._type == 'bodytab':
+            preamble = self._make_preamble()
+            for heading in self._heading:
+                headers += self._make_header(heading)
+            footer = self._make_footer(),
 
         out = [
-            self._make_preamble(),
+            preamble,
             headers,
-#            self._make_footer(),
             self._make_body(),
+            footer
             ]
         out.append(CLOSE_TEX_TAB[self._type])
         out = str().join(out)

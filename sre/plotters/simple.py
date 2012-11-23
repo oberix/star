@@ -32,8 +32,6 @@ class Plot(BasePlotter):
         if col.get('ax') == 'dx':
             ax = ax.twinx()
         ret = ax.plot(self._graph._lax, yvals, color=col.get('color', None), zorder=10)
-        # ax.relim()
-        # ax.autoscale_view(tight=False, scalex=True, scaley=True)
         self._logger.debug('ret = %s', [l.get_zorder() for l in ret])
         self._graph._set_x_ax(ax)
         return ret

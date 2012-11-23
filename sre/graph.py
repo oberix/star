@@ -63,7 +63,12 @@ TEX_ESCAPE = {
 
 # TODO: fill this up
 HTML_ESCAPE = {
-    re.compile("€"): "EURO",
+    re.compile("<"): "&lt;",
+    re.compile(">"): "&gt;",
+    re.compile("&"): "&amp;",
+    re.compile("\""): "&quot;"
+    re.compile("'"): "&apos;"
+    re.compile("€"): "&euro;",
     }
 
 # TODO: move this to template.py
@@ -144,6 +149,14 @@ class Graph(object):
         return leg
 
     def _unroll_cum(self, lm, val):
+        ''' Visit bag's LM dictionary and make an ordered list of those
+        variables that are cumulative to each other. This list will be used to
+        stack variables in bar and hbar graphs.
+
+        @ param lm : an LM dictionary
+        @ param val: an LM dictionary entry
+
+        '''
         ret = list()
         if val.get('cum'):
             ret = [val.get('cum', None)]
@@ -185,7 +198,7 @@ class Graph(object):
             if elem > TICK_LABEL_LIMIT:
                 rotation = 30
         ax.set_xticks(ticks)
-        ax.set_xlim(self._lax.min() - delta, 
+        ax.set_xlim(self._lax.min() - delta,
                     self._lax.max() + delta)
         plt.setp(plt.xticks()[1], rotation=rotation)
         plt.subplots_adjust(hspace=0, bottom=0.13)
@@ -201,7 +214,6 @@ class Graph(object):
         ax = fig.add_subplot(1,1,1, axisbg='w', autoscale_on=True,
                              adjustable="datalim")
         ax.grid(True)
-
         lines = []
         labels = []
         for idx, col in enumerate(self._y_meta):
