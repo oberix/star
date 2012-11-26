@@ -66,8 +66,8 @@ HTML_ESCAPE = {
     re.compile("<"): "&lt;",
     re.compile(">"): "&gt;",
     re.compile("&"): "&amp;",
-    re.compile("\""): "&quot;"
-    re.compile("'"): "&apos;"
+    re.compile("\""): "&quot;",
+    re.compile("'"): "&apos;",
     re.compile("€"): "&euro;",
     }
 

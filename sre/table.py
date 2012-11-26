@@ -277,7 +277,7 @@ class TexTable(Table):
             records = self._data.DF[self._keys].to_records()
             end = None
         for record in records:
-            rowstart = str()
+            rowstart = unicode()
             if end is not None:
                 rowstart = FORMATS.get(record[end], str())
             # Remove first element because it's the DF index and eventually
@@ -285,18 +285,17 @@ class TexTable(Table):
             out_record = list()
             for elem in list(record)[1:end]:
                 if elem is None or elem == 'None':
-                    out_record.append(str())
+                    out_record.append(unicode())
                 else:
-                    try:
-                        # TODO: apply translation
-#                        out_record.append(escape(elem.encode('utf-8')))
-                        out_record.append(unicode(elem, 'utf-8'))
-                    except (AttributeError, TypeError):
-                        # element is not a string
-                        out_record.append(escape(str(elem).encode('utf-8')))
+                    if not isinstance(elem, unicode):
+                        elem = unicode(elem, encoding='utf-8')
+                    out_record.append(escape(elem))
             out += rowstart + """ & """.join(out_record) + \
                 " \\\ %s \n" % self._hsep
-        out += "\\tabucline- \n"
+        if self._type == 'bodytab':
+            out += " \\hline \n"
+        else:
+            out += "\\tabucline- \n"
         return out
     
     # Public
@@ -310,21 +309,23 @@ class TexTable(Table):
         headers = unicode()
         preamble = unicode()
         footer = unicode()
+        close_ = unicode()
 
         if not self._type == 'bodytab':
             preamble = self._make_preamble()
             for heading in self._heading:
                 headers += self._make_header(heading)
-            footer = self._make_footer(),
-
+            footer = self._make_footer()
+            close_ = CLOSE_TEX_TAB[self._type]
+            
         out = [
             preamble,
             headers,
             self._make_body(),
-            footer
+            footer,
+            close_
             ]
-        out.append(CLOSE_TEX_TAB[self._type])
-        out = str().join(out)
+        out = unicode().join(out)
 #        return unicode(out, 'utf-8')
         return out
 
