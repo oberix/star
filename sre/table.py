@@ -351,7 +351,7 @@ class HTMLTable(Table):
 	out += '''<tr>'''
         for level in self._heading:
             for i in level:
-                out += '''<th>%s</th>''' % i.replace("|","").replace(" ","")
+                out += '''<th>%s</th>''' % i.replace("|","")
 	out += '''</tr>'''
         out += '''</thead>\n'''
         return out
