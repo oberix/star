@@ -26,7 +26,8 @@ import os
 import string
 import logging
 
-from share import Bag
+import sre
+from share.bag import Bag
 from table import TexTable, HTMLTable
 from graph import TexGraph, HTMLGraph
 
@@ -39,19 +40,15 @@ class AbstractSreTemplate(string.Template):
     '''
 
     comment = "#.*" # just an example with Python comments.
-    _suffix = None
-    _suffix_out = None
+    _suffix = None # Template file suffix
+    _suffix_out = None # Output file suffix
 
-    def __init__(self, src_path, config=None):
-        self._src_path = os.path.abspath(src_path)
+    def __init__(self, templ_path, config=None):
+        self._src_path = os.path.dirname(os.path.abspath(templ_path))
 	self._logger = logging.getLogger(type(self).__name__)
         self._fds = list() # list of opened file descriptors
 	# load template
-	try:
-	    self._templ_path = config['template']
-	except KeyError:
-            self._templ_path = os.path.join(
-                src_path, ''.join(['main', self._suffix]))
+        self._templ_path = templ_path
 	self._load_template(self._templ_path)
 	# load Bags
 	try:
@@ -120,16 +117,20 @@ class AbstractSreTemplate(string.Template):
                     self._logger.warning('%s; skipping...', err)
                     continue
             # Generate string to substitute to the placeholder
-            if bags[base].type == 'tab':
+            if bags[base].TI == 'tab':
                 ret[base] = self._make_table(bags[base], **kwargs).out()
-            elif bags[base].type == 'graph':
+            elif bags[base].TI == 'ltab':
+                ret[base] = self._make_table(bags[base], tab_type='ltab', **kwargs).out()
+            elif bags[base].TI == 'bodytab':
+                ret[base] = self._make_table(bags[base], tab_type='bodytab', **kwargs).out()
+            elif bags[base].TI == 'graph':
                 ret[base], fd = self._make_graph(bags[base], **kwargs).out()
                 self._fds.append(fd)
             else: # TODO: handle other types
                 self._logger.debug('bags = %s', bags)
                 self._logger.warning(
-                    "Unhandled bag type '%s' found in %s, skipping...", 
-                    bags[base].type, base)
+                    "Unhandled bag TI '%s' found in %s, skipping...", 
+                    bags[base].TI, base)
                 continue
             if len(ph_parts) > 1 and \
                     hasattr(bags[base], '.'.join(ph_parts[1:])):
@@ -166,7 +167,7 @@ class AbstractSreTemplate(string.Template):
             os.makedirs(os.path.dirname(self._dest_path))
 
         # substitute placeholders
-        templ_out = self.safe_substitute(self.bags)
+        templ_out = self.safe_substitute(self.bags, encoding='utf-8')
         # save final document
         template_out = self._templ_path.replace(self._suffix, self._suffix_out)
         fd = codecs.open(template_out, mode='w', encoding='utf-8')
@@ -198,9 +199,25 @@ class TexSreTemplate(AbstractSreTemplate):
 
     delimiter = '\SRE'
     idpattern = '[_a-z][_a-z0-9.]*' 
-    comment = "%.*"
+    comment = "%.*" 
     _suffix = '.tex'
     _suffix_out = '_out.tex'
+
+    input_re = [re.compile("\\import{.*}"), 
+                re.compile("\\input{.*}")]
+
+    def _substitute_includes(self):
+        ''' Change input and includes LaTeX statements inside a template to
+        refere to the _out files
+        ''' 
+        for regexp in TexSreTemplate.input_re:
+            matches = re.findall(regexp, self.template)
+            for match in matches:
+                repl = match.split('}')
+                repl.remove('')
+                repl.append('out')
+                repl = ''.join(['_'.join(repl), '}'])
+                self.template = self.template.replace(match, repl)
 
     def _make_table(self, data, **kwargs):
         return  TexTable(data, **kwargs)
@@ -208,6 +225,9 @@ class TexSreTemplate(AbstractSreTemplate):
     def _make_graph(self, data, **kwargs):
         return  TexGraph(data, **kwargs)
 
+    def report(self, **kwargs):
+        self._substitute_includes()
+        return super(TexSreTemplate, self).report(**kwargs)
 
 class HTMLSreTemplate(AbstractSreTemplate):
     ''' A custom template class to match the SRE placeholders.

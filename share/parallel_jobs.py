@@ -41,7 +41,7 @@ def do_jobs_efficiently(processes=None):
         return
 
     njobs = multiprocessing.cpu_count() + 1
-    logger.info('njobs = %d', njobs)
+    logger.debug('njobs = %d', njobs)
     child_fd = -1
     parent_fd = -1
     parent_stream = None

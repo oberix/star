@@ -27,8 +27,11 @@ __author__ = "Marco Pattaro <marco.pattaro@servabit.it>"
 __version__ = "1.0"
 __all__ = ['TexTable', 'unique_list', 'escape']
 
-OPEN_TEX_TAB = """\\begin{longtabu} spread \\linewidth"""
-CLOSE_TEX_TAB = """\\end{longtabu}"""
+OPEN_TEX_TAB = {'tab': """\\begin{tabu} spread \\linewidth""",
+                'ltab': """\\begin{longtabu} spread \\linewidth"""}
+CLOSE_TEX_TAB = {'tab':"""\\end{tabu}""",
+                 'ltab':"""\\end{longtabu}"""}
+
 
 # pylint: disable=W1401
 
@@ -59,7 +62,9 @@ TEX_ESCAPE = {
     }
 
 # TODO: fill this up
-HTML_ESCAPE = {}
+HTML_ESCAPE = {
+    re.compile("€"): "EURO",
+    }
 
 def unique_list(list_):
     """ Remove all duplicate elements from a list inplace, keeping the order
@@ -102,10 +107,10 @@ class Table(object):
         """
         self._logger = logging.getLogger(type(self).__name__)
         self._data = data
-        self.parse_lm(data.meta)
+        self.parse_lm(data.LM)
         
     def parse_lm(self, lm):
-        ''' Parse Bag's meta dictionary and estract the following non-public
+        ''' Parse Bag's LM dictionary and estract the following non-public
         attrubutes:
 
         _ncols: number of table columns
@@ -116,7 +121,7 @@ class Table(object):
         '''
         self._ncols = len(lm.keys())
 
-        # Transpose meta
+        # Transpose LM
         self._align = list() # alignment
         
         # Extract df columns names
@@ -149,16 +154,18 @@ class Table(object):
         '''
         raise NotImplementedError
 
+
 class TexTable(Table):
     """ Constitute a table that can span over multiple pages """ 
 
-    def __init__(self, data, hsep=False, **kwargs):
+    def __init__(self, data, tab_type='tab', hsep=False, **kwargs):
         """
         @ param data: Transport object
         @ param hsep: True if you want hrizontal lines after every record
         """
         super(TexTable, self).__init__(data, **kwargs)
         self._hsep = str()
+        self._type = tab_type
         if hsep:
             self._hsep = "\\tabucline-"
            
@@ -211,7 +218,8 @@ class TexTable(Table):
         out += """ \\\ \n"""
         if level is self._heading[self._last_heading]:
             # end heading
-            out += """ \\tabucline- \endhead \n"""
+#            out += """ \\tabucline- \endhead \n"""
+            out += """ \\tabucline- \n"""
         return out
                 
     def _make_preamble(self):
@@ -223,7 +231,7 @@ class TexTable(Table):
 
         '''
         # table preamble
-        out = OPEN_TEX_TAB + """ {"""
+        out = OPEN_TEX_TAB[self._type] + """ {"""
         for col in self._align:
             col_format = self._get_col_format(col, 1)
             out += """%(sep1)sX[%(title)s]%(sep2)s""" % col_format
@@ -239,15 +247,14 @@ class TexTable(Table):
         '''
         ret = "\\tabucline- \\endfoot \n"
         span = len(self._align)
-        if self._data.footnote is not None:
-            # TODO: apply translation
+        if self._data.FOOTNOTE is not None:
             ret = str().join([
                     '\multicolumn{%s}{|c|}{'% span, 
-                    self._data.footnote, 
+                    self._data.FOOTNOTE, 
                     '} \\\ \\tabucline- \\endfoot \n'])
         return ret
 
-    def _make_data(self):
+    def _make_body(self):
         ''' Prepare data for TeX table 
         
         @ return: str
@@ -255,40 +262,40 @@ class TexTable(Table):
         '''
         out = str()
         try:
-            self._data.df = self._data.df.sort(columns='_OR_')
+            self._data.DF = self._data.DF.sort(columns='_OR_')
         except KeyError:
             # keep it unsorted
             pass
         try:
             self._keys.append('_FR_')
-            records = self._data.df[self._keys].to_records()
+            records = self._data.DF[self._keys].to_records()
             # End is used to remove _FR_ values when generating the output
             # string.
             end = -1
         except KeyError:
             self._keys.remove('_FR_')
-            records = self._data.df[self._keys].to_records()
+            records = self._data.DF[self._keys].to_records()
             end = None
         for record in records:
-            rowstart = str()
+            rowstart = unicode()
             if end is not None:
                 rowstart = FORMATS.get(record[end], str())
-            # Remove first element because it's the df index and eventually
+            # Remove first element because it's the DF index and eventually
             # last value if it contains _FR_ values.
             out_record = list()
             for elem in list(record)[1:end]:
                 if elem is None or elem == 'None':
-                    out_record.append(str())
+                    out_record.append(unicode())
                 else:
-                    try:
-                        # TODO: apply translation
-                        out_record.append(escape(elem.encode('utf-8')))
-                    except AttributeError:
-                        # element is not a string
-                        out_record.append(escape(str(elem).encode('utf-8')))
+                    if not isinstance(elem, unicode):
+                        elem = unicode(elem, encoding='utf-8')
+                    out_record.append(escape(elem))
             out += rowstart + """ & """.join(out_record) + \
                 " \\\ %s \n" % self._hsep
-        out += "\\tabucline- \n"
+        if self._type == 'bodytab':
+            out += " \\hline \n"
+        else:
+            out += "\\tabucline- \n"
         return out
     
     # Public
@@ -299,19 +306,29 @@ class TexTable(Table):
         @ return: str
 
         """
-        headers = str()
-        for heading in self._heading:
-            headers += self._make_header(heading)
+        headers = unicode()
+        preamble = unicode()
+        footer = unicode()
+        close_ = unicode()
 
+        if not self._type == 'bodytab':
+            preamble = self._make_preamble()
+            for heading in self._heading:
+                headers += self._make_header(heading)
+            footer = self._make_footer()
+            close_ = CLOSE_TEX_TAB[self._type]
+            
         out = [
-            self._make_preamble(),
+            preamble,
             headers,
-            self._make_footer(),
-            self._make_data(),
+            self._make_body(),
+            footer,
+            close_
             ]
-        out.append(CLOSE_TEX_TAB)
-        out = str().join(out)
-        return unicode(out, 'utf-8')
+        out = unicode().join(out)
+#        return unicode(out, 'utf-8')
+        return out
+
 
 class HTMLTable(Table):
 
@@ -325,21 +342,19 @@ class HTMLTable(Table):
         super(HTMLTable, self).__init__(data, **kwargs)
 
 
-    def _make_header_table(self):
+    def _make_header(self):
         '''
         sezione che costruisce l'header della tabella: thead
         '''
 
         out = '''<thead>'''
-        records = self._heading
-        #self._logger.info("In Make Header Table %s", records)
 	out += '''<tr>'''
-        for i in records[1]:
-	    out += '''<th>%s</th>''' % i.replace("|","").replace(" ","")
+        for level in self._heading:
+            for i in level:
+                out += '''<th>%s</th>''' % i.replace("|","").replace(" ","")
 	out += '''</tr>'''
         out += '''</thead>\n'''
         return out
-
 
     def _make_body(self):
         '''
@@ -347,7 +362,7 @@ class HTMLTable(Table):
         '''
 
         out = '''<tbody>\n'''
-        records = self._data.df[self._keys].to_records()
+        records = self._data.DF[self._keys].to_records()
         #self._logger.info("In Make Body %s", records)
         for line in list(records):
 	    out += '''<tr>\n'''
@@ -376,20 +391,17 @@ class HTMLTable(Table):
 
         ret = str()
         span = self._align
-        if self._data.footnote is not None:
-            ret = "<hr/>" + self._data.footnote
+        if self._data.FOOTNOTE is not None:
+            ret = "<hr/>" + self._data.FOOTNOTE
         return str().join(ret)
-
 
     def out(self):
         ''' Return a string that contains valid Html code for a table.
         '''
         out = [
-	    self._make_header_table(),
+            escape(self._make_header(), HTML_ESCAPE),
 	    self._make_body(),
 	    self._make_footer(),
             ]
         out = unicode(str().join(out))
         return out
-
-

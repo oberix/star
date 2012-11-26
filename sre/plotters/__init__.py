@@ -28,4 +28,3 @@ from scatter import Scatter as scatter
 from simple import Plot as plot
 from simple import Bar as bar
 from simple import Barh as barh
-

@@ -19,10 +19,14 @@
 #
 ##############################################################################
 
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib import rc
 import logging
 from tempfile import NamedTemporaryFile, TemporaryFile
+import pandas
+import re
 
 import plotters
 
@@ -30,12 +34,59 @@ __author__ = "Marco Pattaro <marco.pattaro@servabit.it>"
 __version__ = "0.1"
 __all__ = ['Graph']
 
+TICK_LABEL_LIMIT = 999. # xticks labels length limit
+TICK_STEP = 2  # Draw an xtick every n values
+
 FIGSIZE = { # (w, h) in inches
     'stamp': (3.200, 2.0), # (3.180, 2.380)
     'dinamic': (6.360, 2.380),
     'square': (6.360, 6.360),
     'flag': (3.180, 9.52),
+    'scpaese': (3.5, 2.2),
 }
+
+TEX_ESCAPE = {
+    re.compile("€"): "\\officialeuro", 
+    re.compile("%"): "\\%", 
+    re.compile("&"): "\\&",
+    re.compile("\$(?!\w+)"): "\\$",
+    re.compile(">(?!\{)"): "\\textgreater",
+    re.compile("<(?!\{)"): "\\textless",
+    re.compile("\n"): "\\\\",
+    re.compile("_"): "\_",
+#    re.compile("-"): "$-$",
+    # tell LaTeX that an hyphen can be inserted after a '/'
+    re.compile("/"): "/\-", 
+    re.compile("\^"): "\textasciicircum",
+    re.compile("~"): "\normaltilde",
+    }
+
+# TODO: fill this up
+HTML_ESCAPE = {
+    re.compile("<"): "&lt;",
+    re.compile(">"): "&gt;",
+    re.compile("&"): "&amp;",
+    re.compile("\""): "&quot;",
+    re.compile("'"): "&apos;",
+    re.compile("€"): "&euro;",
+    }
+
+# TODO: move this to template.py
+def escape(string, patterns=None):
+    ''' Escape string to work with LaTeX.
+    The function calls TEX_ESCAPE dictionary to metch regexp with their escaped
+    version.
+
+    @ param string: the string to escape
+    @ param patterns: a pattern/string mapping dictionary
+    @ return: escaped version of string
+
+    '''
+    if patterns is None:
+        patterns = TEX_ESCAPE
+    for pattern, sub in patterns.iteritems():
+        string = re.sub(pattern, sub, string)
+    return string
 
 class Graph(object):
 
@@ -79,10 +130,10 @@ class Graph(object):
         '''
         # Evaluate number of columns
         ncol = 3
-        if len(handles) < 5:
-            ncol = 2
-        elif len(handles) < 3:
+        if len(handles) < 3:
             ncol = 1
+        elif len(handles) < 5:
+            ncol = 2
         # Estimate new hight needed for the legend
         dheight = ((len(handles)/ncol) + 1) * self._fontsize * 0.01
         dheight_perc = dheight / figure.get_figheight() 
@@ -98,6 +149,14 @@ class Graph(object):
         return leg
 
     def _unroll_cum(self, lm, val):
+        ''' Visit bag's LM dictionary and make an ordered list of those
+        variables that are cumulative to each other. This list will be used to
+        stack variables in bar and hbar graphs.
+
+        @ param lm : an LM dictionary
+        @ param val: an LM dictionary entry
+
+        '''
         ret = list()
         if val.get('cum'):
             ret = [val.get('cum', None)]
@@ -117,13 +176,32 @@ class Graph(object):
         for key, val in lm.iteritems():
             # TODO: apply translation
             if val['type'] == 'lax':
-                self._lax = self._df[key]
+                self._lax = pandas.Series([float(elem) for elem in self._df[key].tolist()])
                 self._x_meta.append(val)
             else:
                 val['key'] = key
                 val['cumulate'] = self._unroll_cum(lm, val)
-                self._y_meta.append(val)
-#        self._y_meta.sort(key=lambda x: len(x['cumulate']), reverse=True)
+                if val['type'] == 'plot':
+                    self._y_meta.insert(0, val)
+                else:
+                    self._y_meta.append(val)
+#                self._y_meta.append(val)
+
+    def _set_x_ax(self, ax):
+        ticks = []
+        rotation = 0
+        delta = (self._lax.max() - self._lax.min()) / len(self._lax)
+        # Draw only even ticks
+        for idx, elem in enumerate(self._lax):
+            if idx % TICK_STEP == 0:
+                ticks.append(self._lax[idx])
+            if elem > TICK_LABEL_LIMIT:
+                rotation = 30
+        ax.set_xticks(ticks)
+        ax.set_xlim(self._lax.min() - delta,
+                    self._lax.max() + delta)
+        plt.setp(plt.xticks()[1], rotation=rotation)
+        plt.subplots_adjust(hspace=0, bottom=0.13)
 
     def make_graph(self):
         ''' Create a Figure and plot a graph in it following what was specified
@@ -133,13 +211,11 @@ class Graph(object):
         
         '''
         fig = plt.figure(figsize=self._size)
-        ax = fig.add_subplot(1,1,1, axisbg='#eeefff', autoscale_on=True,
+        ax = fig.add_subplot(1,1,1, axisbg='w', autoscale_on=True,
                              adjustable="datalim")
-        # TODO: consider moving ax setting in concrete Plotter implementation
-        ax.set_xlim(self._lax.min(), self._lax.max())
         ax.grid(True)
-        lines = list()
-        labels = list()
+        lines = []
+        labels = []
         for idx, col in enumerate(self._y_meta):
             try:
                 line = self._plotters[col['type']].plot(ax, col)
@@ -150,6 +226,8 @@ class Graph(object):
                 continue
             lines.append(line)
             labels.append(col['label'])
+
+        # self._set_x_ax(ax) # Single graphs may change this
         if self._legend:
             handles = [line[0] for line in lines]
             leg = self._make_legend(fig, handles, labels)
@@ -167,7 +245,7 @@ class TexGraph(Graph):
     method so that it produce a LaTeX tag ready to be substitued in the
     template.
     '''
-    
+
     def __init__(self, data, **kwargs):
         ''' Just set some rc params
         ''' 
@@ -175,17 +253,21 @@ class TexGraph(Graph):
         # Tell matplotlib to use LaTeX to render text
         rc('font', **{
                 'family': 'serif',
-                'sans-serif':['Computer Modern Roman'], 
+                'serif':['Computer Modern Roman'], 
                 'size':self._fontsize})
         rc('text', usetex=True)
- 
+    
+    def _make_legend(self, figure, handles, labels):
+        labels = [escape(label) for label in labels]
+        return super(TexGraph, self)._make_legend(figure, handles, labels)
+
     def out(self):
         ''' Produce a LaTeX compatible tag to be substituted in the template.
         '''
         delete = True
         if self._logger.getEffectiveLevel() <= logging.DEBUG:
             delete = False
-        fd = NamedTemporaryFile(suffix='.pdf', delete=delete)        
+        fd = NamedTemporaryFile(suffix='.pdf', delete=delete)
         self._figure.savefig(fd, format='pdf')
 
         ret = "\\includegraphics{%s}" % fd.name

@@ -1,0 +1,7 @@
+* Depends on
+  - Python >= 2.6
+  - python-pandas >= 0.7.3
+  - matplotlib >= 0.99.1
+  - texlive-latex-base >= 2009-7
+  - texlive-latex-extras >= 2009-10
+  - cm-super >= 0.3.4

@@ -19,6 +19,7 @@
 ##############################################################################
 
 import numpy as np
+import math
 from base_plotter import BasePlotter
 
 class Plot(BasePlotter):
@@ -27,19 +28,12 @@ class Plot(BasePlotter):
     ''' 
 
     def plot(self, ax, col):
-        ret = ax.plot(self._graph._lax, self._graph._df[col['key']],
-                       color=col['color'])
-
+        yvals = self._graph._df[col['key']]
         if col.get('ax') == 'dx':
-            ax = ax.get_figure().add_axes(
-                ax.get_position(True), 
-                label=col['label'],
-                frameon=False,
-                sharex=ax)
-            ax.yaxis.tick_right()
-        ax.relim()
-        ax.autoscale_view(tight=False, scalex=True, scaley=True)
-
+            ax = ax.twinx()
+        ret = ax.plot(self._graph._lax, yvals, color=col.get('color', None), zorder=10)
+        self._logger.debug('ret = %s', [l.get_zorder() for l in ret])
+        self._graph._set_x_ax(ax)
         return ret
 
 class AbstractBar(BasePlotter):
@@ -68,17 +62,14 @@ class AbstractBar(BasePlotter):
                 bottom += self._graph._df[key]
 
         # compute margins
-        width = (float(self._graph._lax.max()) - float(self._graph._lax.min())) / float(len(self._graph._lax))
+        width = (self._graph._lax.max() - self._graph._lax.min()) / len(self._graph._lax)
         margin = (0.2 * width)
         dim = width - margin
         border = dim + margin
 
         # Generate graph calling template method.
-        ret = self._plot(ax, col, color=col['color'], align='center', bottom=bottom, dim=dim, border=border)
-
-        ax.relim()
-        ax.autoscale_view(tight=False, scalex=True, scaley=True)
-
+        ret = self._plot(ax, col, color=col.get('color', None), align='center',
+                         bottom=bottom, dim=dim, border=border)
         return ret
 
 class Bar(AbstractBar):
@@ -86,18 +77,18 @@ class Bar(AbstractBar):
     ''' 
 
     def _plot(self, ax, col, **kwargs):
-        ret = ax.bar(self._graph._lax, self._graph._df[col['key']],
-                      color=kwargs['color'], align=kwargs['align'],
-                      bottom=kwargs['bottom'], width=kwargs['dim'])
+        yvals = self._graph._df[col['key']]
 
         if col.get('ax') == 'dx':
-            ax = ax.get_figure().add_axes(
-                ax.get_position(True), 
-                label=col['label'],
-                frameon=False,
-                sharex=ax)
-            ax.yaxis.tick_right()
-
+            ax = ax.twinx()
+        ret = ax.bar(self._graph._lax, yvals,
+                     color=kwargs['color'], align=kwargs['align'],
+                     bottom=kwargs['bottom'], width=kwargs['dim'],
+                     zorder=0, rasterized=True, alpha=0.8)
+#        ax.relim()
+        # ax.autoscale_view(tight=False, scalex=True, scaley=True)
+        self._logger.debug('ret = %s', [p.get_zorder() for p in ret])
+        self._graph._set_x_ax(ax)
         return ret
 
 class Barh(AbstractBar):
@@ -105,22 +96,11 @@ class Barh(AbstractBar):
     ''' 
 
     def _plot(self, ax, col, **kwargs):
-        ret = ax.barh( self._graph._lax, self._graph._df[col['key']],
-                       color=kwargs['color'], align=kwargs['align'],
-                       left=kwargs['bottom'], height=kwargs['dim'])
-
+        yvals = self._graph._df[col['key']]
         if col.get('ax') == 'dx':
-            ax = ax.get_figure().add_axes(
-                ax.get_position(True), 
-                label=col['label'],
-                frameon=False,
-                sharey=ax,)
-            ax.xaxis.tick_top()
-
+            ax = ax.twinx()
+        ret = ax.barh( self._graph._lax, self._graph._df[col['key']],
+                       color=kwargs.get('color', None), align=kwargs.get('align', None),
+                       left=kwargs.get('bottom', None), height=kwargs.get('dim', None),
+                       zorder=1)
         return ret
-    
-
-
-
-
-
