@@ -30,7 +30,9 @@ __all__ = ['Bag']
 
 TI_VALS = (
     'tab',
-    'graph'
+    'ltab'.
+    'bodytab',
+    'graph',
 )
 
 GRAPH_ROLES = (
@@ -116,7 +118,6 @@ class Bag(GenericPickler):
         
         @ param modlist: a list of tuples (row number, modifier). row numbers
             are all referred to the original DF.
-
         Example: [(0, "@b"), (3, "@g")] will insert a blank row as the
         beginning and will make the forth row bold.
 

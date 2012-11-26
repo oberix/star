@@ -19,12 +19,10 @@
 __author__ = 'Marco Pattaro (<marco.pattaro@servabit.it>)'
 __all__ = ['Stark']
 
-import sys
 import os 
 import pandas
 import numpy
 import string
-import copy
 
 from generic_pickler import GenericPickler
 
@@ -218,7 +216,7 @@ class Stark(GenericPickler):
         ''' DF settre:
         Just check VD/DF consistency before proceding.
         '''
-        if not isinstance(df, DataFrame):
+        if not isinstance(df, pandas.DataFrame):
             raise TypeError(
                 "DF must be a pandas.DataFrame object, %s received instead", type(df))
         self._DF = df.copy()
