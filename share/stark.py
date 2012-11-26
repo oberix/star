@@ -26,19 +26,16 @@ import string
 
 from generic_pickler import GenericPickler
 
-TI_VALS = (
-    'elab',
-)
-TIP_VALS = ['D', 'N', 'S', 'R']
-OPERATORS = {
-    '+': '__add__',
-    '-': '__sub__',
-    '*': '__mul__',
-    '/': '__div__',
-    '//': '__floordiv__',
-    '**': '__pow__',
-    '%': '__mod__',
-}
+STYPES = ('elab')
+# TYPES = ['D', 'N', 'S', 'R']
+TYPES = [
+    'D', # Dimensional
+    'I', # Immutable 
+    'N', # Numeric
+    'C', # Currency
+    'E', # Elaboration
+    'R', # Rate
+    ]
 
 
 def _unroll(dict_):
@@ -87,57 +84,57 @@ class Stark(GenericPickler):
     collection of meta-information around datas inside a pandas DataFrame.
 
     Stark has the following attributes:
-        DF: a pandas DataFrame
-        LD: the path where the object will be saved as pickle
-        TI: type (just 'elab' for now)
-        VD: a a dictionary of various info for the user; keys are DF columns
+        df: a pandas DataFrame
+        cod: the path where the object will be saved as pickle
+        stype: type (just 'elab' for now)
+        lm: a a dictionary of various info for the user; keys are df columns
         names, each key contain a dictionary with the following keys.
-            TIP: data use, one of (D|N|S|R), that stands for:
+            type: data use, one of (D|N|S|R), that stands for:
                 Dimension: can be used in aggregation (like groupby)
                 Numeric: a numeric data type
                 String: a string data type
                 Calculated: (Ricavato in Italian)
-            DES: a short description
-            MIS: unit of measure
-            ELA: elaboration that ptocuced the data (if TIP == 'R')
-
+            des: a short description
+            munit: unit of measure
+            elab: elaboration that ptocuced the data (if TIP == 'R')
+            dtype: shortcut to np.dtype (?)
     """
 
-    def __init__(self, DF, VD=None, LD=None, env=None, TI='elab'):
+    def __init__(self, df, lm=None, cod=None, stype='elab'):
         """
-        @ param DF: DataFrame
-        @ param LD: save path
-        @ param TI: type
-        @ param VD: metadata dictionary
+        @ param df: DataFrame
+        @ param cod: save path
+        @ param stype: type
+        @ param lm: metadata dictionary
         @ param env: environment dictionary (usually globals() from caller)
         """
-        self._DF = DF.copy()
-        self.LD = LD
+        self._df = df.copy()
+        self.cod = cod
         self._env = env
-        if TI not in TI_VALS:
-            raise ValueError("TI must be one of %s" % TI_VALS)
-        self.TI = TI
-        if VD is None:
-            VD = {}
-        self._VD = VD
+        if stype not in STYPES:
+            raise ValueError("stype must be one of %s" % STYPES)
+        self.stype = stype
+        if lm is None:
+            lm = {}
+        self._lm = lm
         self._update()
 
     def __repr__(self):
         """ Delegate to DataFrame.__repr__().
         """
-        return repr(self._DF)
+        return repr(self._df)
 
     def __add__(self, other):
-        df = self._DF.append(other.DF, ignore_index=True, verify_integrity=False)
-        vd = self._VD
-        out_stark = Stark(df, VD=vd, env=self._env, LD=self.LD, TI=self.TI)
-        out_stark.rollup(inplace=True)
+        df = self._df.append(other.DF, ignore_index=True, verify_integrity=False)
+        vd = self._lm
+        out_stark = Stark(df, lm=vd, cod=self.cod, stype=self.stype)
+        out_stark._aggregate(inplace=True)
         return out_stark
 
     def __getitem__(self, key):
         ''' Delegate to DataFrame.__setitem__().
         '''
-        return self._DF.__getitem__(key)
+        return self._df.__getitem__(key)
 
     def __setitem__(self, key, value):
         ''' Delegate to DataFrame.__setitem__(). The purpose of this method it
@@ -147,20 +144,20 @@ class Stark(GenericPickler):
         '''
         if isinstance(value, str) or isinstance(value, unicode):
             try:
-                self.update_df(key, expr=value, var_type='R')
+                self.update_df(key, expr=value, var_type='E')
             except NameError:
-                self.update_df(key, series=value, var_type='S')
+                self.update_df(key, series=value, var_type='I')
         else: # TODO: a type check woudn't be bad here!
             self.update_df(key, series=value, var_type='N')
 
     def __delitem__(self, key):
-        del self._DF[key]
-        target = _unroll(self._VD)
+        del self._df[key]
+        target = _unroll(self._lm)
         target.remove(key)
-        self._VD = _filter_tree(self._VD, target)
+        self._lm = _filter_tree(self._lm, target)
 
     def __len__(self):
-        return len(self._DF)
+        return len(self._df)
 
     def _update(self):
         ''' Call this method every time VD is changed to update Stark data.
@@ -174,7 +171,7 @@ class Stark(GenericPickler):
         self._num = list()
         self._str = list()
         # Sort VD.items() by 'ORD' to have output lists already ordered.
-        vd_items = self._VD.items()
+        vd_items = self._lm.items()
         vd_items.sort(key=lambda x: x[1].get('ORD', 0))
         for key, val in vd_items:
             if val['TIP'] == 'D':
@@ -182,9 +179,9 @@ class Stark(GenericPickler):
             elif val['TIP'] == 'R':
                 # (Re)evaluate calculated columns
                 try:
-                    self._DF[key] = self.eval(self._VD[key]['ELA'])
+                    self._df[key] = self.eval(self._lm[key]['ELA'])
                 except AttributeError:
-                    self._DF[key] = self.eval_polish(self._VD[key]['ELA'])
+                    self._df[key] = self.eval_polish(self._lm[key]['ELA'])
                 self._cal.append(key)
             elif val['TIP'] == 'N':
                 # TODO: check that dtypes are really numeric types
@@ -194,32 +191,32 @@ class Stark(GenericPickler):
                 self._str.append(key)
 
     @property
-    def VD(self):
-        return self._VD
+    def lm(self):
+        return self._lm
 
-    @VD.setter
-    def VD(self, vd):
+    @lm.setter
+    def lm(self, vd):
         ''' VD setter:
         Just check VD/DF consistency before proceding.
         ''' 
         if vd is None:
             vd = {}
-        self._VD = vd
+        self._lm = vd
         self._update()
 
     @property
-    def DF(self):
-        return self._DF
+    def df(self):
+        return self._df
 
-    @DF.setter
-    def DF(self, df):
+    @df.setter
+    def df(self, df):
         ''' DF settre:
         Just check VD/DF consistency before proceding.
         '''
         if not isinstance(df, pandas.DataFrame):
             raise TypeError(
-                "DF must be a pandas.DataFrame object, %s received instead", type(df))
-        self._DF = df.copy()
+                "df must be a pandas.DataFrame object, %s received instead", type(df))
+        self._df = df.copy()
         # DF changed, re-evaluate calculated data
         self._update()
 
@@ -237,9 +234,9 @@ class Stark(GenericPickler):
 
     @property
     def columns(self):
-        return self._DF.columns
+        return self._df.columns
 
-    def update_vd(self, key, entry):
+    def update_lm(self, key, entry):
         ''' Update VD dictionary with a new entry.
         
         @ param key: new key in the dictionary
@@ -248,7 +245,7 @@ class Stark(GenericPickler):
 
         '''
         # Check key consistency
-        self._VD[key] = entry
+        self._lm[key] = entry
         self._update()
 
     def update_df(self, col, series=None, var_type='N', expr=None, des=None,
@@ -274,9 +271,9 @@ class Stark(GenericPickler):
         @ raise ValueError: when parameters are inconsistent
 
         '''
-        if var_type not in TIP_VALS:
+        if var_type not in TYPES:
             raise ValueError("var_type mut be one of [%s]" % \
-                                 '|'.join(TIP_VALS))
+                                 '|'.join(TYPES))
         if expr is None and var_type == 'R':
             raise ValueError(
                 "You must specify an expression for var_type = 'R'")
@@ -284,7 +281,7 @@ class Stark(GenericPickler):
             raise ValueError(
                 "You must pass a series or list for var_type != 'R'")        
         if var_type != 'R':
-            self._DF[col] = series
+            self._df[col] = series
         self.update_vd(col, {
                 'TIP' : var_type,
                 'ORD' : order,
@@ -295,28 +292,17 @@ class Stark(GenericPickler):
     def save(self, file_=None):
         ''' Save object as pickle file.
         
-        If a filename is not provided, the one stored in self.LD will be used.
+        If a filename is not provided, the one stored in self.cod will be used.
 
         @ param file_: destination file path 
         
         '''
-        # FIXME: This is redundant with Bag.save()
         if file_ is None:
-            file_ = self.LD
+            file_ = self.cod
         if not os.path.exists(os.path.dirname(file_)):
             os.makedirs(os.path.dirname(file_))
         self._env = None # cannot pickle finctions declared outside this scope
         super(Stark, self).save(file_)
-
-    # TODO: Find a way to handle function calls accross namespaces (_env) and
-    # restore them when saving/loading pickles (maybe this is just not possible
-    # without reimplementing serialization)
-
-    # @staticmethod
-    # def load(file_):
-    #     """ Load object from a pickle """
-    #     ret = GenericPickler.load(file_)
-    #     ret._env = 
 
     def eval(self, func):
         ''' Evaluate a function with DataFrame columns'es placeholders.
@@ -344,55 +330,10 @@ class Stark(GenericPickler):
         ph_dict = dict()
         ph_list = [ph[1] for ph in string.Template.pattern.findall(func)]
         for ph in ph_list:
-            ph_dict[ph] = str().join(["self._DF['", ph, "']"])
+            ph_dict[ph] = str().join(["self._df['", ph, "']"])
         return eval(templ.substitute(ph_dict), self._env, {'self': self})
-
-    def eval_polish(self, func):
-        ''' Parse and execute a statement in polish notation.
-
-        Statemenst must be expressed in a Lisp-like manner, but uing python
-        tuples. If any dataframe's column is part of the statement, the
-        column's name can be expressed as a string in the statement.
-        
-        @ param func: function in polish notation
-        @ return: function result
-
-        Example:
-            ('mul', ('div', 'B', 'C'), 100) # where 'B' and 'C' are in
-                                            # df.columns
-        Is the same as:
-            df['B'] / df['C'] * 100
-
-        '''
-        # Some input checks
-        if not hasattr(func, '__iter__'):
-            raise AttributeError(
-                'func must be a iterable, %s teceived instead.' % \
-                    type(func).__name__)
-        if len(func) < 2:
-            raise AttributeError(
-                'func must have at last two elements (an operator and a \
-                term), received %s' % len(func))
-        op = func[0]
-        if op in OPERATORS.keys():
-            op = OPERATORS[op]
-        else:
-            op = '__%s__' % func[0]
-        terms = list()
-        # Evaluate
-        for elem in func[1:]:
-            if hasattr(elem, '__iter__'): # recursive step
-                terms.append(self.eval_polish(elem))
-            elif elem in self._DF.columns: # df col
-                terms.append(self._DF[elem])
-            else: # literal
-                terms.append(elem)
-        try:
-            return terms[0].__getattribute__(op)(terms[1])
-        except (IndexError, TypeError):
-            return terms[0].__getattribute__(op)()
             
-    def rollup(self, func='sum', dim=None, var=None, inplace=False):
+    def _aggregate(self, func='sum', dim=None, var=None, inplace=False):
         ''' Apply an aggregation function to the DataFrame. If the DataFrame
         contains datas that are calculated as a transformation of other columns
         from the same DataFrame, this will be re-calculated in the output one.
@@ -421,7 +362,7 @@ class Stark(GenericPickler):
         if isinstance(dim, str) or isinstance(dim, unicode):
             dim = [dim]
         outkeys = dim + var
-        group = self._DF.groupby(dim)
+        group = self._df.groupby(dim)
         # Create aggregate df
         # Trying to avoid dispatching ambiguity
         try:
@@ -429,14 +370,18 @@ class Stark(GenericPickler):
         except AttributeError:
             df = group.aggregate(eval(func))[var].reset_index()
         # Set up output VD
-        vd = _filter_tree(self._VD, outkeys)
+        vd = _filter_tree(self._lm, outkeys)
         if inplace:
-            self._DF = df
-            self._VD = vd
+            self._df = df
+            self._lm = vd
             self._update()
             return
-        return Stark(df, VD=vd, env=self._env)
+        return Stark(df, lm=vd, env=self._env)
 
+    def rollup(self, **kwargs):
+        # TODO: implement (calling _aggregate)
+        raise NotImplementedError
+    
 
 if __name__ == '__main__' :
     ''' Test
@@ -530,5 +475,5 @@ if __name__ == '__main__' :
         }
 
 
-    s = Stark(df, VD=vd, env=globals())
-    s1 = Stark(df1, VD=vd1, env=globals())
+    s = Stark(df, lm=vd, env=globals())
+    s1 = Stark(df1, lm=vd1, env=globals())

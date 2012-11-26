@@ -30,7 +30,7 @@ __all__ = ['Bag']
 
 TI_VALS = (
     'tab',
-    'ltab'.
+    'ltab',
     'bodytab',
     'graph',
 )

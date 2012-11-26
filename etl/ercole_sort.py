@@ -187,11 +187,11 @@ def main(input_dir=None, root=None, start_year=None,
                 for country in country_list]
         parallel_jobs.do_jobs_efficiently(args)
 
-    # # aggregate countries by prod
-    # build_tree(root, root, STRUCT_PROD)
+    # aggregate countries by prod
+    build_tree(root, root, STRUCT_PROD)
 
-    # # aggregate prod by cuuntry
-    # build_tree(input_dir, root, STRUCT_COUNTRY)
+    # aggregate prod by cuuntry
+    build_tree(input_dir, root, STRUCT_COUNTRY)
 
     return 0
 
