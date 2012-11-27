@@ -18,11 +18,6 @@
 #
 ##############################################################################
 
-__all__ = ['Plotters']
-
-# Plotter factory
-from base_plotter import Plotters
-
 # Concrete Plotters
 from scatter import Scatter as scatter
 from simple import Plot as plot

@@ -18,11 +18,10 @@
 #
 ##############################################################################
 
-import plotters
 import logging
 
 __author__ = "Marco Pattaro <marco.pattaro@servabit.it>"
-__all__ = ['Plotters']
+
 
 class BasePlotter(object):
     ''' Generic class defining the interface of a Plotter.
@@ -57,39 +56,5 @@ class BasePlotter(object):
         '''
         raise NotImplementedError
 
-class Plotters(object):
-    ''' Plotter factory.
-    
-    This class manage instanciation of concrete implementations of BasePlotter
-    by ensuring that there is at most one instance of each of them.
 
-    '''
-
-    def __init__(self, graph):
-        self._graph = graph
-        self._logger = logging.getLogger(type(self).__name__)
-        self._plotters = dict()
-
-    def __getitem__(self, key):
-        ''' Plotters can be accessed with square brackets notation
-
-        Example:
-        >>> plotters = Plotters(myGraph)
-        >>> plotters['graphtype'].plot(ax, col)
-
-        '''
-        try:
-            return self._plotters[key]
-        except KeyError:
-            try:
-                self._plotters[key] = plotters.__getattribute__(key)(self._graph)
-            except AttributeError:
-                raise KeyError("Unhandled graph type '%s'" % key)
-            return self._plotters[key]
-
-    def __setitem__(self, key, value):
-        ''' Item assignment not allowed.
-        '''
-        raise TypeError("'%s' object does not support item assignment" %
-                        type(self).__name__)
         

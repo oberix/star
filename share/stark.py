@@ -27,7 +27,6 @@ import string
 from generic_pickler import GenericPickler
 
 STYPES = ('elab')
-# TYPES = ['D', 'N', 'S', 'R']
 TYPES = [
     'D', # Dimensional
     'I', # Immutable 
@@ -95,6 +94,7 @@ class Stark(GenericPickler):
                 String: a string data type
                 Calculated: (Ricavato in Italian)
             des: a short description
+            vals: values that the variables can assume
             munit: unit of measure
             elab: elaboration that ptocuced the data (if TIP == 'R')
             dtype: shortcut to np.dtype (?)
@@ -108,9 +108,8 @@ class Stark(GenericPickler):
         @ param lm: metadata dictionary
         @ param env: environment dictionary (usually globals() from caller)
         """
-        self._df = df.copy()
+        self._df = df
         self.cod = cod
-        self._env = env
         if stype not in STYPES:
             raise ValueError("stype must be one of %s" % STYPES)
         self.stype = stype
@@ -126,8 +125,8 @@ class Stark(GenericPickler):
 
     def __add__(self, other):
         df = self._df.append(other.DF, ignore_index=True, verify_integrity=False)
-        vd = self._lm
-        out_stark = Stark(df, lm=vd, cod=self.cod, stype=self.stype)
+        lm = self._lm
+        out_stark = Stark(df, lm=lm, cod=self.cod, stype=self.stype)
         out_stark._aggregate(inplace=True)
         return out_stark
 
@@ -174,19 +173,19 @@ class Stark(GenericPickler):
         vd_items = self._lm.items()
         vd_items.sort(key=lambda x: x[1].get('ORD', 0))
         for key, val in vd_items:
-            if val['TIP'] == 'D':
+            if val['type'] == 'D':
                 self._dim += _unroll({key: val})
-            elif val['TIP'] == 'R':
+            elif val['type'] == 'R':
                 # (Re)evaluate calculated columns
                 try:
-                    self._df[key] = self.eval(self._lm[key]['ELA'])
+                    self._df[key] = self.eval(self._lm[key]['elab'])
                 except AttributeError:
-                    self._df[key] = self.eval_polish(self._lm[key]['ELA'])
+                    self._df[key] = self.eval_polish(self._lm[key]['elab'])
                 self._cal.append(key)
-            elif val['TIP'] == 'N':
+            elif val['type'] == 'N':
                 # TODO: check that dtypes are really numeric types
                 self._num.append(key)
-            elif val['TIP'] == 'S':
+            elif val['type'] == 'S':
                 # TODO: check that dtypes are str or unicode
                 self._str.append(key)
 
@@ -216,7 +215,7 @@ class Stark(GenericPickler):
         if not isinstance(df, pandas.DataFrame):
             raise TypeError(
                 "df must be a pandas.DataFrame object, %s received instead", type(df))
-        self._df = df.copy()
+        self._df
         # DF changed, re-evaluate calculated data
         self._update()
 
@@ -262,7 +261,7 @@ class Stark(GenericPickler):
         @ param col: Column's name
         @ param series: Series or list or any other type accepted as DataFrame
             column.
-        @ param var_type: One of VD TIP values, if it's 'R' an expr must not be
+        @ param var_type: One of VD type values, if it's 'R' an expr must not be
             None
         @ param expr: The expression to calculate the column's value, it can
             either be a string or a tuple.
@@ -283,11 +282,11 @@ class Stark(GenericPickler):
         if var_type != 'R':
             self._df[col] = series
         self.update_vd(col, {
-                'TIP' : var_type,
+                'type' : var_type,
                 'ORD' : order,
-                'DES' : des,
+                'des' : des,
                 'MIS' : mis,
-                'ELA' : expr})
+                'elab' : expr})
 
     def save(self, file_=None):
         ''' Save object as pickle file.
@@ -419,59 +418,59 @@ if __name__ == '__main__' :
 
     vd = {
         'region' : {
-            'TIP': 'D',
+            'type': 'D',
             'child': {
                 'country': {
-                    'TIP': 'D',
-                    'DES': 'country',
+                    'type': 'D',
+                    'des': 'country',
                     'child': {
                         'city': {
-                            'TIP': 'D',
-                            'DES': 'city'}
+                            'type': 'D',
+                            'des': 'city'}
                         }
                     }
                 }
             },
-        'A' : {'TIP': 'S'},
-        'B' : {'TIP': 'N',
-               'ELA': None,},
-        'C' : {'TIP': 'N',
-               'ELA': None,},
-        'D' : {'TIP': 'R',
+        'A' : {'type': 'S'},
+        'B' : {'type': 'N',
+               'elab': None,},
+        'C' : {'type': 'N',
+               'elab': None,},
+        'D' : {'type': 'R',
                'ORD': 0,
-               'ELA': "$B / $C * 100"},
-        'E' : {'TIP': 'R',
+               'elab': "$B / $C * 100"},
+        'E' : {'type': 'R',
                'ORD': 1, 
-               'ELA': ('/', ('+', 'C', 'D'), 100)},
-        'F': {'TIP': 'I'}
+               'elab': ('/', ('+', 'C', 'D'), 100)},
+        'F': {'type': 'I'}
         }
 
     vd1 = {
         'region' : {
-            'TIP': 'D',
+            'type': 'D',
             'child': {
                 'country': {
-                    'TIP': 'D',
-                    'DES': 'country',
+                    'type': 'D',
+                    'des': 'country',
                     'child': {
                         'city': {
-                            'TIP': 'D',
-                            'DES': 'city'}
+                            'type': 'D',
+                            'des': 'city'}
                         }
                     }
                 }
             },
-        'A' : {'TIP': 'S'},
-        'B' : {'TIP': 'N',
-               'ELA': None,},
-        'C' : {'TIP': 'N',
-               'ELA': None,},
-        'D' : {'TIP': 'R',
+        'A' : {'type': 'S'},
+        'B' : {'type': 'N',
+               'elab': None,},
+        'C' : {'type': 'N',
+               'elab': None,},
+        'D' : {'type': 'R',
                'ORD': 0,
-               'ELA': "$B / $C * 100"},
-        'E' : {'TIP': 'R',
+               'elab': "$B / $C * 100"},
+        'E' : {'type': 'R',
                'ORD': 1, 
-               'ELA': ('/', ('+', 'C', 'D'), 100)},
+               'elab': ('/', ('+', 'C', 'D'), 100)},
         }
 
 

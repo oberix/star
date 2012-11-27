@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 ##############################################################################
-#    
+#
 #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
 #    Author: Marco Pattaro (<marco.pattaro@servabit.it>)
 #
@@ -15,7 +15,7 @@
 #    GNU Affero General Public License for more details.
 #
 #    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
 
@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt
 from matplotlib import rc
 import logging
 from tempfile import NamedTemporaryFile, TemporaryFile
-import pandas
+# import pandas
 import re
 
 import plotters
@@ -88,6 +88,43 @@ def escape(string, patterns=None):
         string = re.sub(pattern, sub, string)
     return string
 
+
+class Plotters(object):
+    ''' Plotter factory.
+    
+    This class manage instanciation of concrete implementations of BasePlotter
+    by ensuring that there is at most one instance of each of them.
+
+    '''
+
+    def __init__(self, graph):
+        self._graph = graph
+        self._logger = logging.getLogger(type(self).__name__)
+        self._plotters = dict()
+
+    def __getitem__(self, key):
+        ''' Plotters can be accessed with square brackets notation
+
+        Example:
+        >>> plotters = Plotters(myGraph)
+        >>> plotters['graphtype'].plot(ax, col)
+
+        '''
+        try:
+            return self._plotters[key]
+        except KeyError:
+            try:
+                self._plotters[key] = plotters.__getattribute__(key)(self._graph)
+            except AttributeError:
+                raise KeyError("Unhandled graph type '%s'" % key)
+            return self._plotters[key]
+
+    def __setitem__(self, key, value):
+        ''' Item assignment not allowed.
+        '''
+        raise TypeError("'%s' object does not support item assignment" %
+                        type(self).__name__)
+
 class Graph(object):
 
     def __init__(self, data, **kwargs):
@@ -113,8 +150,8 @@ class Graph(object):
             else:
                 raise e
         self._legend = data.legend
-        self._plotters = plotters.Plotters(self)
-        self.parse_lm(data.meta)
+        self._plotters = Plotters(self)
+        self.parse_lm(data.lm)
         self._figure = self.make_graph()
 
     def _make_legend(self, figure, handles, labels):
@@ -149,12 +186,12 @@ class Graph(object):
         return leg
 
     def _unroll_cum(self, lm, val):
-        ''' Visit bag's LM dictionary and make an ordered list of those
+        ''' Visit bag's lm dictionary and make an ordered list of those
         variables that are cumulative to each other. This list will be used to
         stack variables in bar and hbar graphs.
 
-        @ param lm : an LM dictionary
-        @ param val: an LM dictionary entry
+        @ param lm : an lm dictionary
+        @ param val: an lm dictionary entry
 
         '''
         ret = list()
@@ -164,7 +201,7 @@ class Graph(object):
         return ret
 
     def parse_lm(self, lm):
-        ''' Parse Bag's LM dictionary and estract the following non-public
+        ''' Parse Bag's lm dictionary and estract the following non-public
         attrubutes:
 
         _lax: Series to use as x axes
@@ -176,7 +213,7 @@ class Graph(object):
         for key, val in lm.iteritems():
             # TODO: apply translation
             if val['type'] == 'lax':
-                self._lax = pandas.Series([float(elem) for elem in self._df[key].tolist()])
+                self._lax = [float(elem) for elem in self._df[key].tolist()]
                 self._x_meta.append(val)
             else:
                 val['key'] = key
@@ -185,7 +222,6 @@ class Graph(object):
                     self._y_meta.insert(0, val)
                 else:
                     self._y_meta.append(val)
-#                self._y_meta.append(val)
 
     def _set_x_ax(self, ax):
         ticks = []
@@ -205,13 +241,13 @@ class Graph(object):
 
     def make_graph(self):
         ''' Create a Figure and plot a graph in it following what was specified
-        in Bag.LM.
+        in Bag.lm.
 
         @ return: the Figure instance created
         
         '''
         fig = plt.figure(figsize=self._size)
-        ax = fig.add_subplot(1,1,1, axisbg='w', autoscale_on=True,
+        ax = fig.add_subplot(1, 1, 1, axisbg='w', autoscale_on=True,
                              adjustable="datalim")
         ax.grid(True)
         lines = []
@@ -277,8 +313,13 @@ class TexGraph(Graph):
 class HTMLGraph(Graph):
 
     def out(self):
-        # TODO: implement
-        raise NotImplementedError
+        import base64, cStringIO
+        buf = cStringIO.StringIO()
+        self._figure.savefig(buf, format='png')
+        buf.seek(0)
+        png_base64 = base64.b64encode(buf.read())
+        return '<img src="data:image/png;base64,%s" />' % png_base64
+
 
 if __name__ == '__main__':
     ''' TEST '''

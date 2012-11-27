@@ -45,26 +45,26 @@ FORMATS = {
     '@p' : "\\pagebreak \n",
 }
 
-TEX_ESCAPE = {
-    re.compile("€"): "\\officialeuro", 
-    re.compile("%"): "\\%", 
-    re.compile("&"): "\\&",
-    re.compile("\$(?!\w+)"): "\\$",
-    re.compile(">(?!\{)"): "\\textgreater",
-    re.compile("<(?!\{)"): "\\textless",
-    re.compile("\n"): "\\\\",
-    re.compile("_"): "\_",
-#    re.compile("-"): "$-$",
-    # tell LaTeX that an hyphen can be inserted after a '/'
-    re.compile("/"): "/\-", 
-    re.compile("\^"): "\textasciicircum",
-    re.compile("~"): "\normaltilde",
-    }
+TEX_ESCAPE = [
+    (re.compile("€"), "\\officialeuro"), 
+    (re.compile("%"), "\\%"), 
+    (re.compile("&"), "\\&"),
+    (re.compile("\$(?!\w+)"), "\\$"),
+    (re.compile(">=(?!\{)"), r"$\\ge$"),
+    (re.compile("<=(?!\{)"), r"$\\le$"),
+    (re.compile(">(?!\{)"), r"$>$"),
+    (re.compile("<(?!\{)"), r"$<$"),
+    (re.compile("\n"), "\\\\"),
+    (re.compile("_"), "\_"),
+    (re.compile("/"), "/\-"), 
+    (re.compile("\^"), "\textasciicircum"),
+    (re.compile("~"), "\normaltilde"),
+    ]
 
 # TODO: fill this up
-HTML_ESCAPE = {
-    re.compile("€"): "EURO",
-    }
+HTML_ESCAPE = [
+    (re.compile("€"), "EURO"),
+    ]
 
 def unique_list(list_):
     """ Remove all duplicate elements from a list inplace, keeping the order
@@ -93,7 +93,7 @@ def escape(string, patterns=None):
     '''
     if patterns is None:
         patterns = TEX_ESCAPE
-    for pattern, sub in patterns.iteritems():
+    for pattern, sub in patterns:
         string = re.sub(pattern, sub, string)
     return string
 
@@ -107,7 +107,7 @@ class Table(object):
         """
         self._logger = logging.getLogger(type(self).__name__)
         self._data = data
-        self.parse_lm(data.LM)
+        self.parse_lm(data.lm)
         
     def parse_lm(self, lm):
         ''' Parse Bag's LM dictionary and estract the following non-public
@@ -262,25 +262,25 @@ class TexTable(Table):
         '''
         out = str()
         try:
-            self._data.DF = self._data.DF.sort(columns='_OR_')
+            self._data.df = self._data.df.sort(columns='_OR_')
         except KeyError:
             # keep it unsorted
             pass
         try:
             self._keys.append('_FR_')
-            records = self._data.DF[self._keys].to_records()
+            records = self._data.df[self._keys].to_records()
             # End is used to remove _FR_ values when generating the output
             # string.
             end = -1
         except KeyError:
             self._keys.remove('_FR_')
-            records = self._data.DF[self._keys].to_records()
+            records = self._data.df[self._keys].to_records()
             end = None
         for record in records:
             rowstart = unicode()
             if end is not None:
                 rowstart = FORMATS.get(record[end], str())
-            # Remove first element because it's the DF index and eventually
+            # Remove first element because it's the df index and eventually
             # last value if it contains _FR_ values.
             out_record = list()
             for elem in list(record)[1:end]:
@@ -362,7 +362,7 @@ class HTMLTable(Table):
         '''
 
         out = '''<tbody>\n'''
-        records = self._data.DF[self._keys].to_records()
+        records = self._data.df[self._keys].to_records()
         #self._logger.info("In Make Body %s", records)
         for line in list(records):
 	    out += '''<tr>\n'''
@@ -391,8 +391,8 @@ class HTMLTable(Table):
 
         ret = str()
         span = self._align
-        if self._data.FOOTNOTE is not None:
-            ret = "<hr/>" + self._data.FOOTNOTE
+        if self._data.footnore is not None:
+            ret = "<hr/>" + self._data.footnore
         return str().join(ret)
 
     def out(self):
