@@ -19,7 +19,6 @@
 ##############################################################################
 
 import numpy as np
-import math
 from base_plotter import BasePlotter
 
 class Plot(BasePlotter):

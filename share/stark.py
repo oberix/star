@@ -16,15 +16,17 @@
 #    You should have received a copy of the GNU Affero General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
 ##############################################################################
+import os 
+import string
+
+import pandas
+
+from generic_pickler import GenericPickler
+
+
 __author__ = 'Marco Pattaro (<marco.pattaro@servabit.it>)'
 __all__ = ['Stark']
 
-import os 
-import pandas
-import numpy
-import string
-
-from generic_pickler import GenericPickler
 
 STYPES = ('elab')
 TYPES = [
@@ -36,6 +38,10 @@ TYPES = [
     'R', # Rate
     ]
 
+
+##########################
+# Misc utility functions #
+##########################
 
 def _unroll(dict_):
     """ Unroll tree-like nested dictionary in depth-first order, following
@@ -87,7 +93,7 @@ class Stark(GenericPickler):
         cod: the path where the object will be saved as pickle
         stype: type (just 'elab' for now)
         lm: a a dictionary of various info for the user; keys are df columns
-        names, each key contain a dictionary with the following keys.
+            names, each key contain a dictionary with the following keys:
             type: data use, one of (D|N|S|R), that stands for:
                 Dimension: can be used in aggregation (like groupby)
                 Numeric: a numeric data type
@@ -100,6 +106,10 @@ class Stark(GenericPickler):
             dtype: shortcut to np.dtype (?)
     """
 
+    ####################
+    # Magic attributes #
+    ####################
+
     def __init__(self, df, lm=None, cod=None, stype='elab'):
         """
         @ param df: DataFrame
@@ -108,6 +118,7 @@ class Stark(GenericPickler):
         @ param lm: metadata dictionary
         @ param env: environment dictionary (usually globals() from caller)
         """
+        # TODO: make a Stark form a Stark
         self._df = df
         self.cod = cod
         if stype not in STYPES:
@@ -116,6 +127,12 @@ class Stark(GenericPickler):
         if lm is None:
             lm = {}
         self._lm = lm
+        self._dim = [] # Dimensions
+        self._elab = [] # Elaborated
+        self._num = [] # Numeric
+        self._imm = [] # Immutable
+        self._rate = [] # Rate
+        self._curr = [] # Currency
         self._update()
 
     def __repr__(self):
@@ -133,6 +150,7 @@ class Stark(GenericPickler):
     def __getitem__(self, key):
         ''' Delegate to DataFrame.__setitem__().
         '''
+        # TODO: return a new Stark instance
         return self._df.__getitem__(key)
 
     def __setitem__(self, key, value):
@@ -143,11 +161,11 @@ class Stark(GenericPickler):
         '''
         if isinstance(value, str) or isinstance(value, unicode):
             try:
-                self.update_df(key, expr=value, var_type='E')
+                self._update_df(key, expr=value, var_type='E')
             except NameError:
-                self.update_df(key, series=value, var_type='I')
-        else: # TODO: a type check woudn't be bad here!
-            self.update_df(key, series=value, var_type='N')
+                self._update_df(key, series=value, var_type='I')
+        else: 
+            self._update_df(key, series=value, var_type='N')
 
     def __delitem__(self, key):
         del self._df[key]
@@ -158,36 +176,9 @@ class Stark(GenericPickler):
     def __len__(self):
         return len(self._df)
 
-    def _update(self):
-        ''' Call this method every time VD is changed to update Stark data.
-        Iter over VD and fill up different lists of keys, each list contains
-        names from each data type.
-
-        ''' 
-        # Start from clean lists
-        self._dim = list() # dimensions
-        self._cal = list() # 
-        self._num = list()
-        self._str = list()
-        # Sort VD.items() by 'ORD' to have output lists already ordered.
-        vd_items = self._lm.items()
-        vd_items.sort(key=lambda x: x[1].get('ORD', 0))
-        for key, val in vd_items:
-            if val['type'] == 'D':
-                self._dim += _unroll({key: val})
-            elif val['type'] == 'R':
-                # (Re)evaluate calculated columns
-                try:
-                    self._df[key] = self.eval(self._lm[key]['elab'])
-                except AttributeError:
-                    self._df[key] = self.eval_polish(self._lm[key]['elab'])
-                self._cal.append(key)
-            elif val['type'] == 'N':
-                # TODO: check that dtypes are really numeric types
-                self._num.append(key)
-            elif val['type'] == 'S':
-                # TODO: check that dtypes are str or unicode
-                self._str.append(key)
+    ##############
+    # Properties #
+    ##############
 
     @property
     def lm(self):
@@ -214,8 +205,9 @@ class Stark(GenericPickler):
         '''
         if not isinstance(df, pandas.DataFrame):
             raise TypeError(
-                "df must be a pandas.DataFrame object, %s received instead", type(df))
-        self._df
+                "df must be a pandas.DataFrame object, %s received instead",
+                type(df))
+        self._df = df
         # DF changed, re-evaluate calculated data
         self._update()
 
@@ -228,14 +220,62 @@ class Stark(GenericPickler):
         return self._num
 
     @property
-    def cal(self):
-        return self._cal
+    def elab(self):
+        return self._elab
+
+    @property
+    def imm(self):
+        return self._imm
+
+    @property
+    def rate(self):
+        return self._rate
+
+    def curr(self):
+        return self._curr
 
     @property
     def columns(self):
         return self._df.columns
 
-    def update_lm(self, key, entry):
+    ######################
+    # Non public methods #
+    ######################
+
+    def _update(self):
+        ''' Call this method every time VD is changed to update Stark data.
+        Iter over VD and fill up different lists of keys, each list contains
+        names from each data type.
+
+        ''' 
+        # Start from clean lists
+        self._dim = []
+        self._elab = []
+        self._num = []
+        self._imm = []
+        self._rate = []
+        self._curr = []
+        # Sort VD.items() by 'ORD' to have output lists already ordered.
+        lm_items = self._lm.items()
+        lm_items.sort(key=lambda x: x[1].get('ORD', 0))
+        for key, val in lm_items:
+            if val['type'] == 'D':
+                self._dim += _unroll({key: val})
+            elif val['type'] == 'E':
+                # (Re)evaluate calculated columns
+                self._df[key] = self._eval(self._lm[key]['elab'])
+                self._elab.append(key)
+            elif val['type'] == 'N':
+                # TODO: check that dtypes are really numeric types
+                self._num.append(key)
+            elif val['type'] == 'I':
+                self._imm.append(key)
+            elif val['type'] == 'C':
+                self._curr.append(key)
+            elif val['type'] == 'R':
+                self._rate.append(key)
+
+    def _update_lm(self, key, entry):
         ''' Update VD dictionary with a new entry.
         
         @ param key: new key in the dictionary
@@ -247,8 +287,8 @@ class Stark(GenericPickler):
         self._lm[key] = entry
         self._update()
 
-    def update_df(self, col, series=None, var_type='N', expr=None, des=None,
-                  mis=None, order=0):
+    def _update_df(self, col, series=None, var_type='N', expr=None, des=None,
+                  munit=None, vals=None):
         ''' Utility method to safely add/update a DataFrame column.
         
         Add or modify a column of the DataFrame trying to preserve DF/VD
@@ -261,77 +301,46 @@ class Stark(GenericPickler):
         @ param col: Column's name
         @ param series: Series or list or any other type accepted as DataFrame
             column.
-        @ param var_type: One of VD type values, if it's 'R' an expr must not be
+        @ param var_type: One of lm type values, if it's 'E' an expr must not be
             None
         @ param expr: The expression to calculate the column's value, it can
             either be a string or a tuple.
         @ param des: Descriprion
-        @ param mis: Unit of measure.
+        @ param munit: Unit of measure.
         @ raise ValueError: when parameters are inconsistent
 
         '''
         if var_type not in TYPES:
             raise ValueError("var_type mut be one of [%s]" % \
                                  '|'.join(TYPES))
-        if expr is None and var_type == 'R':
-            raise ValueError(
-                "You must specify an expression for var_type = 'R'")
-        elif series is None and var_type != 'R':
-            raise ValueError(
-                "You must pass a series or list for var_type != 'R'")        
-        if var_type != 'R':
+        if var_type != 'E':
             self._df[col] = series
-        self.update_vd(col, {
-                'type' : var_type,
-                'ORD' : order,
-                'des' : des,
-                'MIS' : mis,
-                'elab' : expr})
 
-    def save(self, file_=None):
-        ''' Save object as pickle file.
-        
-        If a filename is not provided, the one stored in self.cod will be used.
+        if expr is None and var_type == 'E':
+            raise ValueError(
+                "You must specify an expression for var_type = 'E'")
+        elif series is None and var_type != 'E':
+            raise ValueError(
+                "You must pass a series or list for var_type != 'E'")
 
-        @ param file_: destination file path 
-        
-        '''
-        if file_ is None:
-            file_ = self.cod
-        if not os.path.exists(os.path.dirname(file_)):
-            os.makedirs(os.path.dirname(file_))
-        self._env = None # cannot pickle finctions declared outside this scope
-        super(Stark, self).save(file_)
-
-    def eval(self, func):
-        ''' Evaluate a function with DataFrame columns'es placeholders.
-        
-        Without placeholders this function is just a common python eval; when
-        func contains column's names preceded by '$', this will be substituted
-        with actual column's reference before passing the whole string to
-        eval().
-
-
-        @ param func: a string rappresenting a valid python statement; the
-            string can containt DataFrame columns'es placeholders in the form
-            of '$colname'
-        @ return: eval(func) return value
-
-        Example:
-            "$B / $C * 100"
-        
-        '''
-        if not isinstance(func, str) or isinstance(func, unicode):
-            raise AttributeError(
-                'func must be a string, %s received instead.' % \
-                    type(func).__name__)
-        templ = string.Template(func)
-        ph_dict = dict()
-        ph_list = [ph[1] for ph in string.Template.pattern.findall(func)]
-        for ph in ph_list:
-            ph_dict[ph] = str().join(["self._df['", ph, "']"])
-        return eval(templ.substitute(ph_dict), self._env, {'self': self})
+        if vals is None:
+            vals = pandas.DataFrame()
             
+        self._update_lm(col, {
+            'type' : var_type,
+            'des' : des,
+            'munit' : munit,
+            'elab' : expr,
+            'vals': vals,
+        })
+
+    def _set_unique(self, group):
+        test = pandas.unique(group)
+        if len(test) > 1:
+            group = pandas.Series([pandas.np.nan] * len(group),
+                                  name=group.name, index=group.index)
+        return group
+
     def _aggregate(self, func='sum', dim=None, var=None, inplace=False):
         ''' Apply an aggregation function to the DataFrame. If the DataFrame
         contains datas that are calculated as a transformation of other columns
@@ -354,125 +363,182 @@ class Stark(GenericPickler):
         if dim is None:
             dim = self._dim
         if var is None:
-            var = self._num + self._cal 
+            var = self._num + self._elab + self._imm + self._rate + self._curr
         # var and dim may be single column's name
         if isinstance(var, str) or isinstance(var, unicode):
             var = [var]
         if isinstance(dim, str) or isinstance(dim, unicode):
             dim = [dim]
         outkeys = dim + var
-        group = self._df.groupby(dim)
-        # Create aggregate df
-        # Trying to avoid dispatching ambiguity
+
+        if not inplace:
+            df = self._df.copy()
+        else :
+            df = self._df
+
+        groups = df.groupby(dim)
+        # handle immutables
+        # tmp_df = pandas.DataFrame()
+        # for imm in self._imm:
+        #     tmp_df[imm] = groups[imm].transform(self._set_unique)
+        # make aggregation
         try:
-            df = group.aggregate(func)[var].reset_index()
+            df = groups.aggregate(func)[var].reset_index()
         except AttributeError:
-            df = group.aggregate(eval(func))[var].reset_index()
+            df = groups.aggregate(eval(func))[var].reset_index()
+        # df = df.merge(tmp_df, on=dim)
         # Set up output VD
-        vd = _filter_tree(self._lm, outkeys)
+        lm = _filter_tree(self._lm, outkeys)
         if inplace:
-            self._df = df
-            self._lm = vd
+            # self._df = df
+            self._lm = lm
             self._update()
             return
-        return Stark(df, lm=vd, env=self._env)
+        return Stark(df, lm=lm)
+
+    def _find_level(self, key, value):
+        ''' Tells to wich level of a dimension a value belongs
+        
+        @ param key: dimension name
+        @ param value: value to search
+        @ reutrn: level name
+        @ raise: ValueError if value is not found
+        '''
+        df = self._lm[key]['vals']
+        for col in df.columns:
+            try:
+                rows = df.ix[df[col] == value]
+            except TypeError: 
+                # If column dtype is not compatible with value type
+                continue 
+            if len(rows) > 0:
+                return col
+        raise ValueError("Could not find value '%s' for key '%s'" % (value, key))
+
+    def _eval(self, func):
+        ''' Evaluate a function with DataFrame columns'es placeholders.
+        
+        Without placeholders this function is just a common python eval; when
+        func contains column's names preceded by '$', this will be substituted
+        with actual column's reference before passing the whole string to
+        eval().
+
+
+        @ param func: a string rappresenting a valid python statement; the
+            string can containt DataFrame columns'es placeholders in the form
+            of '$colname'
+        @ return: eval(func) return value
+
+        Example:
+            "$B / $C * 100"
+        
+        '''
+        if not isinstance(func, str) or isinstance(func, unicode):
+            raise AttributeError(
+                'func must be a string, %s received instead.' % \
+                type(func).__name__)
+        templ = string.Template(func)
+        ph_dict = dict()
+        ph_list = [ph[1] for ph in string.Template.pattern.findall(func)]
+        for ph in ph_list:
+            ph_dict[ph] = str().join(["self._df['", ph, "']"])
+        return eval(templ.substitute(ph_dict), {'self': self})
+
+    ##################
+    # Public methods #
+    ##################
+
+    def save(self, file_=None):
+        ''' Save object as pickle file.
+        
+        If a filename is not provided, the one stored in self.cod will be used.
+
+        @ param file_: destination file path 
+        
+        '''
+        if file_ is None:
+            file_ = self.cod
+        if not os.path.exists(os.path.dirname(file_)):
+            os.makedirs(os.path.dirname(file_))
+        super(Stark, self).save(file_)
+
+    def head(self, n=5):
+        ''' Return first n elements of the DataFrame 
+
+        @ param n: number of rows to return
+        @ return: a DataFrame
+
+        '''
+        return self._df.head(n)
+
+    def tail(self, n=5):
+        ''' Return last n elements of the DataFrame 
+        
+        @ param n: number of rows to return
+        @ return: a DataFrame
+
+        '''
+        return self._df.tail(n)
 
     def rollup(self, **kwargs):
-        # TODO: implement (calling _aggregate)
-        raise NotImplementedError
-    
+        '''
+        '''
+        out_stark = Stark(self.df.copy(), lm=self._lm)
+        for key, val in kwargs.iteritems():
+            if key not in self._df.columns:
+                raise ValueError("'%s' is not a dimension" % key)
+            if val == 'TOT':
+                out_stark.df[key] = 'TOT'
+                out_stark = out_stark._aggregate()
+            elif val == 'ALL':
+                continue
+            else:
+                try:
+                    level, value = val.split('.', 1)
+                except ValueError:
+                    # Nothing to split, go on with simple value
+                    value = val
+                    out_stark.df = out_stark.df.ix[out_stark.df[key] == value]
+                    continue
+                # We need to replace current level with target one
+                vals_df = self._lm[key]['vals']
+                if level not in vals_df.columns:
+                    raise ValueError(
+                        "'%s' is not a valid level name for column '%s'" %\
+                        (level, key))
+                sample_val = self._df[key].ix[0]
+                curr_level = self._find_level(key, sample_val)
+                out_stark.df[key] = out_stark.df[key].map(
+                    vals_df.set_index(curr_level).to_dict()[level])
+                out_stark = out_stark._aggregate()
+                if value != 'ALL' and value != 'TOT':
+                    out_stark.df = out_stark.df.ix[out_stark.df[key] == value]
+        return out_stark
+
 
 if __name__ == '__main__' :
-    ''' Test
-    ''' 
-    cols = ['B', 'C']
-    countries = numpy.array([
-        ('namerica', 'US', 'Washington DC'),
-        ('namerica', 'US', 'New York'),
-        ('europe', 'UK', 'London'),
-        ('europe', 'UK', 'Liverpool'),
-        ('europe', 'GR', 'Athinai'),
-        ('europe', 'GR', 'Thessalonica'),
-        ('europe', 'IT', 'Roma'),
-        ('europe', 'IT', 'Milano'),
-        ('asia', 'JP', 'Tokyo'),
-        ('samerica', 'BR', 'Brasilia'),
-        ('samerica', 'BR', 'Rio'),
-        ])
-    nelems = 100
-    key = map(tuple, countries[
-            numpy.random.randint(0, len(countries), nelems)])
-    index = pandas.MultiIndex.from_tuples(key, names=[
-            'region', 'country', 'city'])
+    PKL_PATH = '/home/mpattaro/ercole_sorted/country_MER/1-Europa_Occidentale/AUT.pickle'
+    UL_PATH = '/home/mpattaro/workspace/star/trunk/config/ercole/UL.csv'
+    COUNTRY_PATH = '/home/mpattaro/workspace/star/trunk/config/ercole/PaesiUlisse.csv'
+    
+    s = Stark.load(PKL_PATH)
+    df = s._DF
+    lm = s._VD
+    ul_df = pandas.DataFrame.from_csv(UL_PATH).reset_index()
+    country_df = pandas.DataFrame.from_csv(COUNTRY_PATH).reset_index()
 
-    # DataFrame with two numeric columns...
-    df = pandas.DataFrame(
-        numpy.random.randn(nelems, len(cols)), columns=cols,
-        index=index).sortlevel().reset_index()
-    df1 = pandas.DataFrame(
-        numpy.random.randn(nelems, len(cols)), columns=cols,
-        index=index).sortlevel().reset_index()
-    # ... and a string column
-    df['A'] = nelems * ['test']
-    df1['A'] = nelems * ['test']
-
-    vd = {
-        'region' : {
-            'type': 'D',
-            'child': {
-                'country': {
-                    'type': 'D',
-                    'des': 'country',
-                    'child': {
-                        'city': {
-                            'type': 'D',
-                            'des': 'city'}
-                        }
-                    }
-                }
-            },
-        'A' : {'type': 'S'},
-        'B' : {'type': 'N',
-               'elab': None,},
-        'C' : {'type': 'N',
-               'elab': None,},
-        'D' : {'type': 'R',
-               'ORD': 0,
-               'elab': "$B / $C * 100"},
-        'E' : {'type': 'R',
-               'ORD': 1, 
-               'elab': ('/', ('+', 'C', 'D'), 100)},
-        'F': {'type': 'I'}
-        }
-
-    vd1 = {
-        'region' : {
-            'type': 'D',
-            'child': {
-                'country': {
-                    'type': 'D',
-                    'des': 'country',
-                    'child': {
-                        'city': {
-                            'type': 'D',
-                            'des': 'city'}
-                        }
-                    }
-                }
-            },
-        'A' : {'type': 'S'},
-        'B' : {'type': 'N',
-               'elab': None,},
-        'C' : {'type': 'N',
-               'elab': None,},
-        'D' : {'type': 'R',
-               'ORD': 0,
-               'elab': "$B / $C * 100"},
-        'E' : {'type': 'R',
-               'ORD': 1, 
-               'elab': ('/', ('+', 'C', 'D'), 100)},
-        }
+    for k, v in lm.iteritems():
+        v['type'] = v.pop('TIP')
+        if k == 'XER' or k == 'MER':
+            v['vals'] = country_df
+        elif k == 'CODE':
+            v['vals'] = ul_df
+        else:
+            v['vals'] = pandas.DataFrame()
+    
+    df['X'] = 100
+    lm['X']['type'] = 'I'
+    s = Stark(df, lm=lm)
+    s1 = s.rollup(XER='AREA.1-Europa Occidentale')
 
 
-    s = Stark(df, lm=vd, env=globals())
-    s1 = Stark(df1, lm=vd1, env=globals())
