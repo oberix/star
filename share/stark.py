@@ -367,8 +367,7 @@ class Stark(GenericPickler):
         if dim is None:
             dim = self._dim
         if var is None:
-            # TODO: Add curr
-            var = self._num + self._imm + self._elab + self._rate
+            var = self._num + self._imm + self._elab + self._rate + self._curr
         # var and dim may be single column's name
         if isinstance(var, str) or isinstance(var, unicode):
             var = [var]
@@ -485,7 +484,7 @@ class Stark(GenericPickler):
         '''
         return self._df.tail(n)
 
-    def cagr(self, var):
+    def cagr(self, time_col, var):
         ''' Calculate grouth rate of a variable and stores it in a new
         DataFrame column calles <variable_name>_GR. 
 
@@ -496,17 +495,26 @@ class Stark(GenericPickler):
         '''
         res = []
         varname = '%s_GR' % var
-        # FIXME: maybe transform() and merge() would be more efficient here
-        for idx, elem in enumerate(self._df[var]):
-            if idx == 0:
-                res.append(pandas.np.nan)
-            else:
-                res.append((elem / self._df[var].ix[idx - 1] - 1) * 100)
-        self._df[varname] = res
+
+        tmp_df = s._df[s._dim + [var]]
+        # FIXME: cludgy!
+        tmp_df['YEAR'] = tmp_df['YEAR'].map(int)
+        tmp_df['YEAR'] += 1
+        tmp_df['YEAR'] = tmp_df['YEAR'].map(str)
+        tmp_df.set_index(s.dim, inplace=True)
+        self._df.set_index(s.dim, inplace=True)
+        self._df = pandas.merge(self._df, tmp_df, left_index=True,
+                                right_index=True, how='left', 
+                                suffixes=('', '_tmp'))
+        self._df[varname] =  100 * self._df[var] / self._df['%s_tmp' % var] - 1
+        del self._df['%s_tmp' % var]
+        self._df = self._df.reset_index()
+
         self._update_lm(varname, {
             'type': 'R',
             'vals': pandas.DataFrame(),
-            'munit': self._lm[var].get('munit', None),
+            'munit': None, # TODO: this may be set automatically if indexes
+                           #       were more than strings
             'des' : None, # TODO: fill up
         })
 
@@ -567,14 +575,13 @@ if __name__ == '__main__' :
             v['vals'] = ul_df
         else:
             v['vals'] = pandas.DataFrame()
-        
     
     df['IMM'] = 100
     lm['IMM'] = {}
     lm['IMM']['type'] = 'I'
     s = Stark(df, lm=lm)
     s['TEST'] = '$X - $M'
-    s.cagr('X')
+    s.cagr('YEAR', 'X')
     s1 = s.rollup(XER='AREA.1-Europa Occidentale')
     print "ok"
 
