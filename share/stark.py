@@ -334,12 +334,16 @@ class Stark(GenericPickler):
             'vals': vals,
         })
 
-    def _set_unique(self, group):
-        test = pandas.unique(group)
+    def _set_unique(self, series):
+        test = pandas.unique(series)
         if len(test) > 1:
-            group = pandas.Series([pandas.np.nan] * len(group),
-                                  name=group.name, index=group.index)
-        return group
+            return pandas.np.nan
+        return test[0]
+
+    def _gr_cum(self, series):
+        ''' Cumulated growth rate '''
+        # TODO: check how to handle NaNs
+        return pandas.np.log(series / 100 + 1).sum() * 100
 
     def _aggregate(self, func='sum', dim=None, var=None, inplace=False):
         ''' Apply an aggregation function to the DataFrame. If the DataFrame
@@ -363,7 +367,8 @@ class Stark(GenericPickler):
         if dim is None:
             dim = self._dim
         if var is None:
-            var = self._num + self._elab + self._imm + self._rate + self._curr
+            # TODO: Add curr
+            var = self._num + self._imm + self._elab + self._rate
         # var and dim may be single column's name
         if isinstance(var, str) or isinstance(var, unicode):
             var = [var]
@@ -373,20 +378,20 @@ class Stark(GenericPickler):
 
         if not inplace:
             df = self._df.copy()
-        else :
+        else:
             df = self._df
 
-        groups = df.groupby(dim)
-        # handle immutables
-        # tmp_df = pandas.DataFrame()
-        # for imm in self._imm:
-        #     tmp_df[imm] = groups[imm].transform(self._set_unique)
         # make aggregation
-        try:
-            df = groups.aggregate(func)[var].reset_index()
-        except AttributeError:
-            df = groups.aggregate(eval(func))[var].reset_index()
-        # df = df.merge(tmp_df, on=dim)
+        groups = df.groupby(dim)
+        operations = {}
+        for name in self._num + self._curr:
+            operations[name] = func
+        for name in self._imm + self._elab:
+            operations[name] = self._set_unique
+        for name in self._rate:
+            operations[name] = self._gr_cum
+        df = groups.aggregate(operations)[var].reset_index()
+
         # Set up output VD
         lm = _filter_tree(self._lm, outkeys)
         if inplace:
@@ -480,10 +485,37 @@ class Stark(GenericPickler):
         '''
         return self._df.tail(n)
 
+    def cagr(self, var):
+        ''' Calculate grouth rate of a variable and stores it in a new
+        DataFrame column calles <variable_name>_GR. 
+
+        cagr() works inplace.
+
+        @ param var: variable name
+
+        '''
+        res = []
+        varname = '%s_GR' % var
+        # FIXME: maybe transform() and merge() would be more efficient here
+        for idx, elem in enumerate(self._df[var]):
+            if idx == 0:
+                res.append(pandas.np.nan)
+            else:
+                res.append((elem / self._df[var].ix[idx - 1] - 1) * 100)
+        self._df[varname] = res
+        self._update_lm(varname, {
+            'type': 'R',
+            'vals': pandas.DataFrame(),
+            'munit': self._lm[var].get('munit', None),
+            'des' : None, # TODO: fill up
+        })
+
     def rollup(self, **kwargs):
         '''
         '''
         out_stark = Stark(self.df.copy(), lm=self._lm)
+        # FIXME: keys and vals may be grouped by type in advance to minimize
+        # iteretions of this loop
         for key, val in kwargs.iteritems():
             if key not in self._df.columns:
                 raise ValueError("'%s' is not a dimension" % key)
@@ -496,7 +528,7 @@ class Stark(GenericPickler):
                 try:
                     level, value = val.split('.', 1)
                 except ValueError:
-                    # Nothing to split, go on with simple value
+                    # Nothing to split, get on with simple value
                     value = val
                     out_stark.df = out_stark.df.ix[out_stark.df[key] == value]
                     continue
@@ -512,7 +544,7 @@ class Stark(GenericPickler):
                     vals_df.set_index(curr_level).to_dict()[level])
                 out_stark = out_stark._aggregate()
                 if value != 'ALL' and value != 'TOT':
-                    out_stark.df = out_stark.df.ix[out_stark.df[key] == value]
+                    out_stark.df = out_stark.df.ix[out_stark.df[key] == value].reset_index()
         return out_stark
 
 
@@ -535,10 +567,15 @@ if __name__ == '__main__' :
             v['vals'] = ul_df
         else:
             v['vals'] = pandas.DataFrame()
+        
     
-    df['X'] = 100
-    lm['X']['type'] = 'I'
+    df['IMM'] = 100
+    lm['IMM'] = {}
+    lm['IMM']['type'] = 'I'
     s = Stark(df, lm=lm)
+    s['TEST'] = '$X - $M'
+    s.cagr('X')
     s1 = s.rollup(XER='AREA.1-Europa Occidentale')
+    print "ok"
 
 
