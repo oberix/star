@@ -111,7 +111,8 @@ class Stark(GenericPickler):
     # Magic attributes #
     ####################
 
-    def __init__(self, df, lm=None, cod=None, stype='elab', currency='USD', currdata=None):
+    def __init__(self, df, lm=None, cod=None, stype='elab', currency='USD',
+                 currdata=None):
         """
         @ param df: DataFrame
         @ param cod: save path
@@ -144,7 +145,8 @@ class Stark(GenericPickler):
         return repr(self._df)
 
     def __add__(self, other):
-        df = self._df.append(other.DF, ignore_index=True, verify_integrity=False)
+        df = self._df.append(other.DF, ignore_index=True,
+                             verify_integrity=False)
         lm = self._lm
         out_stark = Stark(df, lm=lm, cod=self.cod, stype=self.stype)
         out_stark._aggregate(inplace=True)
@@ -355,7 +357,8 @@ class Stark(GenericPickler):
     def _gr_cum(self, series):
         ''' Cumulated growth rate '''
         # TODO: check how to handle NaNs
-        return pandas.np.log(series / 100 + 1).sum() * 100
+        exponent = pandas.np.log(series / 100 + 1).sum() / len(series)
+        return (pandas.np.exp(exponent) - 1) * 100
 
     def _aggregate(self, func='sum', dim=None, var=None, inplace=False):
         ''' Apply an aggregation function to the DataFrame. If the DataFrame
@@ -391,20 +394,24 @@ class Stark(GenericPickler):
             df = self._df.copy()
         else:
             df = self._df
+        lm = _filter_tree(self._lm, outkeys)
 
         # make aggregation
         groups = df.groupby(dim)
         operations = {}
         for name in self._num + self._curr:
             operations[name] = func
-        for name in self._imm + self._elab:
+        for name in self._imm:
             operations[name] = self._set_unique
         for name in self._rate:
             operations[name] = self._gr_cum
+        for name in self._elab:
+            if self._lm[name].get('rlp') and self._lm[name]['rlp'] == 'N':
+                lm[name]['type'] = 'N'
+                
         df = groups.aggregate(operations)[var].reset_index()
 
         # Set up output VD
-        lm = _filter_tree(self._lm, outkeys)
         if inplace:
             # self._df = df
             self._lm = lm
@@ -429,7 +436,8 @@ class Stark(GenericPickler):
                 continue 
             if len(rows) > 0:
                 return col
-        raise ValueError("Could not find value '%s' for key '%s'" % (value, key))
+        raise ValueError(
+            "Could not find value '%s' for key '%s'" % (value, key))
 
     def _eval(self, func):
         ''' Evaluate a function with DataFrame columns'es placeholders.
@@ -517,6 +525,10 @@ class Stark(GenericPickler):
         # TODO: implement
         raise NotImplementedError
 
+    def loggit(self, var):
+        # TODO: implement
+        raise NotImplementedError
+
     def cagr(self, var, ts_col='YEAR'):
         ''' Calculate grouth rate of a variable and stores it in a new
         DataFrame column calles <variable_name>_GR. 
@@ -587,7 +599,8 @@ class Stark(GenericPickler):
                     vals_df.set_index(curr_level).to_dict()[level])
                 out_stark = out_stark._aggregate()
                 if value != 'ALL' and value != 'TOT':
-                    out_stark.df = out_stark.df.ix[out_stark.df[key] == value].reset_index()
+                    out_stark.df = out_stark.df.ix[
+                        out_stark.df[key] == value].reset_index()
         return out_stark
 
 
