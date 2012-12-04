@@ -301,8 +301,8 @@ class Stark(GenericPickler):
         self._lm[key] = entry
         self._update()
 
-    def _update_df(self, col, series=None, var_type='N', expr=None, des=None,
-                  munit=None, vals=None):
+    def _update_df(self, col, series=None, var_type='N', expr=None, rlp='E', 
+                   des=None, munit=None, vals=None):
         ''' Utility method to safely add/update a DataFrame column.
         
         Add or modify a column of the DataFrame trying to preserve DF/VD
@@ -345,6 +345,7 @@ class Stark(GenericPickler):
             'des' : des,
             'munit' : munit,
             'elab' : expr,
+            'rlp' : rlp,
             'vals': vals,
         })
 
@@ -356,7 +357,6 @@ class Stark(GenericPickler):
 
     def _gr_cum(self, series):
         ''' Cumulated growth rate '''
-        # TODO: check how to handle NaNs
         exponent = pandas.np.log(series / 100 + 1).sum() / len(series)
         return (pandas.np.exp(exponent) - 1) * 100
 
@@ -379,6 +379,7 @@ class Stark(GenericPickler):
         @ return: a new Stark instance with aggregated data
 
         '''
+        # Some defaults
         if dim is None:
             dim = self._dim
         if var is None:
@@ -396,8 +397,8 @@ class Stark(GenericPickler):
             df = self._df
         lm = _filter_tree(self._lm, outkeys)
 
-        # make aggregation
-        groups = df.groupby(dim)
+        # Prepare operation dictionary: for each variable set the appropriate
+        # aggregation function based on its type
         operations = {}
         for name in self._num + self._curr:
             operations[name] = func
@@ -406,18 +407,22 @@ class Stark(GenericPickler):
         for name in self._rate:
             operations[name] = self._gr_cum
         for name in self._elab:
-            if self._lm[name].get('rlp') and self._lm[name]['rlp'] == 'N':
+            # Some elaboration need to become numeric before the aggregation,
+            # others must be re-evaluated
+            if lm[name].get('rlp') and lm[name]['rlp'] == 'N':
                 lm[name]['type'] = 'N'
-                
-        df = groups.aggregate(operations)[var].reset_index()
+            # TODO: This is not needed if 'rlp' != 'N', but any other
+            # operation seems to introduce a greater overhead to the
+            # computation. This shold be invesigated further.
+            operations[name] = func
 
-        # Set up output VD
+        df = df.groupby(dim).aggregate(operations)[var].reset_index()
+
         if inplace:
-            # self._df = df
             self._lm = lm
             self._update()
             return
-        return Stark(df, lm=lm)
+        return Stark(df, lm=lm) # _update() gets called by __init__()
 
     def _find_level(self, key, value):
         ''' Tells to wich level of a dimension a value belongs
@@ -504,21 +509,6 @@ class Stark(GenericPickler):
         '''
         return self._df.tail(n)
 
-    def set_currdata(self, currdata_df):
-        ''' Update currency data
-        
-        @ param currdata_df: a DataFrame with new currency data
-        '''
-        if not isinstance(currdata_df, pandas.DataFrame):
-            raise TypeError(
-                "currdata_df must be a DataFrame, %s received instead" %\
-                type(currdata_df))
-        if self._currency == 'USD':
-            self._currdata = currdata_df
-        else:
-            self._currdata = currdata_df
-            self.changecurr(self.currency)
-
     def changecurr(self, new_curr, inplace=False):
         if new_curr not in self._currdata.columns():
             raise ValueError("%s is not a known currency" % new_curr)
@@ -554,9 +544,6 @@ class Stark(GenericPickler):
                                 right_index=True, how='left', 
                                 suffixes=('', '_tmp'))
         self._df[varname] =  100 * self._df[var] / self._df['%s_tmp' % var] - 1
-        del self._df['%s_tmp' % var]
-        self._df = self._df.reset_index()
-
         self._update_lm(varname, {
             'type': 'R',
             'vals': pandas.DataFrame(),
@@ -564,6 +551,7 @@ class Stark(GenericPickler):
                            #       were more than strings
             'des' : None, # TODO: fill up
         })
+        self._df = self._df.reset_index()[self._lm.keys()]
 
     def rollup(self, **kwargs):
         '''
@@ -632,7 +620,9 @@ if __name__ == '__main__' :
     lm['IMM'] = {}
     lm['IMM']['type'] = 'I'
     s = Stark(df, lm=lm)
-    s['TEST'] = '$X - $M'
+    s['TEST'] = '$X / $M'
+    s['TEST_RLP'] = '$X / $M'
+    lm['TEST_RLP']['rlp'] = 'N'
     s.cagr('X')
     s1 = s.rollup(XER='AREA.1-Europa Occidentale')
     print "ok"
