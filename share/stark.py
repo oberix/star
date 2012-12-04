@@ -23,6 +23,7 @@ import pandas
 
 from generic_pickler import GenericPickler
 
+# pylint: disable=E1101
 
 __author__ = 'Marco Pattaro (<marco.pattaro@servabit.it>)'
 __all__ = ['Stark']
@@ -110,7 +111,7 @@ class Stark(GenericPickler):
     # Magic attributes #
     ####################
 
-    def __init__(self, df, lm=None, cod=None, stype='elab'):
+    def __init__(self, df, lm=None, cod=None, stype='elab', currency='USD', currdata=None):
         """
         @ param df: DataFrame
         @ param cod: save path
@@ -121,6 +122,8 @@ class Stark(GenericPickler):
         # TODO: make a Stark form a Stark
         self._df = df
         self.cod = cod
+        self._currency = currency
+        self._currdata = currdata
         if stype not in STYPES:
             raise ValueError("stype must be one of %s" % STYPES)
         self.stype = stype
@@ -212,6 +215,14 @@ class Stark(GenericPickler):
         self._update()
 
     @property
+    def currency(self):
+        return self._currency
+
+    @currency.setter
+    def currency(self, newcur):
+        self.changecurr(newcur, inplace=True)
+
+    @property
     def dim(self):
         return self._dim
 
@@ -231,6 +242,7 @@ class Stark(GenericPickler):
     def rate(self):
         return self._rate
 
+    @property
     def curr(self):
         return self._curr
 
@@ -484,23 +496,46 @@ class Stark(GenericPickler):
         '''
         return self._df.tail(n)
 
-    def cagr(self, time_col, var):
+    def set_currdata(self, currdata_df):
+        ''' Update currency data
+        
+        @ param currdata_df: a DataFrame with new currency data
+        '''
+        if not isinstance(currdata_df, pandas.DataFrame):
+            raise TypeError(
+                "currdata_df must be a DataFrame, %s received instead" %\
+                type(currdata_df))
+        if self._currency == 'USD':
+            self._currdata = currdata_df
+        else:
+            self._currdata = currdata_df
+            self.changecurr(self.currency)
+
+    def changecurr(self, new_curr, inplace=False):
+        if new_curr not in self._currdata.columns():
+            raise ValueError("%s is not a known currency" % new_curr)
+        # TODO: implement
+        raise NotImplementedError
+
+    def cagr(self, var, ts_col='YEAR'):
         ''' Calculate grouth rate of a variable and stores it in a new
         DataFrame column calles <variable_name>_GR. 
 
         cagr() works inplace.
 
         @ param var: variable name
+        @ param ts_col: column to use as time series
 
         '''
-        res = []
         varname = '%s_GR' % var
-
-        tmp_df = s._df[s._dim + [var]]
-        # FIXME: cludgy!
-        tmp_df['YEAR'] = tmp_df['YEAR'].map(int)
-        tmp_df['YEAR'] += 1
-        tmp_df['YEAR'] = tmp_df['YEAR'].map(str)
+        tmp_df = self._df[self._dim + [var]]
+        try:
+            tmp_df[ts_col] += 1
+        except TypeError:
+            # FIXME: cludgy! We should use dates instead
+            tmp_df[ts_col] = tmp_df['YEAR'].map(int)
+            tmp_df[ts_col] += 1
+            tmp_df[ts_col] = tmp_df[ts_col].map(str)
         tmp_df.set_index(s.dim, inplace=True)
         self._df.set_index(s.dim, inplace=True)
         self._df = pandas.merge(self._df, tmp_df, left_index=True,
@@ -560,17 +595,21 @@ if __name__ == '__main__' :
     PKL_PATH = '/home/mpattaro/ercole_sorted/country_MER/1-Europa_Occidentale/AUT.pickle'
     UL_PATH = '/home/mpattaro/workspace/star/trunk/config/ercole/UL.csv'
     COUNTRY_PATH = '/home/mpattaro/workspace/star/trunk/config/ercole/PaesiUlisse.csv'
+    CURR_PATH = '/home/mpattaro/workspace/star/trunk/config/ercole/CURDATA.csv'
     
     s = Stark.load(PKL_PATH)
     df = s._DF
     lm = s._VD
     ul_df = pandas.DataFrame.from_csv(UL_PATH).reset_index()
     country_df = pandas.DataFrame.from_csv(COUNTRY_PATH).reset_index()
+    curr_df = pandas.DataFrame.from_csv(CURR_PATH).reset_index()
 
     for k, v in lm.iteritems():
         v['type'] = v.pop('TIP')
         if k == 'XER' or k == 'MER':
             v['vals'] = country_df
+        elif k in ('X', 'M'):
+            v['type'] = 'C'
         elif k == 'CODE':
             v['vals'] = ul_df
         else:
@@ -581,7 +620,7 @@ if __name__ == '__main__' :
     lm['IMM']['type'] = 'I'
     s = Stark(df, lm=lm)
     s['TEST'] = '$X - $M'
-    s.cagr('YEAR', 'X')
+    s.cagr('X')
     s1 = s.rollup(XER='AREA.1-Europa Occidentale')
     print "ok"
 

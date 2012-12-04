@@ -293,7 +293,7 @@ class TexTable(Table):
             out += rowstart + """ & """.join(out_record) + \
                 " \\\ %s \n" % self._hsep
         if self._type == 'bodytab':
-            out += " \\hline \n"
+            out += " \n"
         else:
             out += "\\tabucline- \n"
         return out
