@@ -18,11 +18,13 @@
 ##############################################################################
 import os 
 import string
+import copy
 
 import pandas
 
 from generic_pickler import GenericPickler
 
+# pylint: disable=E1101
 
 __author__ = 'Marco Pattaro (<marco.pattaro@servabit.it>)'
 __all__ = ['Stark']
@@ -110,7 +112,8 @@ class Stark(GenericPickler):
     # Magic attributes #
     ####################
 
-    def __init__(self, df, lm=None, cod=None, stype='elab'):
+    def __init__(self, df, lm=None, cod=None, stype='elab', currency='USD',
+                 currdata=None):
         """
         @ param df: DataFrame
         @ param cod: save path
@@ -121,6 +124,8 @@ class Stark(GenericPickler):
         # TODO: make a Stark form a Stark
         self._df = df
         self.cod = cod
+        self._currency = currency
+        self._currdata = currdata
         if stype not in STYPES:
             raise ValueError("stype must be one of %s" % STYPES)
         self.stype = stype
@@ -141,7 +146,8 @@ class Stark(GenericPickler):
         return repr(self._df)
 
     def __add__(self, other):
-        df = self._df.append(other.DF, ignore_index=True, verify_integrity=False)
+        df = self._df.append(other.DF, ignore_index=True,
+                             verify_integrity=False)
         lm = self._lm
         out_stark = Stark(df, lm=lm, cod=self.cod, stype=self.stype)
         out_stark._aggregate(inplace=True)
@@ -211,6 +217,14 @@ class Stark(GenericPickler):
         # DF changed, re-evaluate calculated data
         self._update()
 
+    # @property
+    # def currency(self):
+    #     return self._currency
+
+    # @currency.setter
+    # def currency(self, newcur):
+    #     self.changecurr(newcur, inplace=True)
+
     @property
     def dim(self):
         return self._dim
@@ -231,6 +245,7 @@ class Stark(GenericPickler):
     def rate(self):
         return self._rate
 
+    @property
     def curr(self):
         return self._curr
 
@@ -262,7 +277,7 @@ class Stark(GenericPickler):
             if val['type'] == 'D':
                 self._dim += _unroll({key: val})
             elif val['type'] == 'E':
-                # (Re)evaluate calculated columns
+                # (Re)evaluate elab columns
                 self._df[key] = self._eval(self._lm[key]['elab'])
                 self._elab.append(key)
             elif val['type'] == 'N':
@@ -287,8 +302,8 @@ class Stark(GenericPickler):
         self._lm[key] = entry
         self._update()
 
-    def _update_df(self, col, series=None, var_type='N', expr=None, des=None,
-                  munit=None, vals=None):
+    def _update_df(self, col, series=None, var_type='N', expr=None, rlp='E', 
+                   des=None, munit=None, vals=None):
         ''' Utility method to safely add/update a DataFrame column.
         
         Add or modify a column of the DataFrame trying to preserve DF/VD
@@ -331,15 +346,20 @@ class Stark(GenericPickler):
             'des' : des,
             'munit' : munit,
             'elab' : expr,
+            'rlp' : rlp, 
             'vals': vals,
         })
 
-    def _set_unique(self, group):
-        test = pandas.unique(group)
+    def _set_unique(self, series):
+        test = pandas.unique(series)
         if len(test) > 1:
-            group = pandas.Series([pandas.np.nan] * len(group),
-                                  name=group.name, index=group.index)
-        return group
+            return pandas.np.nan
+        return test[0]
+
+    def _gr_cum(self, series):
+        ''' Cumulated growth rate '''
+        exponent = pandas.np.log(series / 100 + 1).sum() / len(series)
+        return (pandas.np.exp(exponent) - 1) * 100
 
     def _aggregate(self, func='sum', dim=None, var=None, inplace=False):
         ''' Apply an aggregation function to the DataFrame. If the DataFrame
@@ -360,10 +380,11 @@ class Stark(GenericPickler):
         @ return: a new Stark instance with aggregated data
 
         '''
+        # Some defaults
         if dim is None:
             dim = self._dim
         if var is None:
-            var = self._num + self._elab + self._imm + self._rate + self._curr
+            var = self._num + self._imm + self._elab + self._rate + self._curr
         # var and dim may be single column's name
         if isinstance(var, str) or isinstance(var, unicode):
             var = [var]
@@ -373,28 +394,36 @@ class Stark(GenericPickler):
 
         if not inplace:
             df = self._df.copy()
-        else :
+        else:
             df = self._df
-
-        groups = df.groupby(dim)
-        # handle immutables
-        # tmp_df = pandas.DataFrame()
-        # for imm in self._imm:
-        #     tmp_df[imm] = groups[imm].transform(self._set_unique)
-        # make aggregation
-        try:
-            df = groups.aggregate(func)[var].reset_index()
-        except AttributeError:
-            df = groups.aggregate(eval(func))[var].reset_index()
-        # df = df.merge(tmp_df, on=dim)
-        # Set up output VD
         lm = _filter_tree(self._lm, outkeys)
+
+        # Prepare operation dictionary: for each variable set the appropriate
+        # aggregation function based on its type
+        operations = {}
+        for name in self._num + self._curr:
+            operations[name] = func
+        for name in self._imm:
+            operations[name] = self._set_unique
+        for name in self._rate:
+            operations[name] = self._gr_cum
+        for name in self._elab:
+            # Some elaboration need to become numeric before the aggregation,
+            # others must be re-evaluated
+            if lm[name].get('rlp') and lm[name]['rlp'] == 'N':
+                lm[name]['type'] = 'N'
+            # TODO: This is not needed if 'rlp' != 'N', but any other
+            # operation seems to introduce a greater overhead to the
+            # computation. This shold be invesigated further.
+            operations[name] = func
+
+        df = df.groupby(dim).aggregate(operations)[var].reset_index()
+
         if inplace:
-            # self._df = df
             self._lm = lm
             self._update()
             return
-        return Stark(df, lm=lm)
+        return Stark(df, lm=lm) # _update() gets called by __init__()
 
     def _find_level(self, key, value):
         ''' Tells to wich level of a dimension a value belongs
@@ -413,7 +442,8 @@ class Stark(GenericPickler):
                 continue 
             if len(rows) > 0:
                 return col
-        raise ValueError("Could not find value '%s' for key '%s'" % (value, key))
+        raise ValueError(
+            "Could not find value '%s' for key '%s'" % (value, key))
 
     def _eval(self, func):
         ''' Evaluate a function with DataFrame columns'es placeholders.
@@ -480,10 +510,69 @@ class Stark(GenericPickler):
         '''
         return self._df.tail(n)
 
+    def changecurr(self, new_curr, ts_col='YEAR'):
+        ''' Change currency by appling different change rates according to
+        periods.
+
+        @ param new_curr: target currency ISO4217 code
+        @ return: a new Stark instance
+        @ raise ValueError: if an unknown currency is passed
+
+        '''
+        if new_curr not in self._currdata.columns:
+            raise ValueError("%s is not a known currency" % new_curr)        
+        lm = copy.deepcopy(self._lm)
+        columns = self._df.columns
+        df = self._df.join(self._currdata, on=ts_col)
+        for var in self._curr:
+            df[var] = df[var] * (df[new_curr] / df[self._currency])
+        df = df.reset_index()[columns]
+        return Stark(df, lm=lm)
+
+    def loggit(self, var):
+        # TODO: implement
+        raise NotImplementedError
+
+    def cagr(self, var, ts_col='YEAR'):
+        ''' Calculate grouth rate of a variable and stores it in a new
+        DataFrame column calles <variable_name>_GR. 
+
+        cagr() works inplace.
+
+        @ param var: variable name
+        @ param ts_col: column to use as time series
+
+        '''
+        varname = '%s_GR' % var
+        tmp_df = self._df[self._dim + [var]]
+        try:
+            tmp_df[ts_col] += 1
+        except TypeError:
+            # FIXME: cludgy! We should use dates instead
+            tmp_df[ts_col] = tmp_df['YEAR'].map(int)
+            tmp_df[ts_col] += 1
+            tmp_df[ts_col] = tmp_df[ts_col].map(str)
+        tmp_df.set_index(s.dim, inplace=True)
+        self._df.set_index(s.dim, inplace=True)
+        self._df = pandas.merge(self._df, tmp_df, left_index=True,
+                                right_index=True, how='left', 
+                                suffixes=('', '_tmp'))
+        self._df[varname] =  100 * (self._df[var] / self._df['%s_tmp' % var] - 1)
+        self._update_lm(varname, {
+            'type': 'R',
+            'vals': pandas.DataFrame(),
+            'munit': None, # TODO: this may be set automatically if indexes
+                           #       were more than strings
+            'des' : None, # TODO: fill up
+        })
+        self._df = self._df.reset_index()[self._lm.keys()]
+
     def rollup(self, **kwargs):
         '''
         '''
         out_stark = Stark(self.df.copy(), lm=self._lm)
+        # FIXME: keys and vals may be grouped by type in advance to minimize
+        # iteretions of this loop
         for key, val in kwargs.iteritems():
             if key not in self._df.columns:
                 raise ValueError("'%s' is not a dimension" % key)
@@ -496,7 +585,7 @@ class Stark(GenericPickler):
                 try:
                     level, value = val.split('.', 1)
                 except ValueError:
-                    # Nothing to split, go on with simple value
+                    # Nothing to split, get on with simple value
                     value = val
                     out_stark.df = out_stark.df.ix[out_stark.df[key] == value]
                     continue
@@ -512,7 +601,8 @@ class Stark(GenericPickler):
                     vals_df.set_index(curr_level).to_dict()[level])
                 out_stark = out_stark._aggregate()
                 if value != 'ALL' and value != 'TOT':
-                    out_stark.df = out_stark.df.ix[out_stark.df[key] == value]
+                    out_stark.df = out_stark.df.ix[
+                        out_stark.df[key] == value].reset_index()
         return out_stark
 
 
@@ -520,25 +610,43 @@ if __name__ == '__main__' :
     PKL_PATH = '/home/mpattaro/ercole_sorted/country_MER/1-Europa_Occidentale/AUT.pickle'
     UL_PATH = '/home/mpattaro/workspace/star/trunk/config/ercole/UL.csv'
     COUNTRY_PATH = '/home/mpattaro/workspace/star/trunk/config/ercole/PaesiUlisse.csv'
+    CURR_PATH = '/home/mpattaro/workspace/star/trunk/config/ercole/CURDATA.csv'
     
     s = Stark.load(PKL_PATH)
     df = s._DF
     lm = s._VD
     ul_df = pandas.DataFrame.from_csv(UL_PATH).reset_index()
     country_df = pandas.DataFrame.from_csv(COUNTRY_PATH).reset_index()
+    curr_df = pandas.DataFrame.from_csv(CURR_PATH).reset_index()
 
+    # convert from v0.1 pickles
     for k, v in lm.iteritems():
         v['type'] = v.pop('TIP')
         if k == 'XER' or k == 'MER':
             v['vals'] = country_df
+        elif k in ('X', 'M'):
+            v['type'] = 'C'
         elif k == 'CODE':
             v['vals'] = ul_df
         else:
             v['vals'] = pandas.DataFrame()
     
-    df['X'] = 100
-    lm['X']['type'] = 'I'
-    s = Stark(df, lm=lm)
-    s1 = s.rollup(XER='AREA.1-Europa Occidentale')
+    currdata = pandas.DataFrame.from_csv(CURR_PATH, parse_dates=False).reset_index()
+    currdata['YEAR'] = currdata['YEAR'].map(str)
+    currdata = currdata.set_index('YEAR')
+
+    df['IMM'] = 100
+    lm['IMM'] = {}
+    lm['IMM']['type'] = 'I'
+    s = Stark(df, lm=lm, currdata=currdata)
+    s['TEST'] = '$X / $M'
+    s['TEST_RLP'] = '$X / $M'
+    lm['TEST_RLP']['rlp'] = 'N'
+    
+    s1 = s.changecurr('EUR')
+
+    # s.cagr('X')
+    # s1 = s.rollup(XER='AREA.1-Europa Occidentale')
+    print "ok"
 
 
