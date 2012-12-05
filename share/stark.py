@@ -18,6 +18,7 @@
 ##############################################################################
 import os 
 import string
+import copy
 
 import pandas
 
@@ -216,13 +217,13 @@ class Stark(GenericPickler):
         # DF changed, re-evaluate calculated data
         self._update()
 
-    @property
-    def currency(self):
-        return self._currency
+    # @property
+    # def currency(self):
+    #     return self._currency
 
-    @currency.setter
-    def currency(self, newcur):
-        self.changecurr(newcur, inplace=True)
+    # @currency.setter
+    # def currency(self, newcur):
+    #     self.changecurr(newcur, inplace=True)
 
     @property
     def dim(self):
@@ -276,7 +277,7 @@ class Stark(GenericPickler):
             if val['type'] == 'D':
                 self._dim += _unroll({key: val})
             elif val['type'] == 'E':
-                # (Re)evaluate calculated columns
+                # (Re)evaluate elab columns
                 self._df[key] = self._eval(self._lm[key]['elab'])
                 self._elab.append(key)
             elif val['type'] == 'N':
@@ -345,7 +346,7 @@ class Stark(GenericPickler):
             'des' : des,
             'munit' : munit,
             'elab' : expr,
-            'rlp' : rlp,
+            'rlp' : rlp, 
             'vals': vals,
         })
 
@@ -509,11 +510,24 @@ class Stark(GenericPickler):
         '''
         return self._df.tail(n)
 
-    def changecurr(self, new_curr, inplace=False):
-        if new_curr not in self._currdata.columns():
-            raise ValueError("%s is not a known currency" % new_curr)
-        # TODO: implement
-        raise NotImplementedError
+    def changecurr(self, new_curr, ts_col='YEAR'):
+        ''' Change currency by appling different change rates according to
+        periods.
+
+        @ param new_curr: target currency ISO4217 code
+        @ return: a new Stark instance
+        @ raise ValueError: if an unknown currency is passed
+
+        '''
+        if new_curr not in self._currdata.columns:
+            raise ValueError("%s is not a known currency" % new_curr)        
+        lm = copy.deepcopy(self._lm)
+        columns = self._df.columns
+        df = self._df.join(self._currdata, on=ts_col)
+        for var in self._curr:
+            df[var] = df[var] * (df[new_curr] / df[self._currency])
+        df = df.reset_index()[columns]
+        return Stark(df, lm=lm)
 
     def loggit(self, var):
         # TODO: implement
@@ -543,7 +557,7 @@ class Stark(GenericPickler):
         self._df = pandas.merge(self._df, tmp_df, left_index=True,
                                 right_index=True, how='left', 
                                 suffixes=('', '_tmp'))
-        self._df[varname] =  100 * self._df[var] / self._df['%s_tmp' % var] - 1
+        self._df[varname] =  100 * (self._df[var] / self._df['%s_tmp' % var] - 1)
         self._update_lm(varname, {
             'type': 'R',
             'vals': pandas.DataFrame(),
@@ -616,15 +630,22 @@ if __name__ == '__main__' :
         else:
             v['vals'] = pandas.DataFrame()
     
+    currdata = pandas.DataFrame.from_csv(CURR_PATH, parse_dates=False).reset_index()
+    currdata['YEAR'] = currdata['YEAR'].map(str)
+    currdata = currdata.set_index('YEAR')
+
     df['IMM'] = 100
     lm['IMM'] = {}
     lm['IMM']['type'] = 'I'
-    s = Stark(df, lm=lm)
+    s = Stark(df, lm=lm, currdata=currdata)
     s['TEST'] = '$X / $M'
     s['TEST_RLP'] = '$X / $M'
     lm['TEST_RLP']['rlp'] = 'N'
-    s.cagr('X')
-    s1 = s.rollup(XER='AREA.1-Europa Occidentale')
+    
+    s1 = s.changecurr('EUR')
+
+    # s.cagr('X')
+    # s1 = s.rollup(XER='AREA.1-Europa Occidentale')
     print "ok"
 
 
