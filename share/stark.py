@@ -552,8 +552,8 @@ class Stark(GenericPickler):
             tmp_df[ts_col] = tmp_df['YEAR'].map(int)
             tmp_df[ts_col] += 1
             tmp_df[ts_col] = tmp_df[ts_col].map(str)
-        tmp_df.set_index(s.dim, inplace=True)
-        self._df.set_index(s.dim, inplace=True)
+        tmp_df.set_index(self.dim, inplace=True)
+        self._df.set_index(self.dim, inplace=True)
         self._df = pandas.merge(self._df, tmp_df, left_index=True,
                                 right_index=True, how='left', 
                                 suffixes=('', '_tmp'))
@@ -598,7 +598,7 @@ class Stark(GenericPickler):
                 sample_val = self._df[key].ix[0]
                 curr_level = self._find_level(key, sample_val)
                 out_stark.df[key] = out_stark.df[key].map(
-                    vals_df.set_index(curr_level).to_dict()[level])
+                    vals_df.set_index(curr_level, verify_integrity=False).to_dict()[level])
                 out_stark = out_stark._aggregate()
                 if value != 'ALL' and value != 'TOT':
                     out_stark.df = out_stark.df.ix[
