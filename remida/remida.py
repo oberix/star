@@ -31,7 +31,6 @@ BASEPATH = os.path.abspath(os.path.join(
 sys.path.append(BASEPATH)
 sys.path = list(set(sys.path))
 
-import sre
 from share import Config
 import template
 

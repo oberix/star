@@ -83,7 +83,7 @@ class Bag(stark.Stark):
                  title=None, footnote=None, 
                  size='square', fontsize=10.0,
                  legend=False, **kwargs):
-        super(Bag, self).__init__(df, lm=lm, cod=cod, stype=stype)
+        # super(Bag, self).__init__(df, lm=lm, cod=cod, stype=stype)
         self.title = title
         self.footnote = footnote
         self.size = size

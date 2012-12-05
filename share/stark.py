@@ -619,6 +619,7 @@ if __name__ == '__main__' :
     country_df = pandas.DataFrame.from_csv(COUNTRY_PATH).reset_index()
     curr_df = pandas.DataFrame.from_csv(CURR_PATH).reset_index()
 
+    # convert from v0.1 pickles
     for k, v in lm.iteritems():
         v['type'] = v.pop('TIP')
         if k == 'XER' or k == 'MER':
