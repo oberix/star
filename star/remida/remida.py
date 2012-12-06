@@ -31,7 +31,7 @@ BASEPATH = os.path.abspath(os.path.join(
 sys.path.append(BASEPATH)
 sys.path = list(set(sys.path))
 
-from star.share import Config
+from share.config import Config
 import template
 
 __all__ = ['sre']

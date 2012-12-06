@@ -27,7 +27,7 @@ import string
 import logging
 
 # import sre
-from star.share.bag import Bag
+from share.bag import Bag
 from table import TexTable, HTMLTable
 from graph import TexGraph, HTMLGraph
 

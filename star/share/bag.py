@@ -36,7 +36,6 @@ STYPES = (
     'graph',
 )
 
-
 class Bag(stark.Stark):
     ''' This class associates raw data with printing meta-information.
 

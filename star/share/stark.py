@@ -22,15 +22,15 @@ import copy
 
 import pandas
 
-from star.share.generic_pickler import GenericPickler
+from generic_pickler import GenericPickler
 
 # pylint: disable=E1101
 
 __author__ = 'Marco Pattaro (<marco.pattaro@servabit.it>)'
 __all__ = ['Stark']
 
+STYPES = ('elab',)
 
-from star.share import STYPES
 TYPES = [
     'D', # Dimensional
     'I', # Immutable

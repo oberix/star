@@ -28,7 +28,7 @@ from tempfile import NamedTemporaryFile, TemporaryFile
 # import pandas
 import re
 
-import star.sre.plotters as plotters
+import remida.plotters as plotters
 
 __author__ = "Marco Pattaro <marco.pattaro@servabit.it>"
 __version__ = "0.1"

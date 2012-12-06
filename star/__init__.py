@@ -18,8 +18,8 @@
 #
 ##############################################################################
 
-import star.share as share
-import star.etl as etl
-import star.sda as sda
-import star.sre as sre
-#from share import stark
+import share
+import etl
+import sda
+import remida
+

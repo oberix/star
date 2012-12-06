@@ -18,20 +18,12 @@
 #
 ##############################################################################
 
-STYPES = ('elab', 'tab', 'graph')
+# from star.share.config import *
+# from star.share.generic_pickler import *
+# from star.share.stark import *
+# from star.share.bag import *
 
-from star.share.config import *
-from star.share.generic_pickler import *
-from star.share.stark import *
-from star.share.bag import *
+import config
+import stark
+import bag
 
-
-
-
-
-import os
-import sys
-
-share_dir_path = os.path.dirname(os.path.dirname(__file__))
-if not share_dir_path in sys.path:
-    sys.path.insert(0, share_dir_path)
