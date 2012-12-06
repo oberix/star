@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 ##############################################################################
-#    
+#
 #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
 #
 #    This program is free software: you can redistribute it and/or modify
@@ -14,12 +14,12 @@
 #    GNU Affero General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
 
-import share
-import etl
-import sda
-import sre
+import star.share as share
+import star.etl as etl
+import star.sda as sda
+import star.sre as sre
 #from share import stark

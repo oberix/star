@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 ##############################################################################
-#    
+#
 #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
 #
 #    This program is free software: you can redistribute it and/or modify
@@ -14,7 +14,7 @@
 #    GNU Affero General Public License for more details.
 #
 #    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
 
@@ -34,35 +34,35 @@
 import os
 import sys
 # pandas non è usato direttamente in questo esempio, ma in genere sarà utile
-import pandas 
-import sda
+import pandas
+import star.sda as sda
 
-# Definizione di costanti:                                                        
-# tutto ciò che non verrà modificato dall'esecuzione del codice, ma il cui        
-# cambiamento potrebbe essere cruciale per determinarne il comportamento). E'     
-# consuetudine distiguere queste vaiabili da quelle 'di elaborazione' scrivendole 
-# tutte in maiuscolo.                                                             
+# Definizione di costanti:
+# tutto ciò che non verrà modificato dall'esecuzione del codice, ma il cui
+# cambiamento potrebbe essere cruciale per determinarne il comportamento). E'
+# consuetudine distiguere queste vaiabili da quelle 'di elaborazione' scrivendole
+# tutte in maiuscolo.
 #LIB_PATH = '/tmp/star_branch/'
 PKL_PATH = '/tmp/Goal-PKL/'
 COMPANY = 'Vicem'
 OUT_PATH = '/tmp/esempio/'
 
-# Indico a python dove si trovano le librerie di star:                         
-# sys.path è una comune lista di stringhe, ciascuna delle quali rappresenta un 
-# path, un percorso all'interno del filesystem; quando si esegue l'istruzione  
-# "import", Python cerca in tutti questi percorsi per trovare il file (modulo) 
-# richiesto.                                                                   
+# Indico a python dove si trovano le librerie di star:
+# sys.path è una comune lista di stringhe, ciascuna delle quali rappresenta un
+# path, un percorso all'interno del filesystem; quando si esegue l'istruzione
+# "import", Python cerca in tutti questi percorsi per trovare il file (modulo)
+# richiesto.
 #sys.path.append(LIB_PATH)
 
 # librerie di star
-from share import Bag
-from share import Stark
+from star.share import Bag
+from star.share import Stark
 
-# Carico un oggetto Stark da un file pickle.                                     
-# L'istruzione os.path.join serve a concatenare più parti di un path             
-# (/home/contabilita; star_branch/sre; esempio'); è facile cascare in     
-# errori facendo una semplice concatenazione di stringhe, quindi si consiglia di 
-# usare questo metodo per concatenare diverse parti di un path.                  
+# Carico un oggetto Stark da un file pickle.
+# L'istruzione os.path.join serve a concatenare più parti di un path
+# (/home/contabilita; star_branch/sre; esempio'); è facile cascare in
+# errori facendo una semplice concatenazione di stringhe, quindi si consiglia di
+# usare questo metodo per concatenare diverse parti di un path.
 ST01 = Stark.load(os.path.join(PKL_PATH, COMPANY, 'MVL.pickle'))
 
 # Estraggo il DataFrame dall'oggetto Stark e lo salvo in DF01
@@ -71,10 +71,10 @@ DF01 = ST01.df
 #considero un sottoinsieme di DF01, estaendo solo le variabili di interesse
 DF01 = DF01[['DAT_MVL','COD_CON','NAM_CON','NAM_PAR','DBT_MVL','CRT_MVL',]]
 
-# Creo un dizionario LM (descrive il layout della tabella).                     
-# Le barre verticali "|" indicano quali separatori disegnare; i numeri a fianco 
-# dell'indicazione dell'allineamento sono le dimensioni relativi delle colonne  
-# (0.5 metà delle altre colonne; 2 doppio delle altre colonne, etc.)            
+# Creo un dizionario LM (descrive il layout della tabella).
+# Le barre verticali "|" indicano quali separatori disegnare; i numeri a fianco
+# dell'indicazione dell'allineamento sono le dimensioni relativi delle colonne
+# (0.5 metà delle altre colonne; 2 doppio delle altre colonne, etc.)
 lm = {
     'DAT_MVL': [0,   '|c|'  , '|@v0|', '|Data|'],
     'COD_CON': [2,   ' l|'  , '|@v0|', 'Codice Conto|'],
@@ -93,8 +93,8 @@ BG01 = Bag(df=DF01, meta=lm, title='Libro Giornale', bag_type='tab')
 # Infine salvo l'oggetto bag in un file pickle
 BG01.save(os.path.join(OUT_PATH, 'table0.pickle'))
 
-# Rimane solamente da generare il report con SRE :) 
-# Per farlo, andate nella cartella sre ed eseguite  
-# $ python sre.py esempio                    
+# Rimane solamente da generare il report con SRE :)
+# Per farlo, andate nella cartella sre ed eseguite
+# $ python sre.py esempio
 
 # Happy coding!

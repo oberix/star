@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 ##############################################################################
-#    
+#
 #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
 #    Author: Marco Pattaro (<marco.pattaro@servabit.it>)
 #
@@ -16,7 +16,7 @@
 #    GNU Affero General Public License for more details.
 #
 #    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
 
@@ -31,7 +31,7 @@ BASEPATH = os.path.abspath(os.path.join(
 sys.path.append(BASEPATH)
 sys.path = list(set(sys.path))
 
-from share import Config
+from star.share import Config
 import template
 
 __all__ = ['sre']
@@ -58,7 +58,7 @@ def _load_config(src_path, confpath=None):
 
 def _compile_tex(file_, template, dest, fds):
     ''' Compile LaTeX, calls texi2dvi via system(3)
-    
+
     @ param file_: main .tex file path
     @ param template: template file path, used to handle output names
     @ param dest: output file path
@@ -96,20 +96,20 @@ def _compile_tex(file_, template, dest, fds):
         fd.close()
     if ret > 0:
         _logger.warning(
-            "texi2pdf exited with bad exit status, you can inspect what went wrong in %s", 
+            "texi2pdf exited with bad exit status, you can inspect what went wrong in %s",
             os.path.join(dest, file_.replace('.tex', '.log')))
         return ret
     _logger.info("Done.")
-    return ret                  
+    return ret
 
 def sre(src_path, config=None, **kwargs):
-    ''' Main procedure to generate a report. 
+    ''' Main procedure to generate a report.
     Besically the procedure is splitted into these steps:
         - load configuration file
         - load template
         - load bags
         - build the report
-    
+
     In most cases every file needed to build the report is stored in the same
     directory (src_path); anyway, if a configuration file is present inside the
     src_path, it can be used to specicy different parameters.
@@ -133,7 +133,7 @@ def sre(src_path, config=None, **kwargs):
 	elif os.path.isfile(os.path.join(src_path, 'main.html')):
             templ_file = os.path.join(src_path, 'main.html')
         templ_path = src_path
-    
+
     # Identify type just from filename suffix
     # FIXME: this part is a bit messy, expetially for LaTeX with multiple files
     if templ_file.endswith('.tex'):
@@ -144,9 +144,9 @@ def sre(src_path, config=None, **kwargs):
                 if not isinstance(report, str):
                     # Error, return errno
                     return report
-        return _compile_tex(templ_file.replace('.tex', '_out.tex'), 
-                            templ_file, 
-                            os.path.dirname(templ_file), 
+        return _compile_tex(templ_file.replace('.tex', '_out.tex'),
+                            templ_file,
+                            os.path.dirname(templ_file),
                             fd_list)
     elif templ_file.endswith('.html'):
         for file_ in os.listdir(templ_path):
@@ -156,7 +156,7 @@ def sre(src_path, config=None, **kwargs):
                 if not isinstance(report, str):
                     # Error, return errno
                     return report
-    else: 
+    else:
         _logger.error("Could not find a valid template, exiting.")
         return 1
     return 0

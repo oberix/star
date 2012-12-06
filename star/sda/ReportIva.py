@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 ##############################################################################
-#    
+#
 #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
 #
 #    This program is free software: you can redistribute it and/or modify
@@ -15,7 +15,7 @@
 #    GNU Affero General Public License for more details.
 #
 #    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
 
@@ -33,7 +33,7 @@ lm_registri_iva = {
         'BASE': [6, '0.5r', 'Imponibile',"@v1"],
         'TAX': [7, '0.5r', 'Imposta',"@v2"],
         }
-        
+
 lm_riepiloghi_iva = {
         'TEXT': [0, '2c', "@v1","@v2",],
         'T_NAME': [1, '2c', "@v1","Tipo imposta"],
@@ -42,7 +42,7 @@ lm_riepiloghi_iva = {
         'BASE_CRED': [4, '0.5r', 'Iva a credito',"Imponibile "],
         'TAX_CRED': [5, '0.5r', 'Iva a credito',"Imposta "],
         }
-        
+
 lm_pagamenti_iva_differita = {
         'DAT_PAY': [0, 'c', 'Data incasso',"o pagamento"],
         'SEQUENCE': [1, '1.5c', 'Registro IVA',"@v1"],
@@ -52,7 +52,7 @@ lm_pagamenti_iva_differita = {
         'T_NAME': [5, '2c', 'Tipo',"imposta"],
         'AMOUNT': [6, '0.5r', 'Imposta',"@v3"],
         }
-        
+
 lm_da_pagare_iva_differita = {
         'SEQUENCE': [0, '1.5c', 'Registro IVA',"@v1"],
         'M_NUM': [1, 'c', 'Numero', 'protocollo'],
@@ -61,20 +61,20 @@ lm_da_pagare_iva_differita = {
         'T_NAME': [4, '2c', 'Tipo', 'imposta'],
         'AMOUNT': [5, '0.5r', 'Imposta',"@v3"],
         }
-        
+
 lm_riepilogo_differita = {
         'T_NAME': [0, '2.5l', "@v1"],
         'TEXT': [1, 'l', "@v2"],
         'AMOUNT': [2, '0.5r', 'Imposta'],
         }
-        
+
 lm_liquidazione_iva = {
         'TEXT': [0, '2l', "@v1"],
         'SEQUENCE': [1, 'l', "@v2"],
         'DBT': [2, '0.5r', 'Iva a debito'],
         'CRT': [3, '0.5r', 'Iva a credito'],
         }
-        
+
 lm_controllo_esercizio = {
         'TEXT': [0, '4l', "@v1"],
         'DBT': [1, '0.5r', 'Iva a debito'],
@@ -89,10 +89,10 @@ import pandas
 import numpy
 from datetime import date
 
-import sda
-from share import Config
-from share import Stark
-from share import Bag
+import star.sda as sda
+from star.share import Config
+from star.share import Stark
+from star.share import Bag
 
 # Servabit libraries
 # BASEPATH = os.path.abspath(os.path.join(
@@ -105,7 +105,7 @@ SRE_PATH = os.path.join(BASEPATH,"sre")
 
 
 def main(dirname):
-    #legge il file config    
+    #legge il file config
     configFilePath = os.path.join(BASEPATH,"config","report_iva.cfg")
     config = Config(configFilePath)
     config.parse()
@@ -118,7 +118,7 @@ def main(dirname):
     sequenceName=config.options.get('sequence',False)
     treasuryVatAccountCode=config.options.get('treasury_vat_account_code',False)
     #verifica che la stringa associata al parametro only_validated_moves inserita in config
-    #sia effettivamente un valore boleano 
+    #sia effettivamente un valore boleano
     onlyValML=True
     if str(config.options.get('only_validated_moves',True))=='False':
         onlyValML=False
@@ -137,7 +137,7 @@ def main(dirname):
         if reportType==1:
             vatRegister = getVatRegister(vatDf, comNam, onlyValML, fiscalyearName=fiscalyearName, sequenceName=sequenceName)
             OUT_PATH = os.path.join(SRE_PATH, 'registro_iva')
-            bagVatRegister = Bag(vatRegister, os.path.join(OUT_PATH, 'vat_register.pickle'), 
+            bagVatRegister = Bag(vatRegister, os.path.join(OUT_PATH, 'vat_register.pickle'),
                                  bag_type='tab',meta=lm_registri_iva)
             setattr(bagVatRegister,"SEQUENCE",sequenceName)
             setattr(bagVatRegister,"YEAR",fiscalyearName)
@@ -148,7 +148,7 @@ def main(dirname):
             vatSummary = getVatSummary(vatDf, comNam, onlyValML,
                                        periodName=periodName, sequenceName=sequenceName)
             OUT_PATH = os.path.join(SRE_PATH, 'riepilogo_iva')
-            bagVatSummary = Bag(vatSummary,os.path.join(OUT_PATH, 'vat_summary.pickle'), 
+            bagVatSummary = Bag(vatSummary,os.path.join(OUT_PATH, 'vat_summary.pickle'),
                                 bag_type='tab',meta=lm_riepiloghi_iva)
             setattr(bagVatSummary,"SEQUENCE",sequenceName)
             setattr(bagVatSummary,"PERIOD",periodName)
@@ -169,7 +169,7 @@ def main(dirname):
             bagVatRegister.save()
             bagVatSummary.save()
         #deferred vat detail
-        elif reportType==4:            
+        elif reportType==4:
             payments = getDeferredVatDetailPayments(vatDf, comNam, onlyValML, paymentsPeriodName=periodName)
             notPayed = getDeferredVatDetailNotPayed(vatDf, comNam, onlyValML, periodDf, paymentsPeriodName=periodName)
             OUT_PATH = os.path.join(SRE_PATH, 'dettaglio_iva_differita')
@@ -184,9 +184,9 @@ def main(dirname):
         #deferred vat summary
         elif reportType==5:
             OUT_PATH = os.path.join(SRE_PATH, 'riepilogo_iva_differita')
-            deferredVatSummaryDf = getDeferredVatSummary(vatDf, comNam, onlyValML, 
+            deferredVatSummaryDf = getDeferredVatSummary(vatDf, comNam, onlyValML,
                                                             periodDf, paymentsPeriodName=periodName)
-            bagSummary= Bag(deferredVatSummaryDf['dfSummary'], 
+            bagSummary= Bag(deferredVatSummaryDf['dfSummary'],
                             os.path.join(OUT_PATH, 'deferred_vat_summary.pickle'),
                             bag_type='tab',meta=lm_riepilogo_differita,title="Riepilogo")
             setattr(bagSummary,"PERIOD",periodName)
@@ -201,7 +201,7 @@ def main(dirname):
             OUT_PATH = os.path.join(SRE_PATH, 'liquidazione_iva')
             liquidationSummary = getVatLiquidationSummary(vatDf, periodDf,
                                                                 comNam, onlyValML, treasuryVatAccountCode, periodName=periodName)
-            bagLiquidationSummary = Bag(liquidationSummary, 
+            bagLiquidationSummary = Bag(liquidationSummary,
                                         os.path.join(OUT_PATH, 'liquidation_summary.pickle'),
                                         bag_type='tab',meta=lm_liquidazione_iva,title='Prospetto liquidazione Iva')
             setattr(bagLiquidationSummary,"PERIOD",periodName)
@@ -210,7 +210,7 @@ def main(dirname):
         #exercise control summary
         elif reportType==7:
             vatSummary = getVatSummary(vatDf, comNam, onlyValML, fiscalyearName=fiscalyearName)
-            vatControlSummaryDf = getVatControlSummary(fiscalyearName, vatSummary, vatDf, 
+            vatControlSummaryDf = getVatControlSummary(fiscalyearName, vatSummary, vatDf,
                                                             periodDf, comNam, onlyValML, treasuryVatAccountCode)
             OUT_PATH = os.path.join(SRE_PATH, 'controllo_esercizio')
             bagVatSummary = Bag(vatSummary,
@@ -240,14 +240,14 @@ def main(dirname):
 def GroupInterOrd(group):
     group['ORD']=range(len(group))
     S=group
-    return S    
+    return S
 
 def getVatRegister(vatDf, companyName, onlyValidatedMoves, sequenceName=None, periodName=None, fiscalyearName=None):
     '''
     funzione per il calcolo dei registri iva
     @param vatDf: è il dataframe contenente le informazioni specifiche per i report iva
     @param onlyValidatedMoves: booleano che indica se filtrare solo le scritture validate oppure no
-    
+
     Nel porgramma vengono usate le seguenti variabili
     ESER        anno fiscale
     M_NUM       numero di protocollo
@@ -304,11 +304,11 @@ def getVatRegister(vatDf, companyName, onlyValidatedMoves, sequenceName=None, pe
         df7['ST_TAX'] = 'TAX'
         df7['ST_TAX'].ix[df7['T_TAX']==False] = 'BASE'
         #aggiunta colonne BASE e TAX con importi di imponibile e imposta a seconda delle righe
-        df8 = pandas.pivot_table(df7,values='AMOUNT', cols=['ST_TAX'], 
+        df8 = pandas.pivot_table(df7,values='AMOUNT', cols=['ST_TAX'],
                         rows=['M_NAME','T_NAME'])
         df8 = df8.reset_index()
-        #in df8 ci sono le imposte e la base imponibile in colonna. 
-        #la chiave univoca che identifica ciascuna riga è composta 
+        #in df8 ci sono le imposte e la base imponibile in colonna.
+        #la chiave univoca che identifica ciascuna riga è composta
         #dal nome della move (M_NUM) e dal nome della tassa (T_NAME)
         # aggiungo al df8 le altre variabili di interesse
         #vatDf = vatDf.ix[vatDf['T_TAX']==True]
@@ -317,11 +317,11 @@ def getVatRegister(vatDf, companyName, onlyValidatedMoves, sequenceName=None, pe
         #df10 = pandas.merge(vatDf,df8,on=["M_NUM","T_NAME"])
         #recupero le variabili che servono e che sono associate alla move
         df9 = df1[['M_NUM','DATE','DATE_DOC','M_REF','PARTNER','M_NAME']]
-        df9 = df9.drop_duplicates() 
+        df9 = df9.drop_duplicates()
         #recupero le variabili che servono e che sono associate al nome dell'imposte
         df10 = df1[['T_NAME','T_DET','T_CRED','T_IMM', 'T_EXI']]
         df10 = df10[df10['T_DET'].notnull()]
-        df10 = df10.drop_duplicates() 
+        df10 = df10.drop_duplicates()
         #combino il df8 prima con i dati associati alla move e
         # quindi con i dati associati alla tassa
         df11 = pandas.merge(df8 , df9,on=["M_NAME"], how='left')
@@ -358,13 +358,13 @@ def getVatRegister(vatDf, companyName, onlyValidatedMoves, sequenceName=None, pe
         return pandas.DataFrame(columns=LVAR)
 
 
-def getVatSummary(vatDf, companyName, onlyValidatedMoves, 
+def getVatSummary(vatDf, companyName, onlyValidatedMoves,
                     sequenceName=None, periodName=None, fiscalyearName=None):
     '''
     funzione per il calcolo dei riepiloghi iva
     @param vatDf: è il dataframe contenente le informazioni specifiche per i report iva
     @param onlyValidatedMoves: booleano che indica se filtrare solo le scritture validate oppure no
-    
+
     ESER        anno fiscale
     M_NUM       numero di protocollo
     M_NAME      name della move
@@ -389,7 +389,7 @@ def getVatSummary(vatDf, companyName, onlyValidatedMoves,
     AMOUNT      importo (di imponibile o imposta o pagamento)
     '''
     LVAR=['TEXT','T_NAME','BASE_DEB','TAX_DEB','BASE_CRED','TAX_CRED','T_DET','T_IMM','TOTAL']
-    
+
     df1 = getVatRegister(vatDf, companyName, onlyValidatedMoves, periodName=periodName, fiscalyearName=fiscalyearName, sequenceName=sequenceName)
     del df1['DATE']
     del df1['M_NUM']
@@ -469,14 +469,14 @@ def getVatSummary(vatDf, companyName, onlyValidatedMoves,
     dfResult = pandas.concat([dfResult,dfR1]).reset_index(drop=True)
     #aggiunta totale detr + indetr
     dfResult = pandas.concat([dfResult,dfDetPlusIndetTotal]).reset_index(drop=True)
-    
+
     dfResult['TEXT'].ix[dfResult['TEXT'].isnull()] = ""
     dfResult['T_NAME'].ix[dfResult['T_NAME'].isnull()] = ""
     dfResult = dfResult[LVAR]
     return dfResult
 
-def getDeferredVatDetailPayments(vatDf, companyName, onlyValidatedMoves, 
-                        billsPeriodName=None, billsFiscalyearName=None, 
+def getDeferredVatDetailPayments(vatDf, companyName, onlyValidatedMoves,
+                        billsPeriodName=None, billsFiscalyearName=None,
                         paymentsPeriodName=None, paymentsFiscalyearName=None):
     '''
     funzione che restituisce l'iva differita pagata nel il periodo (o l'anno fiscale) passati come parametro
@@ -631,7 +631,7 @@ def getDeferredVatDetailNotPayed(vatDf, companyName, onlyValidatedMoves, periodD
     return df2
 
 def getDeferredVatSummary(vatDf, companyName, onlyValidatedMoves, periodDf,
-                        billsPeriodName=None, billsFiscalyearName=None, 
+                        billsPeriodName=None, billsFiscalyearName=None,
                         paymentsPeriodName=None, paymentsFiscalyearName=None):
     '''
     funzione che restituisce il riepilogo dell'iva differita.
@@ -665,8 +665,8 @@ def getDeferredVatSummary(vatDf, companyName, onlyValidatedMoves, periodDf,
     '''
     if not paymentsPeriodName and not paymentsFiscalyearName:
         raise RuntimeError("Errore: i parametri paymentsPeriodName e paymentsFiscalyearName non devono essere entrambi nulli")
-    payments = getDeferredVatDetailPayments(vatDf, companyName, onlyValidatedMoves, 
-                                paymentsPeriodName=paymentsPeriodName, paymentsFiscalyearName=paymentsFiscalyearName, 
+    payments = getDeferredVatDetailPayments(vatDf, companyName, onlyValidatedMoves,
+                                paymentsPeriodName=paymentsPeriodName, paymentsFiscalyearName=paymentsFiscalyearName,
                                 billsPeriodName=billsPeriodName, billsFiscalyearName=billsFiscalyearName)
     notPayed = getDeferredVatDetailNotPayed(vatDf, companyName, onlyValidatedMoves, periodDf,
                                 paymentsPeriodName=paymentsPeriodName, paymentsFiscalyearName=paymentsFiscalyearName)
@@ -674,10 +674,10 @@ def getDeferredVatSummary(vatDf, companyName, onlyValidatedMoves, periodDf,
     notPayed = notPayed[['AMOUNT','T_NAME','SEQUENCE','T_CRED']]
     payments['PAYM'] = True
     notPayed['PAYM'] = False
-    
+
     dfToPrint1 = pandas.DataFrame(columns=['T_NAME','TEXT','AMOUNT','T_CRED','PAYM'])
     dfToPrint2 = pandas.DataFrame()
-    
+
     def getTotalRow(dataDf,payments,credit,tName=False):
         '''
         funzione che restituisce un dataframe con una riga di totale dei dataframe di stampa
@@ -699,7 +699,7 @@ def getDeferredVatSummary(vatDf, companyName, onlyValidatedMoves, periodDf,
                             'PAYM': [payments,],
                             })
         return df2
-    
+
     ###
     #costruzione dataframe di riepilogo
     ###
@@ -712,7 +712,7 @@ def getDeferredVatSummary(vatDf, companyName, onlyValidatedMoves, periodDf,
         df3 = df2[['SEQUENCE']]
         df3 = df3.drop_duplicates()
         sequences = list(df3['SEQUENCE'])
-        
+
         def computeTotalRow(df,searchPayments,credit,sequenceName=None):
             '''
             funzione per il calcolo dei totali del dataframe con i dati di riepilogo
@@ -730,7 +730,7 @@ def getDeferredVatSummary(vatDf, companyName, onlyValidatedMoves, periodDf,
                 return tempDf.reset_index(drop=True)
             else:
                 return pandas.DataFrame()
-        #aggiunta totali per ogni sequenza    
+        #aggiunta totali per ogni sequenza
         for sequence in sequences:
             df3 = computeTotalRow(df2,True,True,sequence)
             df4 = computeTotalRow(df2,True,False,sequence)
@@ -775,7 +775,7 @@ def getDeferredVatSummary(vatDf, companyName, onlyValidatedMoves, periodDf,
                                     'AMOUNT':[amount,],
                                     })
                 dfToPrint1 = pandas.concat([dfToPrint1,df9]).reset_index(drop=True)
-            
+
             ###
             #aggiunta righe 'totale incassata o pagata'
             ###
@@ -787,7 +787,7 @@ def getDeferredVatSummary(vatDf, companyName, onlyValidatedMoves, periodDf,
             #aggiungo riga totale a credito
             df10 = getTotalRow(df2,True,True,True)
             dfToPrint1 = pandas.concat([dfToPrint1,df10]).reset_index(drop=True)
-            
+
             ###
             #aggiunta righe 'totale da incassare o pagare'
             ###
@@ -799,11 +799,11 @@ def getDeferredVatSummary(vatDf, companyName, onlyValidatedMoves, periodDf,
             #aggiungo riga totale a credito
             df10 = getTotalRow(df2,False,True,True)
             dfToPrint1 = pandas.concat([dfToPrint1,df10]).reset_index(drop=True)
-            
+
             ###aggiunta riga vuota
             df11 = pandas.DataFrame({'T_NAME':['',]})
             dfToPrint1 = pandas.concat([dfToPrint1,df11]).reset_index(drop=True)
-    
+
     ###
     #costruzione dataframe di sintesi
     ###
@@ -828,7 +828,7 @@ def getDeferredVatSummary(vatDf, companyName, onlyValidatedMoves, periodDf,
     #aggiungo riga totale a credito
     df10 = getTotalRow(df4,False,True)
     dfToPrint2 = pandas.concat([dfToPrint2,df10]).reset_index(drop=True)
-    
+
     ###
     #ultime formattazioni
     ###
@@ -843,7 +843,7 @@ def getDeferredVatSummary(vatDf, companyName, onlyValidatedMoves, periodDf,
         dfToPrint1['AMOUNT']=dfToPrint1['AMOUNT'].map(str)
         dfToPrint1['AMOUNT'].ix[dfToPrint1['AMOUNT']=='-1.0'] = ''
     dfToPrint1 = dfToPrint1[['T_NAME','TEXT','AMOUNT','T_CRED','PAYM']]
-    
+
     dfToPrint2['T_NAME'].ix[dfToPrint2['T_NAME'].isnull()] = ''
     dfToPrint2['TEXT'].ix[dfToPrint2['TEXT'].isnull()] = ''
     dfToPrint2['PAYM'].ix[dfToPrint2['PAYM'].isnull()] = ''
@@ -852,7 +852,7 @@ def getDeferredVatSummary(vatDf, companyName, onlyValidatedMoves, periodDf,
     dfToPrint2['AMOUNT']=dfToPrint2['AMOUNT'].map(str)
     dfToPrint2['AMOUNT'].ix[dfToPrint2['AMOUNT']=='-1.0'] = ''
     dfToPrint2 = dfToPrint2[['T_NAME','TEXT','AMOUNT','T_CRED','PAYM']]
-    
+
     return {
         'dfSummary': dfToPrint1,
         'dfSynthesis': dfToPrint2,
@@ -865,7 +865,7 @@ def _appendLineToVatLiquidationDict(liqDict, text, namSeq, dbt, crt):
     liqDict['CRT'].append(crt)
 
 def addLiquidationSummaryFinalResults(vatDf, periodDf, debitVat, creditVat,
-                                    companyName, onlyValidatedMoves, treasuryVatAccountCode, 
+                                    companyName, onlyValidatedMoves, treasuryVatAccountCode,
                                     periodName=None, fiscalyearName=None, liquidationDict=None):
     '''
     ESER        anno fiscale
@@ -972,14 +972,14 @@ def getVatLiquidationSummary(vatDf, periodDf, companyName, onlyValidatedMoves, t
     '''
     if not periodName and not fiscalyearName:
         raise RuntimeError("Errore: i parametri periodName e fiscalyearName non devono essere entrambi nulli")
-    
+
     vatLiquidationDict = {
          'TEXT': [],
          'SEQUENCE': [],
          'DBT': [],
          'CRT': [],
          }
-    
+
     #recupero il nome delle sequenze iva per cui ci sono dei movimenti nel periodo d'interesse
     df1 = vatDf[['SEQUENCE']]
     df1 = df1.drop_duplicates()
@@ -1016,14 +1016,14 @@ def getVatLiquidationSummary(vatDf, periodDf, companyName, onlyValidatedMoves, t
     _appendLineToVatLiquidationDict(vatLiquidationDict,"Totale","",debitVatTotal,creditVatTotal)
     #aggiunta righe finali
     vatLiquidationDict = addLiquidationSummaryFinalResults(
-                                        vatDf, periodDf, debitVatTotal, creditVatTotal, 
-                                        companyName, onlyValidatedMoves, treasuryVatAccountCode, periodName=periodName, 
+                                        vatDf, periodDf, debitVatTotal, creditVatTotal,
+                                        companyName, onlyValidatedMoves, treasuryVatAccountCode, periodName=periodName,
                                         fiscalyearName=fiscalyearName, liquidationDict=vatLiquidationDict)
     vatLiquidationDf = pandas.DataFrame(vatLiquidationDict)
     vatLiquidationDf = vatLiquidationDf[['TEXT','SEQUENCE','DBT','CRT']]
     return vatLiquidationDf
-    
-def getVatControlSummary(fiscalyearName, vatSummary, vatDf, periodDf, companyName, 
+
+def getVatControlSummary(fiscalyearName, vatSummary, vatDf, periodDf, companyName,
                         onlyValidatedMoves, treasuryVatAccountCode):
     '''
     funzione che restituisce il df con il prospetto di controllo d'esercizio
@@ -1078,11 +1078,11 @@ def getVatControlSummary(fiscalyearName, vatSummary, vatDf, periodDf, companyNam
         deferredSummary = getDeferredVatSummary(vatDf, companyName, onlyValidatedMoves, periodDf,
                         billsFiscalyearName=previousFiscalyearName, paymentsFiscalyearName=fiscalyearName)
         deferredSummarySynthesis = deferredSummary['dfSynthesis']
-        df0 = deferredSummarySynthesis.ix[(deferredSummarySynthesis['PAYM']==True) & 
+        df0 = deferredSummarySynthesis.ix[(deferredSummarySynthesis['PAYM']==True) &
                                             (deferredSummarySynthesis['T_CRED']==True)].reset_index()
         if len(df0) > 0:
             previousDeferredVatCredit = df0['AMOUNT'][0]
-        df0 = deferredSummarySynthesis.ix[(deferredSummarySynthesis['PAYM']==True) & 
+        df0 = deferredSummarySynthesis.ix[(deferredSummarySynthesis['PAYM']==True) &
                                             (deferredSummarySynthesis['T_CRED']==False)].reset_index()
         if len(df0) > 0:
             previousDeferredVatDebit = df0['AMOUNT'][0]
@@ -1092,11 +1092,11 @@ def getVatControlSummary(fiscalyearName, vatSummary, vatDf, periodDf, companyNam
     deferredSummary = getDeferredVatSummary(vatDf, companyName, onlyValidatedMoves, periodDf,
                         billsFiscalyearName=fiscalyearName, paymentsFiscalyearName=fiscalyearName)
     deferredSummarySynthesis = deferredSummary['dfSynthesis']
-    df0 = deferredSummarySynthesis.ix[(deferredSummarySynthesis['PAYM']==True) & 
+    df0 = deferredSummarySynthesis.ix[(deferredSummarySynthesis['PAYM']==True) &
                                         (deferredSummarySynthesis['T_CRED']==True)].reset_index()
     if len(df0) > 0:
         currentDeferredVatCredit = df0['AMOUNT'][0]
-    df0 = deferredSummarySynthesis.ix[(deferredSummarySynthesis['PAYM']==True) & 
+    df0 = deferredSummarySynthesis.ix[(deferredSummarySynthesis['PAYM']==True) &
                                         (deferredSummarySynthesis['T_CRED']==False)].reset_index()
     if len(df0) > 0:
         currentDeferredVatDebit = df0['AMOUNT'][0]
@@ -1158,7 +1158,7 @@ def getVatControlSummary(fiscalyearName, vatSummary, vatDf, periodDf, companyNam
     #aggiunta righe finali liquidazione iva
     vatLiquidationDict = addLiquidationSummaryFinalResults(
                                         vatDf, periodDf, immediateDebitVat + debitDeferredVatNowExigible,
-                                        immediateCreditVat + creditDeferredVatNowExigible, companyName, 
+                                        immediateCreditVat + creditDeferredVatNowExigible, companyName,
                                         onlyValidatedMoves, treasuryVatAccountCode, fiscalyearName=fiscalyearName)
     vatLiquidationDf = pandas.DataFrame(vatLiquidationDict)
     vatLiquidationDf = vatLiquidationDf[['TEXT','DBT','CRT']]

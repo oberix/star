@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 ##############################################################################
-#    
+#
 #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
 #    Author: Marco Pattaro (<marco.pattaro@servabit.it>)
 #
@@ -15,7 +15,7 @@
 #    GNU Affero General Public License for more details.
 #
 #    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
 
@@ -35,9 +35,9 @@ sys.path.append(BASEPATH)
 sys.path = list(set(sys.path))
 
 #import etl
-from share import Config
-from share import parallel_jobs
-from share import Stark
+from star.share import Config
+from star.share import parallel_jobs
+from star.share import Stark
 
 COLUMNS = ['YEAR', 'CODE', 'XER', 'MER', 'R', 'X', 'M', 'K', 'U', 'Q']
 META = {
@@ -64,7 +64,7 @@ _logger = logging.getLogger(sys.argv[0])
 def _list_files(level, root):
     ''' Make a list of files at a given level of directory nesting, starting
     from root.
-    
+
     @ param level: the nesting level to search as an integer
     @ param root: the directories tree root
 
@@ -99,7 +99,7 @@ def _by_country(root, mapping, country, group):
     @ country: ISO3 code on which we are aggregating
     @ group: DataFrame containing records to be added
 
-    ''' 
+    '''
     stark_group = Stark(group, META)
     try:
         area = mapping.ix[country].replace(' ', '_')
@@ -110,7 +110,7 @@ def _by_country(root, mapping, country, group):
         # create dir if it does not exists
         if not os.path.isdir(os.path.dirname(out_file)):
             os.makedirs(os.path.dirname(out_file))
-        # Create a brand new Stark        
+        # Create a brand new Stark
         stark_group.save(out_file)
     else:
         fd = open(out_file, 'ab')
@@ -122,7 +122,7 @@ def _by_country(root, mapping, country, group):
 def _consolidate(file_):
     ''' Read Starks from a pickle and add them together, finally it saves back
     the result in the original file.
-    
+
     @ param file_: path to the file to consolidate.
     '''
     _logger.info('Consolidating %s', file_)
@@ -141,7 +141,7 @@ def _consolidate(file_):
 def _test_by_country(file_, root, mapping):
     ''' Utility function to debug _by_country() procedure.
     '''
-    stark_curr = Stark.load(file_)    
+    stark_curr = Stark.load(file_)
     groups = stark_curr.DF.groupby('XER')
     # Single process
     for country, group in groups:
@@ -150,7 +150,7 @@ def _test_by_country(file_, root, mapping):
 def by_country(level, in_path, root, mapping, key):
     ''' Reshape DataFrames classified by product code into DataFrame organized
     by country (ISO3 code). A product aggregation level can be specified.
-    
+
     @ param level: product code aggregation level
     @ param in_path: input files root path
     @ param root: output root path
@@ -240,7 +240,7 @@ def from_hs(level, in_path, root, prod_map, start_year):
     @ param prod_map: product codes mapping DataFrame
     @ param start_year: record must have YEAR >= start_year
 
-    ''' 
+    '''
     prod_groups = prod_map.groupby(level)
     if _logger.getEffectiveLevel() <= logging.DEBUG:
         for code, group in prod_groups:
@@ -248,7 +248,7 @@ def from_hs(level, in_path, root, prod_map, start_year):
     else:
         args = [(_from_hs, [level, in_path, root, code, group, start_year]) for code, group in prod_groups]
         parallel_jobs.do_jobs_efficiently(args)
-        
+
 def aggregate(root, mapping, pkey=None):
     ''' Aggregates DataFrames stored in Python pickle files. This function
     performs a bottom-up walk of a directory subtree, aggregating DataFrames in
@@ -312,7 +312,7 @@ def init(input_dir, ulisse_codes, countries, uom):
     return (country_map, ul3000, uom_df)
 
 def main(input_dir=None, root=None, start_year=None,
-         countries=None, ulisse_codes=None, uom=None, 
+         countries=None, ulisse_codes=None, uom=None,
          country_aggr_level='UL20', prod_aggr_level='UL3000',
          **kwargs):
     """
@@ -326,7 +326,7 @@ def main(input_dir=None, root=None, start_year=None,
     ul_root = os.path.join(root, 'prod')
     from_hs(prod_aggr_level, input_dir, ul_root, ul3000, start_year)
     aggregate(ul_root, ul3000)
- 
+
     # # Transform by ISO3 code and aggregate
     iso3_root = os.path.join(root, 'country_MER')
     by_country(country_aggr_level, ul_root, iso3_root, country_map, 'MER')

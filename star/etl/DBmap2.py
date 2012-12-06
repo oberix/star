@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 ##############################################################################
-#    
+#
 #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
 #
 #    This program is free software: you can redistribute it and/or modify
@@ -14,7 +14,7 @@
 #    GNU Affero General Public License for more details.
 #
 #    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
 
@@ -35,8 +35,8 @@ from sqlalchemy import create_engine, Column, String, Integer, Sequence, Foreign
 import logging
 
 # Servabit libraries
-import etl
-from share.config import Config
+import star.etl as etl
+from star.share.config import Config
 
 
 #genero una classe di nome Base da usare con SQLAlchemy
@@ -55,93 +55,93 @@ logger = logging.getLogger('DBMapping')
 class IrSequence(Base):
     '''Mmappatura della tabella contenente i dati relativi alle sequenza associate ad un journal '''
     __tablename__ = 'ir_sequence'
-    
+
     name = Column(String(64), nullable=False)
     code = Column(String(64), nullable=False)
     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
     company_id = Column(Integer, ForeignKey('res_company.id'), nullable=False)
-    
+
     #one2many
     journals = relationship("AccountJournal")
     company = relationship("ResCompany")
-    
-    
+
+
 class ResCompany(Base):
     '''Mappatura della tabella contenente i dati relativi ad una company, ossia all'impresa
-    di cui il database contiene i dati'''    
+    di cui il database contiene i dati'''
     __tablename__ = 'res_company'
-    
+
     name = Column(String(64), nullable=False)
     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
     partner_id = Column(Integer, ForeignKey('res_partner.id'), nullable=False)
     #one2one
     partner = relationship("ResPartner",  primaryjoin="ResCompany.partner_id==ResPartner.id", uselist=False)
     ateco_2007_vat_activity = Column(String(300))
-    
-        
+
+
 class ResPartner(Base):
     '''Mappatura della tabella contenente i dati relativi ad un partner
         - nome/ragione sociale
         - partita iva
         - codice fiscale (tax)
         - indirizzi associati al partner
-    '''    
+    '''
     __tablename__ = 'res_partner'
-    
+
     name = Column(String(64), nullable=False)
     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
     vat = Column(String(32))
     tax = Column(String(36))
     company_id = Column(Integer, ForeignKey('res_company.id'), nullable=True)
-    
+
     #one2one
     company = relationship("ResCompany", primaryjoin="ResCompany.id==ResPartner.company_id")
     #one2many
     addresses = relationship("ResPartnerAddress")
-    
-    
+
+
 class ResPartnerAddress(Base):
     '''Mappatura della tabella contenente i dati relativi ad un indirizzo
         - nome identificativo del'indirizzo
         - id del partner
         - via
         - città
-        - Codice avviamento postale        
-    '''    
+        - Codice avviamento postale
+    '''
     __tablename__ = 'res_partner_address'
-    
+
     name = Column(String(64), nullable=False)
     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
     partner_id = Column(Integer, ForeignKey('res_partner.id'), nullable=False)
     street = Column(String(128))
     city = Column(String(128))
     zip = Column(String(24))
-    
+
     #many2one
     partner = relationship("ResPartner")
-        
-        
+
+
 class AccountFiscalyear(Base):
     '''Mappatura della tabella contenente i dati relativi ad un Anno fiscale
         - nome identificativo dell'anno
         - company_id
         - data inizio
         - data fine
-    '''    
+    '''
     __tablename__ = 'account_fiscalyear'
-    
+
     name = Column(String(64), nullable=False)
     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
     company_id = Column(Integer, ForeignKey('res_company.id'), nullable=False)
     date_start = Column(Date, nullable=False)
     date_stop = Column(Date, nullable=False)
-    
+
     #one2many
     periods = relationship("AccountPeriod")
     #many2one
     company = relationship("ResCompany")
-        
-    
+
+
 class AccountPeriod(Base):
     '''Mappatura della tabella contenente i dati relativi ad un Periodo Fiscale
         - nome identificativo del periodo
@@ -150,44 +150,44 @@ class AccountPeriod(Base):
         - data fine
         - special ??????
         - anno fiscale di riferimento
-    '''    
+    '''
     __tablename__ = 'account_period'
-    
+
     name = Column(String(64), nullable=False)
     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
     company_id = Column(Integer, ForeignKey('res_company.id'), nullable=False)
     date_start = Column(Date, nullable=False)
     date_stop = Column(Date, nullable=False)
     special = Column(Boolean)
-    
+
     fiscalyear_id = Column(Integer, ForeignKey('account_fiscalyear.id'), nullable=False)
     fiscalyear = relationship("AccountFiscalyear")
     company = relationship("ResCompany")
-    
-    
+
+
 class AccountAccountType(Base):
     '''Mappatura della tabella contenente i dati relativi ad tipo di Conto
         - nome identificativo del tipo
         - codice che identifica il tipo
-    '''    
+    '''
     __tablename__ = 'account_account_type'
-    
+
     name = Column(String(64), nullable=False)
     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
     code = Column(String(32), nullable=False)
-    
+
 
 class AccountAccount(Base):
     '''Mappatura della tabella contenente i dati relativi al Conto di un piano dei conti
-        - nome identificativo del conto 
+        - nome identificativo del conto
         - codice che identifica del conto
         - comapny_id
         - riferimento al tipo di conto
         - type ????
         - conto padre
-    '''    
+    '''
     __tablename__ = 'account_account'
-    
+
     name = Column(String(128), nullable=False)
     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
     code = Column(String(64))
@@ -198,20 +198,20 @@ class AccountAccount(Base):
     account_type = relationship("AccountAccountType")
     company = relationship("ResCompany")
     parent = relationship("AccountAccount", remote_side=[id])
-    
-    
+
+
 class AccountJournal(Base):
     '''Mappatura della tabella contenente i dati relativi al Journal
         - nome identificativo del journal
         - type ????
         - riferimneto alla sequenza aassociata al Journal
-    '''    
+    '''
     __tablename__ = 'account_journal'
-    
+
     name = Column(String(64), nullable=False)
     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
     type = Column(String(32), nullable=False)
-    
+
     sequence_id = Column(Integer, ForeignKey('ir_sequence.id'), nullable=False)
     sequence = relationship("IrSequence")
 
@@ -223,27 +223,27 @@ class AccountTax(Base):
         - base code: è il codice associato alla base imponibile che nella contabiltà delle tasse riporta l'ammontare della base imponibile
         - ref tax code: idem che tax code ma riferito ad un reso
         - ref base code: idem che base code ma riferito ad un reso
-    '''    
+    '''
     __tablename__ = 'account_tax'
-    
+
     name = Column(String(64), nullable=False)
     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
     company_id = Column(Integer, ForeignKey('res_company.id'))
-    
+
     tax_code_id = Column(Integer, ForeignKey('account_tax_code.id'), nullable=False)
     base_code_id = Column(Integer, ForeignKey('account_tax_code.id'), nullable=False)
     ref_tax_code_id = Column(Integer, ForeignKey('account_tax_code.id'), nullable=False)
     ref_base_code_id = Column(Integer, ForeignKey('account_tax_code.id'), nullable=False)
-    
+
     company = relationship("ResCompany")
-    
+
 class AccountTaxCode(Base):
     '''Mappatura della tabella contenente i dati relativi Codici della Contabilità delle Tasse/Imposte
         - nome identificativo del Codice
         - id identificatvo
-    '''    
+    '''
     __tablename__ = 'account_tax_code'
-    
+
     name = Column(String(64), nullable=False)
     id = Column(Integer, Sequence('user_id_seq'), primary_key=True, )
 
@@ -253,20 +253,20 @@ class AccountVoucher(Base):
         - id identificatvo
         - company_id
         - period_id
-        - scrittura contabile (relazione meny2one) 
+        - scrittura contabile (relazione meny2one)
         - partner
         - data di registrazione
         - data di scadenza
         - numero ??
         - stato  : registrato o meno
         - type   ??
-        - importo 
-    '''    
+        - importo
+    '''
     __tablename__ = 'account_voucher'
-    
+
     name = Column(String(64), nullable=False)
     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
-    
+
     company_id = Column(Integer, ForeignKey('res_company.id'))
     period_id = Column(Integer, ForeignKey('account_period.id'))
     move_id = Column(Integer, ForeignKey('account_move.id'))
@@ -292,19 +292,19 @@ class AccountInvoice(Base):
         - id identificatvo
         - company_id
         - period_id
-        - scrittura contabile (relazione many2one) 
+        - scrittura contabile (relazione many2one)
         - partner
         - data del documento
         - data della fattura - diventer la data di registrazione
         - data di scadenza
         - numero del documento
-        - importo 
+        - importo
     '''
     __tablename__ = 'account_invoice'
-  
+
     name = Column(String(64), nullable=False)
     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
-    
+
     company_id = Column(Integer, ForeignKey('res_company.id'))
     period_id = Column(Integer, ForeignKey('account_period.id'))
     move_id = Column(Integer, ForeignKey('account_move.id'))
@@ -317,14 +317,14 @@ class AccountInvoice(Base):
     state = Column(String(16))
     type = Column(String(16))
     amount_total = Column(postgresql.NUMERIC)
-    
+
     move = relationship("AccountMove",  uselist=False)
     partner = relationship("ResPartner",  uselist=False)
     company = relationship("ResCompany")
     period = relationship("AccountPeriod")
     journal = relationship("AccountJournal")
 
-    
+
 class AccountMove(Base):
     '''Mappatura della tabella contenente i dati relativi ad una scrittura (composta da più linee)
         - nome identificativo della scrittura
@@ -339,10 +339,10 @@ class AccountMove(Base):
         - fattura di riferimento
         - da controllare
         - linee della scrittura (relazione one2many)
-    '''    
+    '''
 
     __tablename__ = 'account_move'
-    
+
     name = Column(String(64), nullable=False)
     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
     ref = Column(String(64))
@@ -361,7 +361,7 @@ class AccountMove(Base):
     company = relationship("ResCompany")
     period = relationship("AccountPeriod")
     journal = relationship("AccountJournal")
-           
+
 class AccountMoveLine(Base):
     '''Mappatura della tabella contenente i dati relativi ad una linea di scrittura
         - nome identificativo della linea
@@ -384,35 +384,35 @@ class AccountMoveLine(Base):
         - importo a debito
         - importo a credito
         - importo della imposta/tassa o della base imponibile
-    '''    
+    '''
     __tablename__ = 'account_move_line'
-    
+
     name = Column(String(64), nullable=False)
     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
     ref = Column(String(64))
     state = Column(String(16))
-    
+
     company_id = Column(Integer, ForeignKey('res_company.id'))
     journal_id = Column(Integer, ForeignKey('account_journal.id'), nullable=False)
     period_id = Column(Integer, ForeignKey('account_period.id'), nullable=False)
     account_id = Column(Integer, ForeignKey('account_account.id'), nullable=False)
     move_id = Column(Integer, ForeignKey('account_move.id'), nullable=False)
     tax_code_id = Column(Integer, ForeignKey('account_tax_code.id'), nullable=False)
-    
+
     reconcile_id = Column(Integer, ForeignKey('account_move_reconcile.id'), nullable=False)
     reconcile = relationship("AccountMoveReconcile", primaryjoin="AccountMoveReconcile.id==AccountMoveLine.reconcile_id")
-    
+
     reconcile_partial_id = Column(Integer, ForeignKey('account_move_reconcile.id'), nullable=False)
     reconcile_partial = relationship("AccountMoveReconcile", primaryjoin="AccountMoveReconcile.id==AccountMoveLine.reconcile_partial_id")
-    
+
     partner_id = Column(Integer, ForeignKey('res_partner.id'))
-    
+
     date = Column(Date, nullable=False)
     date_maturity = Column(Date)
     debit = Column(postgresql.NUMERIC)
     credit = Column(postgresql.NUMERIC)
     tax_amount = Column(postgresql.NUMERIC)
-    
+
     #many2one
     move = relationship("AccountMove")
     journal = relationship("AccountJournal")
@@ -420,7 +420,7 @@ class AccountMoveLine(Base):
     partner = relationship("ResPartner")
     company = relationship("ResCompany")
     period = relationship("AccountPeriod")
-    
+
 class AccountMoveReconcile(Base):
     '''Mappatura della tabella contenente i dati relativi alla Riconciliazione
         - nome identificativo della linea
@@ -428,13 +428,13 @@ class AccountMoveReconcile(Base):
         - tipo
         - riferimento alla linea di registrazione
         - riferimneto della riconciliazione partiale alla linea di registrazione
-    '''    
+    '''
     __tablename__ = 'account_move_reconcile'
-    
+
     name = Column(String(64), nullable=False)
     type = Column(String(16), nullable=False)
     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
-    
+
     lines = relationship("AccountMoveLine", primaryjoin="AccountMoveReconcile.id==AccountMoveLine.reconcile_id")
     partial_lines = relationship("AccountMoveLine", primaryjoin="AccountMoveReconcile.id==AccountMoveLine.reconcile_partial_id")
 

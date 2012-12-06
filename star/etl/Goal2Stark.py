@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 ##############################################################################
-#    
+#
 #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
 #
 #    This program is free software: you can redistribute it and/or modify
@@ -14,7 +14,7 @@
 #    GNU Affero General Public License for more details.
 #
 #    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
 
@@ -24,12 +24,12 @@ import pandas
 import sqlalchemy
 
 # Servabit libraries
-import etl
+import star.etl as etl
 import DBmap2
 import create_dict
 import parallel_jobs
-from share import Stark
-from share.config import Config
+from star.share import Stark
+from star.share.config import Config
 
 
 def create_dict(cl_dmap2, dict_path, company_name):
@@ -43,7 +43,7 @@ def create_dict(cl_dmap2, dict_path, company_name):
                         'NAMEVAR' : [data, data, data, .....]
                         }
     '''
-    
+
     def tuple2attr(obj, tpl):
         el = tpl
         while(el[1] != None):
@@ -53,18 +53,18 @@ def create_dict(cl_dmap2, dict_path, company_name):
             obj = obj[0]
         obj = getattr(obj, el[0])
         return obj
-    
+
     def get_obj(session, cl_dbmap2, company_name):
         objs = None
         try:
             getattr(cl_dbmap2, 'company')
             objs = session.query(cl_dbmap2).filter(cl_dbmap2.company.has(name=company_name)).all()
-        except AttributeError:    
+        except AttributeError:
             objs = session.query(cl_dbmap2).all()
         return objs
-    
+
     session = DBmap2.open_session()
-    out_dict = {}    
+    out_dict = {}
     objs = get_obj(session, cl_dmap2, company_name)
     for key in dict_path.iterkeys():
         out_dict[key] = []
@@ -83,18 +83,18 @@ def createDWComp(companyName,picklesPath,immediateVatCreditAccountCode,
                 deferredVatDebitAccountCode,treasuryVatAccountCode):
     '''Questa funzione serve a generare per una Company i diversi file pickle che compongono il
        Datawarehouse di quella impresa
-    ''' 
+    '''
     path = os.path.join(picklesPath,companyName)
-    
+
     ############################################################################################
     #  importazione dei dati della classe Account Account
     #  contenente le informazioni sui conti del piano dei conti
     ############################################################################################
     ACCD = {
-             'ID0_CON' : ('id', None), 
+             'ID0_CON' : ('id', None),
              'NAM_CON' : ('name', None),
              'COD_CON' : ('code', None),
-             'NAM_IMP' : ('company', ('name', None)), 
+             'NAM_IMP' : ('company', ('name', None)),
              'GOV_CON' : ('account_type', ('name', None)),
              'TYP_CON' : ('type', None),
              'PAN_CON' : ('parent', ('name', None)),
@@ -113,7 +113,7 @@ def createDWComp(companyName,picklesPath,immediateVatCreditAccountCode,
     #effettuo il primo abbellimento di Stark
     ACC.lm = {
         'ID0_CON': {'DES': unicode('ID identificativo del conto','utf-8')},
-        'NAM_CON': {'DES': unicode('Nome descrittivo del conto','utf-8')}, 
+        'NAM_CON': {'DES': unicode('Nome descrittivo del conto','utf-8')},
         'COD_CON': {'DES': unicode('Codice menorico identificativo del conto','utf-8')},
         'GOV_CON': {'DES': unicode('Tipologia che governa la gestione del conto','utf-8')},
         'PAN_CON': {'DES': unicode('Nome descrittivo del conto padre','utf-8')},
@@ -128,9 +128,9 @@ def createDWComp(companyName,picklesPath,immediateVatCreditAccountCode,
     #  contenente le informazioni sulle line di scrittura contabile
     ############################################################################################
     MVLD = {
-             'ID0_MVL' : ('id', None), 
+             'ID0_MVL' : ('id', None),
              'NAM_MOV' : ('move', ('name', None)),
-             'REF_MOV' : ('move', ('ref', None)), 
+             'REF_MOV' : ('move', ('ref', None)),
              'CHK_MOV' : ('move', ('to_check', None)),
              'STA_MOV'  : ('move', ('state', None)),
              'DAT_DOC' : ('move', ('invoice', ('date_document', None))),
@@ -146,15 +146,15 @@ def createDWComp(companyName,picklesPath,immediateVatCreditAccountCode,
              'NAM_PAR'  : ('partner', ('name', None)),
              'NAM_CON'  : ('account', ('name', None)),
              'NAM_JRN'  : ('journal', ('name', None)),
-             'TYP_JRN' : ('journal', ('type', None)), 
+             'TYP_JRN' : ('journal', ('type', None)),
              'DBT_MVL'  : ('debit', None),
              'CRT_MVL'  : ('credit', None),
              'ID_REC'  : ('reconcile_id',  None),
              'ID_REC_P'  : ('reconcile_partial_id', None),
-             'TAX_COD'  : ('tax_code_id', None), 
-             'TAX_AMO'  : ('tax_amount', None), 
-             'NAM_SEQ'  : ('journal', ('sequence', ('name', None))), 
-             'COD_SEQ'  : ('journal', ('sequence', ('code', None))), 
+             'TAX_COD'  : ('tax_code_id', None),
+             'TAX_AMO'  : ('tax_amount', None),
+             'NAM_SEQ'  : ('journal', ('sequence', ('name', None))),
+             'COD_SEQ'  : ('journal', ('sequence', ('code', None))),
              }
     #assegno a MOVL la classe AccountMoveLine
     MVL = DBmap2.AccountMoveLine
@@ -185,12 +185,12 @@ def createDWComp(companyName,picklesPath,immediateVatCreditAccountCode,
     MVL.save()
 
 ############################################################################################
-    #  importazione dei dati della classe Account Move 
+    #  importazione dei dati della classe Account Move
     #  contenente le informazioni sulle line di scrittura contabile
     ############################################################################################
     #MOVD = {
-             #'ID0_MOL' : ('id', None), 
-             #'NAM_MOV' : ('name', None), 
+             #'ID0_MOL' : ('id', None),
+             #'NAM_MOV' : ('name', None),
              #'REF_MOV' : ('ref', None),
              #'DAT_MOV' : ('date', None),
              #'NAM_PRD'  : ('period', ('name', None)),
@@ -221,12 +221,12 @@ def createDWComp(companyName,picklesPath,immediateVatCreditAccountCode,
     #MOV.Dumpk('MOV.pickle')
 
 ############################################################################################
-    #  importazione dei dati della classe Partner 
+    #  importazione dei dati della classe Partner
     #  contenente le informazioni sulle line di scrittura contabile
     ############################################################################################
     PARD = {
-             'ID0_PAR' : ('id', None), 
-             'NAM_PAR' : ('name', None), 
+             'ID0_PAR' : ('id', None),
+             'NAM_PAR' : ('name', None),
              'CFS_PAR' : ('tax', None),
              'IVA_PAR' : ('vat', None),
              'NAM_IMP'  : ('company', ('name', None)),
@@ -250,8 +250,8 @@ def createDWComp(companyName,picklesPath,immediateVatCreditAccountCode,
         }
     # PAR.DefPathPkl(path)
     PAR.save()
-    
-    
+
+
     ############################################################################################
     #  importazione dei dati della classe Account Tax
     #  contenente le informazioni sulle tasse
@@ -283,7 +283,7 @@ def createDWComp(companyName,picklesPath,immediateVatCreditAccountCode,
         'REF_BASE_CODE': {'DES': unicode("identificativo del tax_code di imponibile (per le note di credito)",'utf-8')},
         }
     TAX.save()
-    
+
     ############################################################################################
     #  importazione dei dati della classe AccountPeriod
     #  contenente le informazioni sui periodi
@@ -340,7 +340,7 @@ def createDWComp(companyName,picklesPath,immediateVatCreditAccountCode,
     #SEQUENCE.DES['COD_SEQ']['DESVAR']=unicode("codice della sequenza",'utf-8')
     #SEQUENCE.DES['NAM_SEQ']['DESVAR']=unicode("nome della sequenza",'utf-8')
     #SEQUENCE.save(os.path.join(path, 'SEQUENCE.pickle'))
-    
+
     ############################################################################################
     #  creazione del dataframe specifico per i report iva
     ############################################################################################
@@ -359,7 +359,7 @@ def createDWComp(companyName,picklesPath,immediateVatCreditAccountCode,
                                             'NAM_SEQ' : 'SEQUENCE',
                                             'COD_CON' : 'T_ACC',
                                             })
-    
+
     vatDatasDf = moveLineDf.ix[(moveLineDf["COD_SEQ"]=='RIVA') & (moveLineDf["TAX_COD"].notnull())].reset_index()
     #aggiunta colonne T_NAME e T_TAX
     df3 = pandas.DataFrame()
@@ -439,10 +439,10 @@ def createDWComp(companyName,picklesPath,immediateVatCreditAccountCode,
         if accountCode in [deferredVatDebitAccountCode,deferredVatCreditAccountCode]:
             vatDatasDf['CASH'][i:i+1] = (debit>0 and accountCode==deferredVatDebitAccountCode)\
                                         or (credit>0 and accountCode==deferredVatCreditAccountCode)
-    
+
     vatDatasDf['CRED'] = True
     vatDatasDf['CRED'].ix[vatDatasDf['DBT_MVL']>0] = False
-    
+
     vatDatasDf['AMOUNT'] = 0.00
     for i in range(len(vatDatasDf)):
         row = vatDatasDf[i:i+1]
@@ -459,26 +459,26 @@ def createDWComp(companyName,picklesPath,immediateVatCreditAccountCode,
             vatDatasDf['AMOUNT'][i:i+1] = -amount
         else:
             vatDatasDf['AMOUNT'][i:i+1] = amount
-    
+
     vatDatasDf['T_CRED'] = None
     vatDatasDf['T_CRED'].ix[vatDatasDf['T_TAX']==True] = False
-    vatDatasDf['T_CRED'].ix[(vatDatasDf['T_TAX']==True) & 
+    vatDatasDf['T_CRED'].ix[(vatDatasDf['T_TAX']==True) &
                              (vatDatasDf['T_ACC'].isin([immediateVatCreditAccountCode,deferredVatCreditAccountCode]))
                              ]= True
     vatDatasDf['T_CRED'].ix[(vatDatasDf['T_TAX']==True) & ((vatDatasDf['DBT_MVL']>0) | (vatDatasDf['TAX_AMO']<0)) &
                              (vatDatasDf['T_ACC']!=immediateVatDebitAccountCode) &
                              (vatDatasDf['T_ACC']!=deferredVatDebitAccountCode)
-                             ]= True                       
-    
+                             ]= True
+
     vatDatasDf['T_DET'] = None
     vatDatasDf['T_DET'].ix[vatDatasDf['T_TAX'] == True] = False
-    vatDatasDf['T_DET'].ix[(vatDatasDf['T_TAX'] == True) & 
+    vatDatasDf['T_DET'].ix[(vatDatasDf['T_TAX'] == True) &
                             vatDatasDf['T_ACC'].isin([
                                     immediateVatCreditAccountCode,immediateVatDebitAccountCode,
                                     deferredVatCreditAccountCode,deferredVatDebitAccountCode])] = True
     vatDatasDf['T_IMM'] = None
     vatDatasDf['T_IMM'].ix[(vatDatasDf['T_TAX']==True) & (vatDatasDf['T_DET']==True)] = False
-    vatDatasDf['T_IMM'].ix[(vatDatasDf['T_TAX']==True) & (vatDatasDf['T_DET']==True) & 
+    vatDatasDf['T_IMM'].ix[(vatDatasDf['T_TAX']==True) & (vatDatasDf['T_DET']==True) &
                             (vatDatasDf['T_ACC'].isin([immediateVatCreditAccountCode,immediateVatDebitAccountCode]))
                             ] = True
     vatDatasDf['T_EXI'] = None
@@ -519,7 +519,7 @@ def createDWComp(companyName,picklesPath,immediateVatCreditAccountCode,
         }
     vatDatasStark.save()
     #vatDatasDf.to_csv("df"+companyName+".csv",sep=";",encoding="utf-8")
-    
+
     ############################################################################################
     #  importazione dei dati della classe ResCompany
     #  contenente le informazioni sull'impresa
@@ -553,7 +553,7 @@ def createDWComp(companyName,picklesPath,immediateVatCreditAccountCode,
         'PHONE': {'DES': unicode("telefono",'utf-8')},
         }
     ResCompanyStark.save()
-    
+
     ############################################################################################
     #  importazione dei dati della classe AccountInvoice
     #  contenente le informazioni sulle fatture
@@ -587,7 +587,7 @@ def createDWComp(companyName,picklesPath,immediateVatCreditAccountCode,
         'NAM_MOV': {'DES': unicode("nome della scrittura contabile associata",'utf-8')},
         }
     invoiceStark.save()
-    
+
     ############################################################################################
     #  importazione dei dati della classe AccountVoucher
     #  contenente le informazioni sulle fatture
@@ -641,7 +641,7 @@ def main():
     assert(deferredVatDebitAccountCode)
     treasuryVatAccountCode = config.options.get('treasury_vat_account_code',False)
     assert(treasuryVatAccountCode)
-    
+
     processes = []
     for companyName in companiesNames:
         companyName = companyName.replace(" ","")
@@ -650,7 +650,7 @@ def main():
                 immediateVatDebitAccountCode,deferredVatCreditAccountCode,
                 deferredVatDebitAccountCode,treasuryVatAccountCode])
         processes.append(companyProcess)
-        
+
     parallel_jobs.do_jobs_efficiently(processes)
 
 if __name__ == '__main__':

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 ##############################################################################
-#    
+#
 #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
 #
 #    This program is free software: you can redistribute it and/or modify
@@ -14,7 +14,7 @@
 #    GNU Affero General Public License for more details.
 #
 #    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
 
@@ -38,11 +38,11 @@ import pandas
 #La data è un oggetto, quindi importo dalla libreria datetime, la funzione data
 from datetime import date
 
-# Definizione di costanti:                                                        
-# tutto ciò che non verrà modificato dall'esecuzione del codice, ma il cui        
-# cambiamento potrebbe essere cruciale per determinarne il comportamento). E'     
-# consuetudine distiguere queste vaiabili da quelle 'di elaborazione' scrivendole 
-# tutte in maiuscolo.                                                             
+# Definizione di costanti:
+# tutto ciò che non verrà modificato dall'esecuzione del codice, ma il cui
+# cambiamento potrebbe essere cruciale per determinarne il comportamento). E'
+# consuetudine distiguere queste vaiabili da quelle 'di elaborazione' scrivendole
+# tutte in maiuscolo.
 PKL_PATH = '/home/contabilita/Goal-PKL/'
 COMPANY = 'Vicem'
 OUT_PATH = '/home/contabilita/star_branch/sre/libro_giornale/'
@@ -52,17 +52,17 @@ ADR= 'Via Santo Stefano 57'
 CAP='40125 Bologna'
 FY = 2011
 
-# librerie di star 
-import sda
-from share import Bag
-from share import Stark
+# librerie di star
+import star.sda as sda
+from star.share import Bag
+from star.share import Stark
 
-# Carico un oggetto Stark da un file pickle.                                     
-# L'istruzione os.path.join serve a concatenare più parti di un path             
-# (/home/contabilita; star_branch/sre; esempio'); è facile cascare in     
-# errori facendo una semplice concatenazione di stringhe, quindi si consiglia di 
-# usare questo metodo per concatenare diverse parti di un path.  
-                
+# Carico un oggetto Stark da un file pickle.
+# L'istruzione os.path.join serve a concatenare più parti di un path
+# (/home/contabilita; star_branch/sre; esempio'); è facile cascare in
+# errori facendo una semplice concatenazione di stringhe, quindi si consiglia di
+# usare questo metodo per concatenare diverse parti di un path.
+
 ST01 = Stark.load(os.path.join(PKL_PATH, COMPANY, 'MVL.pickle'))
 
 # Estraggo il DataFrame dall'oggetto Stark e lo salvo in DF01
@@ -73,8 +73,8 @@ DF01 = DF01[['DAT_MVL','NAM_PAR', 'NAM_MVL','COD_CON','NAM_MOV','NAM_CON','DBT_M
 
 #Creo e definisco gli oggetti data inizio e data fine
 #SD = start date
-#ED = end date 
-#FY = year 
+#ED = end date
+#FY = year
 
 #Generalizzo la gestione delle date di estrazione
 SD = date(FY,01,01)
@@ -84,7 +84,7 @@ ED = date(FY,12,31)
 
 DF02=DF01[(DF01['DAT_MVL'] >= SD) & (DF01['DAT_MVL'] <= ED)]
 
-#Definisco il commando di ordinamento, ordinando prima per ordine cronologico, ed in seguito per nome di move, in modo da avere ordinate tutte le move che corrispondono ad una determinata data. 
+#Definisco il commando di ordinamento, ordinando prima per ordine cronologico, ed in seguito per nome di move, in modo da avere ordinate tutte le move che corrispondono ad una determinata data.
 
 DF03=DF02.sort(columns=['DAT_MVL', 'NAM_MOV'])
 
@@ -113,10 +113,10 @@ for I in range(len(PROG)):
 
 MOV01['PROG'] = LPROG
 MOV01=MOV01[['index','PROG']]
-	
 
 
-#La variabile 'NOM_MOV' è replicata più volte per la stessa moveline. Quindi, aggrego la stessa, eliminando tutte le righe con lo stesso numero di move, appartenenti alla stessa data. 
+
+#La variabile 'NOM_MOV' è replicata più volte per la stessa moveline. Quindi, aggrego la stessa, eliminando tutte le righe con lo stesso numero di move, appartenenti alla stessa data.
 
 #MOV02 = MOV01.drop_duplicates(cols=['DAT_MVL','NAM_MOV'])
 
@@ -129,7 +129,7 @@ MOV01=MOV01[['index','PROG']]
 # Attribuisco al dataframe MOV02, la lista dei progressivi, appena creata
 #MOV02['PROG'] = LISTPROG
 
-#Faccio il merge tra il MOV02 e il DF03 che è già ordinato per ordine cronologico, con tutte le variabili di interesse. La chiave del merge sarà sempre, sia la data, che in nome del move. 
+#Faccio il merge tra il MOV02 e il DF03 che è già ordinato per ordine cronologico, con tutte le variabili di interesse. La chiave del merge sarà sempre, sia la data, che in nome del move.
 
 DF04=pandas.merge(DF03,MOV01,on=['index'],how='left')
 del DF04['index']
@@ -139,10 +139,10 @@ del DF04['index']
 
 DF04['DAT_MVL'] = DF04['DAT_MVL'].map(lambda x : x.strftime('%d-%m'))
 
-# Creo un dizionario LM (descrive il layout della tabella).                     
-# Le barre verticali "|" indicano quali separatori disegnare; i numeri a fianco 
-# dell'indicazione dell'allineamento sono le dimensioni relativi delle colonne  
-# (0.5 metà delle altre colonne; 2 doppio delle altre colonne, etc.)            
+# Creo un dizionario LM (descrive il layout della tabella).
+# Le barre verticali "|" indicano quali separatori disegnare; i numeri a fianco
+# dell'indicazione dell'allineamento sono le dimensioni relativi delle colonne
+# (0.5 metà delle altre colonne; 2 doppio delle altre colonne, etc.)
 lm = {
     'DAT_MVL': [0,   '|0.5c|'  , '|Data|'],
     'PROG':    [1,   '0.1c|'  , 'Nr.|'],
@@ -170,8 +170,8 @@ BG01.cap = CAP
 BG01.save()
 
 
-# Rimane solamente da generare il report con SRE :) 
-# Per farlo, andate nella cartella sre ed eseguite  
-# $ python sre.py esempio                    
+# Rimane solamente da generare il report con SRE :)
+# Per farlo, andate nella cartella sre ed eseguite
+# $ python sre.py esempio
 
 # Happy coding!

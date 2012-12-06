@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 ##############################################################################
-#    
+#
 #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
 #    Author: Marco Pattaro (<marco.pattaro@servabit.it>)
 #
@@ -15,7 +15,7 @@
 #    GNU Affero General Public License for more details.
 #
 #    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
 
@@ -46,8 +46,8 @@ FORMATS = {
 }
 
 TEX_ESCAPE = [
-    (re.compile("€"), "\\officialeuro"), 
-    (re.compile("%"), "\\%"), 
+    (re.compile("€"), "\\officialeuro"),
+    (re.compile("%"), "\\%"),
     (re.compile("&"), "\\&"),
     (re.compile("\$(?!\w+)"), "\\$"),
     (re.compile(">=(?!\{)"), r"$\\ge$"),
@@ -56,7 +56,7 @@ TEX_ESCAPE = [
     (re.compile("<(?!\{)"), r"$<$"),
     (re.compile("\n"), "\\\\"),
     (re.compile("_"), "\_"),
-    (re.compile("/"), "/\-"), 
+    (re.compile("/"), "/\-"),
     (re.compile("\^"), "\textasciicircum"),
     (re.compile("~"), "\normaltilde"),
     ]
@@ -108,7 +108,7 @@ class Table(object):
         self._logger = logging.getLogger(type(self).__name__)
         self._data = data
         self.parse_lm(data.lm)
-        
+
     def parse_lm(self, lm):
         ''' Parse Bag's LM dictionary and estract the following non-public
         attrubutes:
@@ -123,7 +123,7 @@ class Table(object):
 
         # Transpose LM
         self._align = list() # alignment
-        
+
         # Extract df columns names
         self._keys = lm.items()
         self._keys.sort(key=lambda x : x[1][0])
@@ -156,7 +156,7 @@ class Table(object):
 
 
 class TexTable(Table):
-    """ Constitute a table that can span over multiple pages """ 
+    """ Constitute a table that can span over multiple pages """
 
     def __init__(self, data, tab_type='tab', hsep=False, **kwargs):
         """
@@ -168,8 +168,8 @@ class TexTable(Table):
         self._type = tab_type
         if hsep:
             self._hsep = "\\tabucline-"
-           
-    # Non Public 
+
+    # Non Public
 
     def _get_col_format(self, s, span):
         ''' Evaluate column's parameters from a title string
@@ -181,9 +181,9 @@ class TexTable(Table):
         # FIXME: check s is a string
         title = s.strip('|')
         part = s.partition(title)
-        ret = {'sep1': part[0], 
-               'span': span, 
-               'title': escape(part[1]), 
+        ret = {'sep1': part[0],
+               'span': span,
+               'title': escape(part[1]),
                'sep2': part[2],
                }
         if title.strip().strip('|').startswith('@v'):
@@ -221,7 +221,7 @@ class TexTable(Table):
 #            out += """ \\tabucline- \endhead \n"""
             out += """ \\tabucline- \n"""
         return out
-                
+
     def _make_preamble(self):
         ''' Prepare preamble for TeX table.
         Preamble is the outermost, general table structure, which will contain
@@ -249,16 +249,16 @@ class TexTable(Table):
         span = len(self._align)
         if self._data.FOOTNOTE is not None:
             ret = str().join([
-                    '\multicolumn{%s}{|c|}{'% span, 
-                    self._data.FOOTNOTE, 
+                    '\multicolumn{%s}{|c|}{'% span,
+                    self._data.FOOTNOTE,
                     '} \\\ \\tabucline- \\endfoot \n'])
         return ret
 
     def _make_body(self):
-        ''' Prepare data for TeX table 
-        
+        ''' Prepare data for TeX table
+
         @ return: str
-        
+
         '''
         out = str()
         try:
@@ -297,12 +297,12 @@ class TexTable(Table):
         else:
             out += "\\tabucline- \n"
         return out
-    
+
     # Public
 
     def out(self):
         """ Return a string that contains valid LaTeX code for a table.
-        
+
         @ return: str
 
         """
@@ -317,7 +317,7 @@ class TexTable(Table):
                 headers += self._make_header(heading)
             footer = self._make_footer()
             close_ = CLOSE_TEX_TAB[self._type]
-            
+
         out = [
             preamble,
             headers,
@@ -333,7 +333,7 @@ class TexTable(Table):
 class HTMLTable(Table):
 
     '''
-    for tests 
+    for tests
     python sre.py esempio_html --log-level=debug
     '''
 
@@ -342,17 +342,43 @@ class HTMLTable(Table):
         super(HTMLTable, self).__init__(data, **kwargs)
 
 
+    def parse_lm(self, lm):
+        '''
+        lm have to be dict of dicts.
+        keys are columns.
+        values are dict of form:
+        {
+        'type':'unused',
+        'ord': <int>,
+        'des': <string> the th content,
+        ### optional
+        'th_attrs': <string> putted in `class' attr of unique tr element in thead,
+        'td_attrs': <string> putted in `class' attr of unique tr element in tr in tbody,
+        }
+        '''
+        self._ncols = len(lm.keys())
+
+        # Extract df columns names
+        self._keys = lm.items()
+        self._keys.sort(key=lambda x : x[1].get('ord'))
+        self._keys = [k[0] for k in self._keys]
+
+        self._headings = dict.fromkeys(lm)
+        for k in self._keys:
+            self._headings[k] = lm[k].copy()
+
     def _make_header(self):
         '''
         sezione che costruisce l'header della tabella: thead
         '''
 
         out = '''<thead>'''
-	out += '''<tr>'''
-        for level in self._heading:
-            for i in level:
-                out += '''<th>%s</th>''' % i.replace("|","")
-	out += '''</tr>'''
+        out += '''<tr>'''
+        for k in self._keys:
+            out += '''<th%s>%s</th>''' % (
+                self._headings[k].get('th_attrs', ''),
+                self._headings[k]['des'].replace("|",""))
+        out += '''</tr>'''
         out += '''</thead>\n'''
         return out
 
@@ -365,22 +391,11 @@ class HTMLTable(Table):
         records = self._data.df[self._keys].to_records()
         #self._logger.info("In Make Body %s", records)
         for line in list(records):
-	    out += '''<tr>\n'''
-	    for idx, i in enumerate(list(line)[1:]):
-                if i is None or i == 'None':
-	            out += '''<td>&nbsp;</td>'''
-		else:
-		    align = self._align[idx].replace("|","").replace(" ","")
-		    if align.find("c") >= 0:
-			align = 'style="text-align:center;"'
-		    elif align.find("l") >= 0:
-			align = 'style="text-align:left; padding-left:5px;"'
-		    elif align.find("r") >= 0:
-			align = 'style="text-align:right; padding-right:5px;"'
-		    else:
-			align = ""
-	            out += '''<td %s>%s</td>''' % (align, i)
-	    out += '''\n</tr>\n'''
+            out += '''<tr>\n'''
+            for idx, i in enumerate(list(line)[1:]):
+                heading = self._headings[self._keys[idx]]
+                out += '''<td%s>%s</td>''' % (heading.get('td_attrs', ''), i)
+            out += '''\n</tr>\n'''
         out += '''</tbody>\n'''
         return out
 
@@ -400,8 +415,8 @@ class HTMLTable(Table):
         '''
         out = [
             escape(self._make_header(), HTML_ESCAPE),
-	    self._make_body(),
-	    self._make_footer(),
+            self._make_body(),
+            #self._make_footer(),
             ]
         out = unicode(str().join(out))
         return out

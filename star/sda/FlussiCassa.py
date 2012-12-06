@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 ##############################################################################
-#    
+#
 #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
 #
 #    This program is free software: you can redistribute it and/or modify
@@ -15,7 +15,7 @@
 #    GNU Affero General Public License for more details.
 #
 #    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
 
@@ -40,7 +40,7 @@ lm_flussi = {
         12: [12, 'r', 'dic'],
         'TOTAL': [13, 'r', 'TOTALE'],
         }
-        
+
 lm_journals = {
         'NAM_JRN': [0, '3l', '@v10'],
         1: [1, 'r', 'gen'],
@@ -67,15 +67,15 @@ import ScadenziarioLib
 from datetime import date
 from datetime import datetime
 
-import sda
-from share import Config
-from share import Stark
-from share import Bag
+import star.sda as sda
+from star.share import Config
+from star.share import Stark
+from star.share import Bag
 
 SRE_PATH = os.path.join(BASEPATH,"sre")
 
 def main(dirname):
-    #legge il file config    
+    #legge il file config
     configFilePath = os.path.join(BASEPATH,"config","flussi_cassa.cfg")
     config = Config(configFilePath)
     config.parse()
@@ -98,7 +98,7 @@ def main(dirname):
         referenceDate = datetime.strptime(referenceDate,"%d-%m-%Y")
         referenceDate = referenceDate.date()
     #verifica che la stringa associata al parametro only_validated_moves inserita in config
-    #sia effettivamente un valore boleano 
+    #sia effettivamente un valore boleano
     onlyValidatedMoves = True
     if str(config.options.get('only_validated_moves',True))=='False':
         onlyValidatedMoves = False
@@ -139,7 +139,7 @@ def main(dirname):
     bagForecastedFlows = Bag(forecastedFlowsDf, os.path.join(OUT_PATH, 'forecasted_flows.pickle'), bag_type='tab',meta=lm_flussi)
     bagForecastedFlows.save()
     return 0
-    
+
 if __name__ == "__main__":
     abspath=os.path.abspath(sys.argv[0])
     dirname=os.path.dirname(abspath)

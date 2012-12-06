@@ -14,15 +14,15 @@
 #    GNU Affero General Public License for more details.
 #
 #    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ##############################################################################
-import os 
+import os
 import string
 import copy
 
 import pandas
 
-from generic_pickler import GenericPickler
+from star.share.generic_pickler import GenericPickler
 
 # pylint: disable=E1101
 
@@ -30,10 +30,10 @@ __author__ = 'Marco Pattaro (<marco.pattaro@servabit.it>)'
 __all__ = ['Stark']
 
 
-STYPES = ('elab')
+from star.share import STYPES
 TYPES = [
     'D', # Dimensional
-    'I', # Immutable 
+    'I', # Immutable
     'N', # Numeric
     'C', # Currency
     'E', # Elaboration
@@ -69,7 +69,7 @@ def _filter_tree(meta, outlist):
     the target tree, all of it's childrens are inherited from the parent's
     parent.
 
-    @ param meta: a dictionary 
+    @ param meta: a dictionary
     @ param outlist: a list of keys
     @ return: a new dictionary
 
@@ -84,7 +84,7 @@ def _filter_tree(meta, outlist):
         elif val.get('child'):
             ret.update(_filter_tree(val['child'], outlist))
     return ret
- 
+
 
 class Stark(GenericPickler):
     """ This is the artifact that outputs mainly from etl procedures. It is a
@@ -146,7 +146,7 @@ class Stark(GenericPickler):
         return repr(self._df)
 
     def __add__(self, other):
-        df = self._df.append(other.DF, ignore_index=True,
+        df = self._df.append(other.df, ignore_index=True,
                              verify_integrity=False)
         lm = self._lm
         out_stark = Stark(df, lm=lm, cod=self.cod, stype=self.stype)
@@ -170,7 +170,7 @@ class Stark(GenericPickler):
                 self._update_df(key, expr=value, var_type='E')
             except NameError:
                 self._update_df(key, series=value, var_type='I')
-        else: 
+        else:
             self._update_df(key, series=value, var_type='N')
 
     def __delitem__(self, key):
@@ -194,7 +194,7 @@ class Stark(GenericPickler):
     def lm(self, vd):
         ''' VD setter:
         Just check VD/DF consistency before proceding.
-        ''' 
+        '''
         if vd is None:
             vd = {}
         self._lm = vd
@@ -262,7 +262,7 @@ class Stark(GenericPickler):
         Iter over VD and fill up different lists of keys, each list contains
         names from each data type.
 
-        ''' 
+        '''
         # Start from clean lists
         self._dim = []
         self._elab = []
@@ -292,7 +292,7 @@ class Stark(GenericPickler):
 
     def _update_lm(self, key, entry):
         ''' Update VD dictionary with a new entry.
-        
+
         @ param key: new key in the dictionary
         @ param entry: value to assign
         @ raise ValueError: if DF/VD consistency would broke
@@ -302,10 +302,10 @@ class Stark(GenericPickler):
         self._lm[key] = entry
         self._update()
 
-    def _update_df(self, col, series=None, var_type='N', expr=None, rlp='E', 
+    def _update_df(self, col, series=None, var_type='N', expr=None, rlp='E',
                    des=None, munit=None, vals=None):
         ''' Utility method to safely add/update a DataFrame column.
-        
+
         Add or modify a column of the DataFrame trying to preserve DF/VD
         consistency. This method has two main beheviours:
             1 - When passing an already calculated series or list to assign to
@@ -340,13 +340,13 @@ class Stark(GenericPickler):
 
         if vals is None:
             vals = pandas.DataFrame()
-            
+
         self._update_lm(col, {
             'type' : var_type,
             'des' : des,
             'munit' : munit,
             'elab' : expr,
-            'rlp' : rlp, 
+            'rlp' : rlp,
             'vals': vals,
         })
 
@@ -427,7 +427,7 @@ class Stark(GenericPickler):
 
     def _find_level(self, key, value):
         ''' Tells to wich level of a dimension a value belongs
-        
+
         @ param key: dimension name
         @ param value: value to search
         @ reutrn: level name
@@ -437,9 +437,9 @@ class Stark(GenericPickler):
         for col in df.columns:
             try:
                 rows = df.ix[df[col] == value]
-            except TypeError: 
+            except TypeError:
                 # If column dtype is not compatible with value type
-                continue 
+                continue
             if len(rows) > 0:
                 return col
         raise ValueError(
@@ -447,7 +447,7 @@ class Stark(GenericPickler):
 
     def _eval(self, func):
         ''' Evaluate a function with DataFrame columns'es placeholders.
-        
+
         Without placeholders this function is just a common python eval; when
         func contains column's names preceded by '$', this will be substituted
         with actual column's reference before passing the whole string to
@@ -461,7 +461,7 @@ class Stark(GenericPickler):
 
         Example:
             "$B / $C * 100"
-        
+
         '''
         if not isinstance(func, str) or isinstance(func, unicode):
             raise AttributeError(
@@ -480,11 +480,11 @@ class Stark(GenericPickler):
 
     def save(self, file_=None):
         ''' Save object as pickle file.
-        
+
         If a filename is not provided, the one stored in self.cod will be used.
 
-        @ param file_: destination file path 
-        
+        @ param file_: destination file path
+
         '''
         if file_ is None:
             file_ = self.cod
@@ -493,7 +493,7 @@ class Stark(GenericPickler):
         super(Stark, self).save(file_)
 
     def head(self, n=5):
-        ''' Return first n elements of the DataFrame 
+        ''' Return first n elements of the DataFrame
 
         @ param n: number of rows to return
         @ return: a DataFrame
@@ -502,8 +502,8 @@ class Stark(GenericPickler):
         return self._df.head(n)
 
     def tail(self, n=5):
-        ''' Return last n elements of the DataFrame 
-        
+        ''' Return last n elements of the DataFrame
+
         @ param n: number of rows to return
         @ return: a DataFrame
 
@@ -520,7 +520,7 @@ class Stark(GenericPickler):
 
         '''
         if new_curr not in self._currdata.columns:
-            raise ValueError("%s is not a known currency" % new_curr)        
+            raise ValueError("%s is not a known currency" % new_curr)
         lm = copy.deepcopy(self._lm)
         columns = self._df.columns
         df = self._df.join(self._currdata, on=ts_col)
@@ -535,7 +535,7 @@ class Stark(GenericPickler):
 
     def cagr(self, var, ts_col='YEAR'):
         ''' Calculate grouth rate of a variable and stores it in a new
-        DataFrame column calles <variable_name>_GR. 
+        DataFrame column calles <variable_name>_GR.
 
         cagr() works inplace.
 
@@ -555,7 +555,7 @@ class Stark(GenericPickler):
         tmp_df.set_index(self.dim, inplace=True)
         self._df.set_index(self.dim, inplace=True)
         self._df = pandas.merge(self._df, tmp_df, left_index=True,
-                                right_index=True, how='left', 
+                                right_index=True, how='left',
                                 suffixes=('', '_tmp'))
         self._df[varname] =  100 * (self._df[var] / self._df['%s_tmp' % var] - 1)
         self._update_lm(varname, {
@@ -611,9 +611,9 @@ if __name__ == '__main__' :
     UL_PATH = '/home/mpattaro/workspace/star/trunk/config/ercole/UL.csv'
     COUNTRY_PATH = '/home/mpattaro/workspace/star/trunk/config/ercole/PaesiUlisse.csv'
     CURR_PATH = '/home/mpattaro/workspace/star/trunk/config/ercole/CURDATA.csv'
-    
+
     s = Stark.load(PKL_PATH)
-    df = s._DF
+    df = s._df
     lm = s._VD
     ul_df = pandas.DataFrame.from_csv(UL_PATH).reset_index()
     country_df = pandas.DataFrame.from_csv(COUNTRY_PATH).reset_index()
@@ -630,7 +630,7 @@ if __name__ == '__main__' :
             v['vals'] = ul_df
         else:
             v['vals'] = pandas.DataFrame()
-    
+
     currdata = pandas.DataFrame.from_csv(CURR_PATH, parse_dates=False).reset_index()
     currdata['YEAR'] = currdata['YEAR'].map(str)
     currdata = currdata.set_index('YEAR')
@@ -642,7 +642,7 @@ if __name__ == '__main__' :
     s['TEST'] = '$X / $M'
     s['TEST_RLP'] = '$X / $M'
     lm['TEST_RLP']['rlp'] = 'N'
-    
+
     s1 = s.changecurr('EUR')
 
     # s.cagr('X')

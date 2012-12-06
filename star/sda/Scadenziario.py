@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 ##############################################################################
-#    
+#
 #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
 #
 #    This program is free software: you can redistribute it and/or modify
@@ -15,7 +15,7 @@
 #    GNU Affero General Public License for more details.
 #
 #    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
 
@@ -31,7 +31,7 @@ lm_fatture = {
         'PARTNER': [3, '2l', 'Controparte',"@v3"],
         'TOTAL': [4, '0.5r', 'Importo',"@v4"],
         }
-        
+
 lm_liquidazioni = {
         'DATE_DUE': [0, 'c', 'Data','scadenza'],
         'NUM': [1, 'c', 'Numero','@v1'],
@@ -46,16 +46,16 @@ import os
 import getopt
 import ScadenziarioLib
 
-import sda
-from share import Config
-from share import Stark
-from share import Bag
+import star.sda as sda
+from star.share import Config
+from star.share import Stark
+from star.share import Bag
 
 SRE_PATH = os.path.join(BASEPATH,"sre")
 
 
 def main(dirname):
-    #legge il file config    
+    #legge il file config
     configFilePath = os.path.join(BASEPATH,"config","scadenziario.cfg")
     config = Config(configFilePath)
     config.parse()
@@ -92,8 +92,8 @@ def main(dirname):
     outInvoicesBag.save()
     purchaseVoucherBag.save()
     return 0
-    
-    
+
+
 if __name__ == "__main__":
     abspath=os.path.abspath(sys.argv[0])
     dirname=os.path.dirname(abspath)

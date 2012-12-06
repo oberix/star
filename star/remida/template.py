@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 ##############################################################################
-#    
+#
 #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
 #    Author: Marco Pattaro (<marco.pattaro@servabit.it>)
 #
@@ -15,7 +15,7 @@
 #    GNU Affero General Public License for more details.
 #
 #    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
 
@@ -27,7 +27,7 @@ import string
 import logging
 
 # import sre
-from share.bag import Bag
+from star.share.bag import Bag
 from table import TexTable, HTMLTable
 from graph import TexGraph, HTMLGraph
 
@@ -129,7 +129,7 @@ class AbstractSreTemplate(string.Template):
             else: # TODO: handle other types
                 self._logger.debug('bags = %s', bags)
                 self._logger.warning(
-                    "Unhandled bag TI '%s' found in %s, skipping...", 
+                    "Unhandled bag TI '%s' found in %s, skipping...",
                     bags[base].TI, base)
                 continue
             if len(ph_parts) > 1 and \
@@ -145,16 +145,16 @@ class AbstractSreTemplate(string.Template):
         implementation.
 
         @ return: a Table object
-        ''' 
+        '''
         raise NotImplementedError
 
     def _make_graph(self, data, **kwargs):
         ''' Create a table from the given DataFrame.
         This is a virtual method and must be overriden by subclass
         implementation.
-        
+
         @return: a Graph object
-        ''' 
+        '''
         raise NotImplementedError
 
     def report(self, **kwargs):
@@ -192,24 +192,24 @@ class TexSreTemplate(AbstractSreTemplate):
           placeholder's name (in case we need to acces just one attribute)
 
     NOTE: This are class attribute in the superclass, changing them at runtime
-    produces no effects. The only way is subclassing. 
+    produces no effects. The only way is subclassing.
     Thanks to Doug Hellmann <http://www.doughellmann.com/PyMOTW/string/>.
 
     '''
 
     delimiter = '\SRE'
-    idpattern = '[_a-z][_a-z0-9.]*' 
-    comment = "%.*" 
+    idpattern = '[_a-z][_a-z0-9.]*'
+    comment = "%.*"
     _suffix = '.tex'
     _suffix_out = '_out.tex'
 
-    input_re = [re.compile("\\import{.*}"), 
+    input_re = [re.compile("\\import{.*}"),
                 re.compile("\\input{.*}")]
 
     def _substitute_includes(self):
         ''' Change input and includes LaTeX statements inside a template to
         refere to the _out files
-        ''' 
+        '''
         for regexp in TexSreTemplate.input_re:
             matches = re.findall(regexp, self.template)
             for match in matches:
@@ -240,14 +240,14 @@ class HTMLSreTemplate(AbstractSreTemplate):
           placeholder's name (in case we need to acces just one attribute)
 
     NOTE: This are class attribute in the superclass, changing them at runtime
-    produces no effects. The only way is subclassing. 
+    produces no effects. The only way is subclassing.
     Thanks to Doug Hellmann <http://www.doughellmann.com/PyMOTW/string/>.
 
     '''
     # TODO: change delimiter for HTML
     # TODO: check comment
     delimiter = '\SRE'
-    idpattern = '[_a-z][_a-z0-9.]*' 
+    idpattern = '[_a-z][_a-z0-9.]*'
     comment = "<!--.*-->"
     _suffix = '.html'
     _suffix_out = '_out.html'

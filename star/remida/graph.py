@@ -28,7 +28,7 @@ from tempfile import NamedTemporaryFile, TemporaryFile
 # import pandas
 import re
 
-import plotters
+import star.sre.plotters as plotters
 
 __author__ = "Marco Pattaro <marco.pattaro@servabit.it>"
 __version__ = "0.1"
@@ -46,8 +46,8 @@ FIGSIZE = { # (w, h) in inches
 }
 
 TEX_ESCAPE = {
-    re.compile("€"): "\\officialeuro", 
-    re.compile("%"): "\\%", 
+    re.compile("€"): "\\officialeuro",
+    re.compile("%"): "\\%",
     re.compile("&"): "\\&",
     re.compile("\$(?!\w+)"): "\\$",
     re.compile(">(?!\{)"): "\\textgreater",
@@ -56,7 +56,7 @@ TEX_ESCAPE = {
     re.compile("_"): "\_",
 #    re.compile("-"): "$-$",
     # tell LaTeX that an hyphen can be inserted after a '/'
-    re.compile("/"): "/\-", 
+    re.compile("/"): "/\-",
     re.compile("\^"): "\textasciicircum",
     re.compile("~"): "\normaltilde",
     }
@@ -91,7 +91,7 @@ def escape(string, patterns=None):
 
 class Plotters(object):
     ''' Plotter factory.
-    
+
     This class manage instanciation of concrete implementations of BasePlotter
     by ensuring that there is at most one instance of each of them.
 
@@ -130,9 +130,9 @@ class Graph(object):
     def __init__(self, data, **kwargs):
         self._logger = logging.getLogger(type(self).__name__)
         rc('legend', **{
-                'markerscale': 1, 
-                'labelspacing': 0, 
-                'columnspacing': 1, 
+                'markerscale': 1,
+                'labelspacing': 0,
+                'columnspacing': 1,
                 'borderpad': 0,
                 })
         self._title = data.title
@@ -157,7 +157,7 @@ class Graph(object):
     def _make_legend(self, figure, handles, labels):
         ''' Create legend for the graph, evaluate how the whole figure must be
         scaled to make room for the legend.
-        
+
         @ param figure: Figure object that must contain the legend
         @ param hadles: list of Line an Path objects used to populate the
              graph.
@@ -173,7 +173,7 @@ class Graph(object):
             ncol = 2
         # Estimate new hight needed for the legend
         dheight = ((len(handles)/ncol) + 1) * self._fontsize * 0.01
-        dheight_perc = dheight / figure.get_figheight() 
+        dheight_perc = dheight / figure.get_figheight()
         # Scale figure and adjust subplot
         figure.set_figheight(figure.get_figheight() + dheight)
         figure.subplots_adjust(top=(0.9-dheight_perc))
@@ -226,7 +226,7 @@ class Graph(object):
     def _set_x_ax(self, ax):
         ticks = []
         rotation = 0
-        delta = (self._lax.max() - self._lax.min()) / len(self._lax)
+        delta = (max(self._lax) - min(self._lax)) / len(self._lax)
         # Draw only even ticks
         for idx, elem in enumerate(self._lax):
             if idx % TICK_STEP == 0:
@@ -234,8 +234,8 @@ class Graph(object):
             if elem > TICK_LABEL_LIMIT:
                 rotation = 30
         ax.set_xticks(ticks)
-        ax.set_xlim(self._lax.min() - delta,
-                    self._lax.max() + delta)
+        ax.set_xlim(min(self._lax) - delta,
+                    max(self._lax) + delta)
         plt.setp(plt.xticks()[1], rotation=rotation)
         plt.subplots_adjust(hspace=0, bottom=0.13)
 
@@ -244,7 +244,7 @@ class Graph(object):
         in Bag.lm.
 
         @ return: the Figure instance created
-        
+
         '''
         fig = plt.figure(figsize=self._size)
         ax = fig.add_subplot(1, 1, 1, axisbg='w', autoscale_on=True,
@@ -257,7 +257,7 @@ class Graph(object):
                 line = self._plotters[col['type']].plot(ax, col)
             except KeyError:
                 self._logger.warning(
-                    "Unhandled graph type '%s', I will ignore entry '%s'", 
+                    "Unhandled graph type '%s', I will ignore entry '%s'",
                     col['type'], col['key'])
                 continue
             lines.append(line)
@@ -284,15 +284,15 @@ class TexGraph(Graph):
 
     def __init__(self, data, **kwargs):
         ''' Just set some rc params
-        ''' 
+        '''
         super(TexGraph, self).__init__(data, **kwargs)
         # Tell matplotlib to use LaTeX to render text
         rc('font', **{
                 'family': 'serif',
-                'serif':['Computer Modern Roman'], 
+                'serif':['Computer Modern Roman'],
                 'size':self._fontsize})
         rc('text', usetex=True)
-    
+
     def _make_legend(self, figure, handles, labels):
         labels = [escape(label) for label in labels]
         return super(TexGraph, self)._make_legend(figure, handles, labels)
@@ -329,48 +329,48 @@ if __name__ == '__main__':
     import pandas as pnd
     import numpy as np
 
-    import sre
-    from share import Bag
-    
+    import star.sre as sre
+    from star.share import Bag
+
     logging.basicConfig(level=logging.DEBUG)
 
     lm_bar = {
-        'a': {'type': 'lax', 
+        'a': {'type': 'lax',
               'label': 'AAA'},
-        'b': {'type': 'bar', 
+        'b': {'type': 'bar',
               'label': 'BBB',
               'color': 'b',},
-        'c': {'type': 'bar', 
+        'c': {'type': 'bar',
               'ax': 'dx',
-              'label': "CCC", 
+              'label': "CCC",
               'color': 'g',
               'cum': 'b'},
         }
 
     lm_barh = {
-        'a': {'type': 'lax', 
+        'a': {'type': 'lax',
               'label': 'AAA'},
-        'b': {'type': 'barh', 
-              'ax': 'sx', 
+        'b': {'type': 'barh',
+              'ax': 'sx',
               'label': 'BBB',
               'color': 'b'},
-        'c': {'type': 'barh', 
-              'ax': 'dx', 
-              'label': "CCC", 
+        'c': {'type': 'barh',
+              'ax': 'dx',
+              'label': "CCC",
               'color': 'g',
               'cum': 'b'},
         }
 
     lm_plot = {
-        'a': {'type': 'lax', 
+        'a': {'type': 'lax',
               'label': 'AAA'},
-        'b': {'type': 'bar', 
-              'ax': 'sx', 
+        'b': {'type': 'bar',
+              'ax': 'sx',
               'label': 'BBB',
               'color': 'b'},
-        'c': {'type': 'plot', 
-              'ax': 'dx', 
-              'label': "CCC", 
+        'c': {'type': 'plot',
+              'ax': 'dx',
+              'label': "CCC",
               'color': 'g',}
         }
 
@@ -383,11 +383,11 @@ if __name__ == '__main__':
 #    import ipdb; ipdb.set_trace()
 
     lm_sc = {
-        'a': {'type': 'lax', 
-              'ax': 'sx', 
+        'a': {'type': 'lax',
+              'ax': 'sx',
               'label': 'AAA'},
-        'b': {'type': 'scatter', 
-              'ax': 'sx', 
+        'b': {'type': 'scatter',
+              'ax': 'sx',
               'label': 'BBB',
               'color': 'b'},
         }
@@ -397,19 +397,19 @@ if __name__ == '__main__':
             'b': [13.6, 7.1, 2],
             })
 
-    bar = Bag(df, meta=lm_bar, bag_type='graph', title='USRobotics', 
+    bar = Bag(df, meta=lm_bar, bag_type='graph', title='USRobotics',
               size='stamp',
               legend=True,
               fontsize=10.0)
-    barh = Bag(df,  meta=lm_barh, bag_type='graph', title='USRobotics', 
+    barh = Bag(df,  meta=lm_barh, bag_type='graph', title='USRobotics',
               size='stamp',
               legend=True,
               fontsize=10.0)
-    plot = Bag(df,  meta=lm_plot, bag_type='graph', title='USRobotics', 
+    plot = Bag(df,  meta=lm_plot, bag_type='graph', title='USRobotics',
               size='stamp',
               legend=True,
               fontsize=10.0)
-    scat = Bag(df_sc, meta=lm_sc, bag_type='graph', title='USRobotics', 
+    scat = Bag(df_sc, meta=lm_sc, bag_type='graph', title='USRobotics',
               size='stamp',
               legend=False,
               fontsize=10.0)
