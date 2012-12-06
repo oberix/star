@@ -19,7 +19,7 @@
 ##############################################################################
 
 import numpy as np
-from base_plotter import BasePlotter
+from star.remida.plotters.base_plotter import BasePlotter
 
 class Plot(BasePlotter):
     ''' The simpler of Simples :) 
@@ -98,7 +98,7 @@ class Barh(AbstractBar):
         yvals = self._graph._df[col['key']]
         if col.get('ax') == 'dx':
             ax = ax.twinx()
-        ret = ax.barh( self._graph._lax, self._graph._df[col['key']],
+        ret = ax.barh(self._graph._lax, self._graph._df[col['key']],
                        color=kwargs.get('color', None), align=kwargs.get('align', None),
                        left=kwargs.get('bottom', None), height=kwargs.get('dim', None),
                        zorder=1)

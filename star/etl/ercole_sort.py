@@ -35,9 +35,9 @@ sys.path.append(BASEPATH)
 sys.path = list(set(sys.path))
 
 #import etl
-from star.share import Config
-from star.share import parallel_jobs
-from star.share import Stark
+from share import Config
+from share import parallel_jobs
+from share import Stark
 
 COLUMNS = ['YEAR', 'CODE', 'XER', 'MER', 'R', 'X', 'M', 'K', 'U', 'Q']
 META = {

@@ -25,7 +25,7 @@ import re
 
 __author__ = "Marco Pattaro <marco.pattaro@servabit.it>"
 __version__ = "1.0"
-__all__ = ['TexTable', 'unique_list', 'escape']
+__all__ = ['TexTable', 'HTMLTable']
 
 OPEN_TEX_TAB = {'tab': """\\begin{tabu} spread \\linewidth""",
                 'ltab': """\\begin{longtabu} spread \\linewidth"""}

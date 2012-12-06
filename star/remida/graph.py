@@ -23,16 +23,16 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib import rc
+import numpy as np
 import logging
 from tempfile import NamedTemporaryFile, TemporaryFile
-# import pandas
 import re
 
-import remida.plotters as plotters
+import star.remida.plotters as plotters
 
 __author__ = "Marco Pattaro <marco.pattaro@servabit.it>"
 __version__ = "0.1"
-__all__ = ['Graph']
+__all__ = ['TexGraph', 'HTMLGraph']
 
 TICK_LABEL_LIMIT = 999. # xticks labels length limit
 TICK_STEP = 2  # Draw an xtick every n values
@@ -213,7 +213,7 @@ class Graph(object):
         for key, val in lm.iteritems():
             # TODO: apply translation
             if val['type'] == 'lax':
-                self._lax = [float(elem) for elem in self._df[key].tolist()]
+                self._lax = self._df[key].map(float)
                 self._x_meta.append(val)
             else:
                 val['key'] = key
@@ -329,10 +329,12 @@ if __name__ == '__main__':
     import pandas as pnd
     import numpy as np
 
-    import star.sre as sre
+    import star.remida as sre
     from star.share import Bag
 
     logging.basicConfig(level=logging.DEBUG)
+
+    BASEPATH = '/home/mpattaro/workspace/star/trunk/star'
 
     lm_bar = {
         'a': {'type': 'lax',
@@ -349,7 +351,9 @@ if __name__ == '__main__':
 
     lm_barh = {
         'a': {'type': 'lax',
-              'label': 'AAA'},
+              'label': 'AAA',
+              'ticklabel': 'd',
+          },
         'b': {'type': 'barh',
               'ax': 'sx',
               'label': 'BBB',
@@ -375,12 +379,11 @@ if __name__ == '__main__':
         }
 
     df = pnd.DataFrame({
-            'a': np.arange(0, 11, 1),
-            'b': np.arange(5, 16, 1),
-            'c': np.arange(0, 5.5, 0.5),
-         })
-
-#    import ipdb; ipdb.set_trace()
+        'a': np.arange(0, 11, 1),
+        'b': np.arange(5, 16, 1),
+        'c': np.arange(0, 5.5, 0.5),
+        'd': ['a','b','c', 'd', 'e', 'f', 'g', 'h', 'i','l', 'm']
+    })
 
     lm_sc = {
         'a': {'type': 'lax',
@@ -397,26 +400,26 @@ if __name__ == '__main__':
             'b': [13.6, 7.1, 2],
             })
 
-    bar = Bag(df, meta=lm_bar, bag_type='graph', title='USRobotics',
+    bar = Bag(df, lm=lm_bar, stype='graph', title='USRobotics',
               size='stamp',
               legend=True,
               fontsize=10.0)
-    barh = Bag(df,  meta=lm_barh, bag_type='graph', title='USRobotics',
+    barh = Bag(df, lm=lm_barh, stype='graph', title='USRobotics',
               size='stamp',
               legend=True,
               fontsize=10.0)
-    plot = Bag(df,  meta=lm_plot, bag_type='graph', title='USRobotics',
+    plot = Bag(df, lm=lm_plot, stype='graph', title='USRobotics',
               size='stamp',
               legend=True,
               fontsize=10.0)
-    scat = Bag(df_sc, meta=lm_sc, bag_type='graph', title='USRobotics',
+    scat = Bag(df_sc, lm=lm_sc, stype='graph', title='USRobotics',
               size='stamp',
               legend=False,
               fontsize=10.0)
 
-    bar.save(os.path.join(sre.BASEPATH, "reports/esempio/bar.pickle"))
-    barh.save(os.path.join(sre.BASEPATH, "reports/esempio/barh.pickle"))
-    plot.save(os.path.join(sre.BASEPATH, "reports/esempio/plot.pickle"))
-    scat.save(os.path.join(sre.BASEPATH, "reports/esempio/scatter.pickle"))
+    bar.save(os.path.join(BASEPATH, "reports/esempio/bar.pickle"))
+    barh.save(os.path.join(BASEPATH, "reports/esempio/barh.pickle"))
+    plot.save(os.path.join(BASEPATH, "reports/esempio/plot.pickle"))
+    scat.save(os.path.join(BASEPATH, "reports/esempio/scatter.pickle"))
 
 

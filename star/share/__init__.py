@@ -18,12 +18,6 @@
 #
 ##############################################################################
 
-# from star.share.config import *
-# from star.share.generic_pickler import *
-# from star.share.stark import *
-# from star.share.bag import *
-
-import config
-import stark
-import bag
-
+from star.share.config import *
+from star.share.stark import *
+from star.share.bag import *

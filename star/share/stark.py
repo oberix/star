@@ -17,12 +17,18 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ##############################################################################
 import os
+import sys
 import string
 import copy
-
 import pandas
 
-from generic_pickler import GenericPickler
+BASEPATH = os.path.abspath(os.path.join(
+        os.path.dirname(__file__),
+        os.path.pardir, os.pardir))
+sys.path.insert(0, BASEPATH)
+#sys.path = list(set(sys.path))
+
+from star.share.generic_pickler import GenericPickler
 
 # pylint: disable=E1101
 
@@ -126,8 +132,8 @@ class Stark(GenericPickler):
         self.cod = cod
         self._currency = currency
         self._currdata = currdata
-        if stype not in STYPES:
-            raise ValueError("stype must be one of %s" % STYPES)
+        # if stype not in STYPES:
+        #     raise ValueError("stype must be one of %s" % STYPES)
         self.stype = stype
         if lm is None:
             lm = {}
@@ -568,7 +574,7 @@ class Stark(GenericPickler):
         self._df = self._df.reset_index()[self._lm.keys()]
 
     def rollup(self, **kwargs):
-        '''
+        ''' 
         '''
         out_stark = Stark(self.df.copy(), lm=self._lm)
         # FIXME: keys and vals may be grouped by type in advance to minimize
@@ -592,9 +598,11 @@ class Stark(GenericPickler):
                 # We need to replace current level with target one
                 vals_df = self._lm[key]['vals']
                 if level not in vals_df.columns:
-                    raise ValueError(
-                        "'%s' is not a valid level name for column '%s'" %\
-                        (level, key))
+                    # FIXME: This is the case in which a value contains a ".":
+                    # it deserves a better handling
+                    value = val
+                    out_stark.df = out_stark.df.ix[out_stark.df[key] == value]
+                    continue
                 sample_val = self._df[key].ix[0]
                 curr_level = self._find_level(key, sample_val)
                 out_stark.df[key] = out_stark.df[key].map(
@@ -613,7 +621,7 @@ if __name__ == '__main__' :
     CURR_PATH = '/home/mpattaro/workspace/star/trunk/config/ercole/CURDATA.csv'
 
     s = Stark.load(PKL_PATH)
-    df = s._df
+    df = s._DF
     lm = s._VD
     ul_df = pandas.DataFrame.from_csv(UL_PATH).reset_index()
     country_df = pandas.DataFrame.from_csv(COUNTRY_PATH).reset_index()
@@ -643,8 +651,7 @@ if __name__ == '__main__' :
     s['TEST_RLP'] = '$X / $M'
     lm['TEST_RLP']['rlp'] = 'N'
 
-    s1 = s.changecurr('EUR')
-
+    # s1 = s.changecurr('EUR')
     # s.cagr('X')
     # s1 = s.rollup(XER='AREA.1-Europa Occidentale')
     print "ok"

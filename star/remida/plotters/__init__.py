@@ -19,7 +19,7 @@
 ##############################################################################
 
 # Concrete Plotters
-from scatter import Scatter as scatter
-from simple import Plot as plot
-from simple import Bar as bar
-from simple import Barh as barh
+from star.remida.plotters.scatter import Scatter as scatter
+from star.remida.plotters.simple import Plot as plot
+from star.remida.plotters.simple import Bar as bar
+from star.remida.plotters.simple import Barh as barh

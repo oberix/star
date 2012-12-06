@@ -53,9 +53,14 @@ CAP='40125 Bologna'
 FY = 2011
 
 # librerie di star
-import star.sda as sda
-from star.share import Bag
-from star.share import Stark
+BASEPATH = os.path.abspath(os.path.join(
+        os.path.dirname(__file__),
+        os.path.pardir, os.path.pardir))
+sys.path.append(BASEPATH)
+sys.path = list(set(sys.path))
+
+from star import Bag
+from star import Stark
 
 # Carico un oggetto Stark da un file pickle.
 # L'istruzione os.path.join serve a concatenare più parti di un path

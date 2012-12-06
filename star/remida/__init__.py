@@ -18,3 +18,8 @@
 #
 ##############################################################################
 
+# import plotters
+# from graph import *
+# from table import *
+# from template import *
+# from remida import *

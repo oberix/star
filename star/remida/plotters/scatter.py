@@ -20,7 +20,7 @@
 
 import numpy as np
 import matplotlib.patches as patches
-from base_plotter import BasePlotter
+from star.remida.plotters.base_plotter import BasePlotter
 
 WORST_COLOR = "#FFDBC1"
 BEST_COLOR = "#9BFFE6"

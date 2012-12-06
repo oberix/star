@@ -27,12 +27,12 @@ import logging
 
 BASEPATH = os.path.abspath(os.path.join(
         os.path.dirname(sys.argv[0]),
-        os.path.pardir))
+        os.path.pardir, os.pardir))
 sys.path.append(BASEPATH)
 sys.path = list(set(sys.path))
 
-from share.config import Config
-import template
+from star.share.config import Config
+import star.remida.template as template
 
 __all__ = ['sre']
 
@@ -130,7 +130,7 @@ def sre(src_path, config=None, **kwargs):
     except KeyError:
         if os.path.isfile(os.path.join(src_path, 'main.tex')):
             templ_file = os.path.join(src_path, 'main.tex')
-	elif os.path.isfile(os.path.join(src_path, 'main.html')):
+        elif os.path.isfile(os.path.join(src_path, 'main.html')):
             templ_file = os.path.join(src_path, 'main.html')
         templ_path = src_path
 
