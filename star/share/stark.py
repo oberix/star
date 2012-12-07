@@ -21,6 +21,7 @@ import sys
 import string
 import copy
 import pandas
+import numpy as np
 
 BASEPATH = os.path.abspath(os.path.join(
         os.path.dirname(__file__),
@@ -364,8 +365,8 @@ class Stark(GenericPickler):
 
     def _gr_cum(self, series):
         ''' Cumulated growth rate '''
-        exponent = pandas.np.log(series / 100 + 1).sum() / len(series)
-        return (pandas.np.exp(exponent) - 1) * 100
+        exponent = np.log(series / 100 + 1).sum() / len(series) 
+        return (np.exp(exponent) - 1) * 100
 
     def _aggregate(self, func='sum', dim=None, var=None, inplace=False):
         ''' Apply an aggregation function to the DataFrame. If the DataFrame
@@ -420,7 +421,7 @@ class Stark(GenericPickler):
                 lm[name]['type'] = 'N'
             # TODO: This is not needed if 'rlp' != 'N', but any other
             # operation seems to introduce a greater overhead to the
-            # computation. This shold be invesigated further.
+            # computation. This should be invesigated further.
             operations[name] = func
 
         df = df.groupby(dim).aggregate(operations)[var].reset_index()
@@ -535,7 +536,42 @@ class Stark(GenericPickler):
         df = df.reset_index()[columns]
         return Stark(df, lm=lm)
 
-    def loggit(self, var):
+    def logit(self, var, how='mean', upper=100.0, prec=0.9):
+        ''' Calculate the logistic distribution of a DataFrame variable and
+        stores it in a new variable called <var>_LOGIT.
+
+        @ param var: Name of the Series in the df to avaluate lgistic
+        @ param how: 'mean' or 'median', method used to estimate distribution simmetry
+        @ param upper:  upper asintotic bound
+        @ param prec: precision percent. This is the slice of y value to limit
+                      the evauation to, it must be in the intervall (0, 1)
+        '''
+        if prec <= 0 or prec >= 1:
+            raise ValueError # TODO: be more specific here!
+        if upper <= 0:
+            raise ValueError # TODO: be more specific here!
+        med = 0.0
+        distance = 0.0
+        if how == 'mean':
+            med = self._df[var].mean()
+            distance = np.std(self._df[var])
+        elif how == 'median':
+            med = self._df[var].median()
+            quant = (self._df[var].quantile(q=0.25), self._df[var].quantile(q=0.75))
+            distance = min((med - quant[0]), (quant[1] - med))
+        else:
+            raise ValueError(
+                "parameter 'how' can be one of ['mean' | 'median'], '%s' received instead" % how)
+        beta = -np.log(1 / prec - 1) / distance
+        alpha = med * (-beta)
+        self._df['%s_LOGIT' % var] = upper / (1 + np.exp(alpha - beta * self._df[var]))
+        self._lm['%s_LOGIT' % var] = {
+            'type': 'E',
+            'rlp': 'E',
+            'elab': "self.logit('%s', how='%s', upper= %s, prec=%s)" % (var, how, upper, prec)
+        }
+
+    def setun(self, var, **kwargs):
         # TODO: implement
         raise NotImplementedError
 
@@ -613,47 +649,80 @@ class Stark(GenericPickler):
                         out_stark.df[key] == value].reset_index()
         return out_stark
 
+    # def rollup_new(self, **kwargs):
+    #     out_stark = Stark(self.df.copy(), lm=copy.deepcopy(self._lm))
+    #     alls = []
+    #     tots = []
+    #     litterals = []
+    #     subs = []
+    #     for key, val in kwargs.iteritems():
+    #         # group by value type
+    #         if val == 'ALL':
+    #             all.append((key, val))
+    #         elif val == 'TOT':
+    #             tot.append((key, val))
+    #         elif val.
+    #         # vals must handle two cases:
+    #         # 1. spot val --> it's a selection
+    #         # 2. LEV.val --> sustitution, then selection (might be a recursive step)
+    #         # all selections must be done in one shot; all substitutions must be done in one shot
+        
 
+import matplotlib.pyplot as plt
 if __name__ == '__main__' :
+
+    STAR_PATH = '/home/mpattaro/workspace/star/trunk/star'
     PKL_PATH = '/home/mpattaro/ercole_sorted/country_MER/1-Europa_Occidentale/AUT.pickle'
     UL_PATH = '/home/mpattaro/workspace/star/trunk/config/ercole/UL.csv'
     COUNTRY_PATH = '/home/mpattaro/workspace/star/trunk/config/ercole/PaesiUlisse.csv'
     CURR_PATH = '/home/mpattaro/workspace/star/trunk/config/ercole/CURDATA.csv'
 
+    sys.path.insert(0, STAR_PATH)
+
     s = Stark.load(PKL_PATH)
-    df = s._DF
-    lm = s._VD
-    ul_df = pandas.DataFrame.from_csv(UL_PATH).reset_index()
-    country_df = pandas.DataFrame.from_csv(COUNTRY_PATH).reset_index()
-    curr_df = pandas.DataFrame.from_csv(CURR_PATH).reset_index()
+    # df = s._DF
+    # lm = s._VD
+    # ul_df = pandas.DataFrame.from_csv(UL_PATH).reset_index()
+    # country_df = pandas.DataFrame.from_csv(COUNTRY_PATH).reset_index()
+    # curr_df = pandas.DataFrame.from_csv(CURR_PATH).reset_index()
 
-    # convert from v0.1 pickles
-    for k, v in lm.iteritems():
-        v['type'] = v.pop('TIP')
-        if k == 'XER' or k == 'MER':
-            v['vals'] = country_df
-        elif k in ('X', 'M'):
-            v['type'] = 'C'
-        elif k == 'CODE':
-            v['vals'] = ul_df
-        else:
-            v['vals'] = pandas.DataFrame()
+    # # convert from v0.1 pickles
+    # for k, v in lm.iteritems():
+    #     v['type'] = v.pop('TIP')
+    #     if k == 'XER' or k == 'MER':
+    #         v['vals'] = country_df
+    #     elif k in ('X', 'M'):
+    #         v['type'] = 'C'
+    #     elif k == 'CODE':
+    #         v['vals'] = ul_df
+    #     else:
+    #         v['vals'] = pandas.DataFrame()
 
-    currdata = pandas.DataFrame.from_csv(CURR_PATH, parse_dates=False).reset_index()
-    currdata['YEAR'] = currdata['YEAR'].map(str)
-    currdata = currdata.set_index('YEAR')
+    # currdata = pandas.DataFrame.from_csv(CURR_PATH, parse_dates=False).reset_index()
+    # currdata['YEAR'] = currdata['YEAR'].map(str)
+    # currdata = currdata.set_index('YEAR')
 
-    df['IMM'] = 100
-    lm['IMM'] = {}
-    lm['IMM']['type'] = 'I'
-    s = Stark(df, lm=lm, currdata=currdata)
-    s['TEST'] = '$X / $M'
-    s['TEST_RLP'] = '$X / $M'
-    lm['TEST_RLP']['rlp'] = 'N'
+    # df['IMM'] = 100
+    # lm['IMM'] = {}
+    # lm['IMM']['type'] = 'I'
+    # s = Stark(df, lm=lm, currdata=currdata)
+    # s['TEST'] = '$X / $M'
+    # s['TEST_RLP'] = '$X / $M'
+    # lm['TEST_RLP']['rlp'] = 'N'
 
     # s1 = s.changecurr('EUR')
     # s.cagr('X')
     # s1 = s.rollup(XER='AREA.1-Europa Occidentale')
+
+    s.logit('X', how='median', upper=100, prec=0.9)
+    s1 = s.rollup(R='MM', CODE='TOT', XER='ITA')
+    mydf = s.df.sort('X')
+    mydf1 = s1.df.sort('X')
+    fig = plt.figure()
+    sub = fig.add_subplot(111)
+    sub.plot(mydf['X_LOGIT'])
+    sub.plot(mydf1['X_LOGIT'])
+    fig.show()
     print "ok"
 
 
