@@ -126,8 +126,8 @@ class Stark(GenericPickler):
         self.cod = cod
         self._currency = currency
         self._currdata = currdata
-        if stype not in STYPES:
-            raise ValueError("stype must be one of %s" % STYPES)
+        # if stype not in STYPES:
+        #     raise ValueError("stype must be one of %s" % STYPES)
         self.stype = stype
         if lm is None:
             lm = {}
@@ -218,13 +218,13 @@ class Stark(GenericPickler):
         # DF changed, re-evaluate calculated data
         self._update()
 
-    # @property
-    # def currency(self):
-    #     return self._currency
+    @property
+    def currency(self):
+        return self._currency
 
-    # @currency.setter
-    # def currency(self, newcur):
-    #     self.changecurr(newcur, inplace=True)
+    @currency.setter
+    def currency(self, newcur):
+        self.changecurr(newcur, inplace=True)
 
     @property
     def dim(self):
@@ -415,7 +415,7 @@ class Stark(GenericPickler):
                 lm[name]['type'] = 'N'
             # TODO: This is not needed if 'rlp' != 'N', but any other
             # operation seems to introduce a greater overhead to the
-            # computation. This shold be invesigated further.
+            # computation. This should be invesigated further.
             operations[name] = func
 
         df = df.groupby(dim).aggregate(operations)[var].reset_index()
@@ -424,7 +424,7 @@ class Stark(GenericPickler):
             self._lm = lm
             self._update()
             return
-        return Stark(df, lm=lm, currency=self._currency,
+        return Stark(df, lm=lm, currency=self._currency, 
                      currdata=self._currdata)
 
     def _find_level(self, key, value):
