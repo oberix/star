@@ -146,10 +146,11 @@ class Stark(GenericPickler):
         return repr(self._df)
 
     def __add__(self, other):
-        df = self._df.append(other.DF, ignore_index=True,
+        df = self._df.append(other.df, ignore_index=True,
                              verify_integrity=False)
         lm = self._lm
-        out_stark = Stark(df, lm=lm, cod=self.cod, stype=self.stype)
+        out_stark = Stark(df, lm=lm, cod=self.cod, stype=self.stype,
+                          currency=self._currency, currdata=self._currdata)
         out_stark._aggregate(inplace=True)
         return out_stark
 
@@ -423,7 +424,8 @@ class Stark(GenericPickler):
             self._lm = lm
             self._update()
             return
-        return Stark(df, lm=lm) # _update() gets called by __init__()
+        return Stark(df, lm=lm, currency=self._currency,
+                     currdata=self._currdata)
 
     def _find_level(self, key, value):
         ''' Tells to wich level of a dimension a value belongs
@@ -549,7 +551,7 @@ class Stark(GenericPickler):
             tmp_df[ts_col] += 1
         except TypeError:
             # FIXME: cludgy! We should use dates instead
-            tmp_df[ts_col] = tmp_df['YEAR'].map(int)
+            tmp_df[ts_col] = tmp_df[ts_col].map(int)
             tmp_df[ts_col] += 1
             tmp_df[ts_col] = tmp_df[ts_col].map(str)
         tmp_df.set_index(self.dim, inplace=True)
@@ -590,11 +592,13 @@ class Stark(GenericPickler):
                     out_stark.df = out_stark.df.ix[out_stark.df[key] == value]
                     continue
                 # We need to replace current level with target one
-                vals_df = self._lm[key]['vals']
                 if level not in vals_df.columns:
-                    raise ValueError(
-                        "'%s' is not a valid level name for column '%s'" %\
-                        (level, key))
+                    # FIXME: This is the case in which a value contains a ".":
+                    # it deserves a better handling
+                    value = val
+                    out_stark.df = out_stark.df.ix[out_stark.df[key] == value]
+                    continue
+                vals_df = self._lm[key]['vals']
                 sample_val = self._df[key].ix[0]
                 curr_level = self._find_level(key, sample_val)
                 out_stark.df[key] = out_stark.df[key].map(
