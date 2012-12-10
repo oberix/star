@@ -572,7 +572,7 @@ class Stark(GenericPickler):
     def rollup(self, **kwargs):
         '''
         '''
-        out_stark = Stark(self.df.copy(), lm=self._lm)
+        out_stark = Stark(self.df.copy(), lm=self._lm, currency=self._currency, currdata=self._currdata)
         # FIXME: keys and vals may be grouped by type in advance to minimize
         # iteretions of this loop
         for key, val in kwargs.iteritems():
