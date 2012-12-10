@@ -156,7 +156,8 @@ class Stark(GenericPickler):
         df = self._df.append(other.df, ignore_index=True,
                              verify_integrity=False)
         lm = self._lm
-        out_stark = Stark(df, lm=lm, cod=self.cod, stype=self.stype)
+        out_stark = Stark(df, lm=lm, cod=self.cod, stype=self.stype,
+                          currency=self._currency, currdata=self._currdata)
         out_stark._aggregate(inplace=True)
         return out_stark
 
@@ -224,13 +225,13 @@ class Stark(GenericPickler):
         # DF changed, re-evaluate calculated data
         self._update()
 
-    # @property
-    # def currency(self):
-    #     return self._currency
+    @property
+    def currency(self):
+        return self._currency
 
-    # @currency.setter
-    # def currency(self, newcur):
-    #     self.changecurr(newcur, inplace=True)
+    @currency.setter
+    def currency(self, newcur):
+        self.changecurr(newcur, inplace=True)
 
     @property
     def dim(self):
@@ -591,7 +592,7 @@ class Stark(GenericPickler):
             tmp_df[ts_col] += 1
         except TypeError:
             # FIXME: cludgy! We should use dates instead
-            tmp_df[ts_col] = tmp_df['YEAR'].map(int)
+            tmp_df[ts_col] = tmp_df[ts_col].map(int)
             tmp_df[ts_col] += 1
             tmp_df[ts_col] = tmp_df[ts_col].map(str)
         tmp_df.set_index(self.dim, inplace=True)
@@ -609,66 +610,104 @@ class Stark(GenericPickler):
         })
         self._df = self._df.reset_index()[self._lm.keys()]
 
-    def rollup(self, **kwargs):
-        ''' 
-        '''
-        out_stark = Stark(self.df.copy(), lm=self._lm)
-        # FIXME: keys and vals may be grouped by type in advance to minimize
-        # iteretions of this loop
-        for key, val in kwargs.iteritems():
-            if key not in self._df.columns:
-                raise ValueError("'%s' is not a dimension" % key)
-            if val == 'TOT':
-                out_stark.df[key] = 'TOT'
-                out_stark = out_stark._aggregate()
-            elif val == 'ALL':
-                continue
-            else:
-                try:
-                    level, value = val.split('.', 1)
-                except ValueError:
-                    # Nothing to split, get on with simple value
-                    value = val
-                    out_stark.df = out_stark.df.ix[out_stark.df[key] == value]
-                    continue
-                # We need to replace current level with target one
-                vals_df = self._lm[key]['vals']
-                if level not in vals_df.columns:
-                    # FIXME: This is the case in which a value contains a ".":
-                    # it deserves a better handling
-                    value = val
-                    out_stark.df = out_stark.df.ix[out_stark.df[key] == value]
-                    continue
-                sample_val = self._df[key].ix[0]
-                curr_level = self._find_level(key, sample_val)
-                out_stark.df[key] = out_stark.df[key].map(
-                    vals_df.set_index(curr_level, verify_integrity=False).to_dict()[level])
-                out_stark = out_stark._aggregate()
-                if value != 'ALL' and value != 'TOT':
-                    out_stark.df = out_stark.df.ix[
-                        out_stark.df[key] == value].reset_index()
-        return out_stark
-
-    # def rollup_new(self, **kwargs):
-    #     out_stark = Stark(self.df.copy(), lm=copy.deepcopy(self._lm))
-    #     alls = []
-    #     tots = []
-    #     litterals = []
-    #     subs = []
+    # def rollup(self, **kwargs):
+    #     ''' 
+    #     '''
+    #     out_stark = Stark(self.df.copy(), lm=self._lm)
+    #     # FIXME: keys and vals may be grouped by type in advance to minimize
+    #     # iteretions of this loop
     #     for key, val in kwargs.iteritems():
-    #         # group by value type
-    #         if val == 'ALL':
-    #             all.append((key, val))
-    #         elif val == 'TOT':
-    #             tot.append((key, val))
-    #         elif val.
-    #         # vals must handle two cases:
-    #         # 1. spot val --> it's a selection
-    #         # 2. LEV.val --> sustitution, then selection (might be a recursive step)
-    #         # all selections must be done in one shot; all substitutions must be done in one shot
-        
+    #         if key not in self._df.columns:
+    #             raise ValueError("'%s' is not a dimension" % key)
+    #         if val == 'TOT':
+    #             out_stark.df[key] = 'TOT'
+    #             out_stark = out_stark._aggregate()
+    #         elif val == 'ALL':
+    #             continue
+    #         else:
+    #             try:
+    #                 level, value = val.split('.', 1)
+    #             except ValueError:
+    #                 # Nothing to split, get on with simple value
+    #                 value = val
+    #                 out_stark.df = out_stark.df.ix[out_stark.df[key] == value]
+    #                 continue
+    #             # We need to replace current level with target one
+    #             vals_df = self._lm[key]['vals']
+    #             if level not in vals_df.columns:
+    #                 # FIXME: This is the case in which a value contains a ".":
+    #                 # it deserves a better handling
+    #                 value = val
+    #                 out_stark.df = out_stark.df.ix[out_stark.df[key] == value]
+    #                 continue
+    #             sample_val = self._df[key].ix[0]
+    #             curr_level = self._find_level(key, sample_val)
+    #             out_stark.df[key] = out_stark.df[key].map(
+    #                 vals_df.set_index(curr_level, verify_integrity=False)[level])
+    #             out_stark = out_stark._aggregate()
+    #             if value != 'ALL' and value != 'TOT':
+    #                 out_stark.df = out_stark.df.ix[
+    #                     out_stark.df[key] == value].reset_index()
+    #     return out_stark
 
-import matplotlib.pyplot as plt
+    def _rollup(self, df, **kwargs):
+        select = {}
+        subs = {}
+        # decide actions
+        for key, val in kwargs.iteritems():
+            splitted = val.split('.', 1)
+            vals_df = self._lm[key]['vals']
+            if len(splitted) == 1 or\
+               (len(splitted) > 1 and splitted[0] not in vals_df.columns): 
+                if val == 'ALL':
+                    continue
+                elif val == 'TOT':
+                    idx = df[key].unique()
+                    subs[key] = pandas.Series(['TOT'] * len(idx), index=idx)
+                else:
+                    select[key] = val
+            elif len(splitted) > 1:
+                curr_level = self._find_level(key, self._df[key].ix[0])
+                subs[key] = vals_df.set_index(curr_level, verify_integrity=False)[splitted[0]]
+                select[key] = splitted[1]
+            else: # pragma: no cover
+                raise ValueError # be more specific!
+        
+        # substitute
+        for key, val in subs.iteritems():
+            df[key] = df[key].map(val)
+
+        # select
+        conditions = [(df[key] == val) for key, val in select.iteritems()]
+        mask = pandas.Series([True] * len(df))
+        for condition in conditions:
+            mask &= condition
+
+        return df[mask]
+
+    def rollup(self, **kwargs):
+        """
+        some cases:
+        'ALL': do not make any selection on filed
+        'TOT': substitute 'TOT' in every record's filed and goupby.sum
+        'val': select record in which field have value of 'val'
+        'AREA': subs meta 'AREA' in field and groupby.sum
+        'X.val': recursive case
+
+        The algorithm can be like so:
+        1 (base case). No substitution to be made, just vals: make a selection.
+        2 (substitutions). collect all the substitutions to be made an apply
+          them all at once.
+        3. (Recursive). 
+        """
+        # FIXME: find a way to avoid this copy
+        tmp_df = self._df.copy()
+        self._df = self._rollup(self._df, **kwargs)
+        ret = self._aggregate()
+        self._df = tmp_df
+        return ret
+
+# import matplotlib.pyplot as plt
 if __name__ == '__main__' :
 
     STAR_PATH = '/home/mpattaro/workspace/star/trunk/star'
@@ -680,49 +719,9 @@ if __name__ == '__main__' :
     sys.path.insert(0, STAR_PATH)
 
     s = Stark.load(PKL_PATH)
-    # df = s._DF
-    # lm = s._VD
-    # ul_df = pandas.DataFrame.from_csv(UL_PATH).reset_index()
-    # country_df = pandas.DataFrame.from_csv(COUNTRY_PATH).reset_index()
-    # curr_df = pandas.DataFrame.from_csv(CURR_PATH).reset_index()
 
-    # # convert from v0.1 pickles
-    # for k, v in lm.iteritems():
-    #     v['type'] = v.pop('TIP')
-    #     if k == 'XER' or k == 'MER':
-    #         v['vals'] = country_df
-    #     elif k in ('X', 'M'):
-    #         v['type'] = 'C'
-    #     elif k == 'CODE':
-    #         v['vals'] = ul_df
-    #     else:
-    #         v['vals'] = pandas.DataFrame()
-
-    # currdata = pandas.DataFrame.from_csv(CURR_PATH, parse_dates=False).reset_index()
-    # currdata['YEAR'] = currdata['YEAR'].map(str)
-    # currdata = currdata.set_index('YEAR')
-
-    # df['IMM'] = 100
-    # lm['IMM'] = {}
-    # lm['IMM']['type'] = 'I'
-    # s = Stark(df, lm=lm, currdata=currdata)
-    # s['TEST'] = '$X / $M'
-    # s['TEST_RLP'] = '$X / $M'
-    # lm['TEST_RLP']['rlp'] = 'N'
-
-    # s1 = s.changecurr('EUR')
-    # s.cagr('X')
-    # s1 = s.rollup(XER='AREA.1-Europa Occidentale')
-
-    s.logit('X', how='median', upper=100, prec=0.9)
-    s1 = s.rollup(R='MM', CODE='TOT', XER='ITA')
-    mydf = s.df.sort('X')
-    mydf1 = s1.df.sort('X')
-    fig = plt.figure()
-    sub = fig.add_subplot(111)
-    sub.plot(mydf['X_LOGIT'])
-    sub.plot(mydf1['X_LOGIT'])
-    fig.show()
+    s.rollup_new(XER='AREA.1-Europa Occidentale', MER='TOT')
+    s.rollup(XER='AREA.1-Europa Occidentale', MER='AREA.7-Asia')
     print "ok"
 
 
