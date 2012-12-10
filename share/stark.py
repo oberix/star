@@ -529,7 +529,7 @@ class Stark(GenericPickler):
         for var in self._curr:
             df[var] = df[var] * (df[new_curr] / df[self._currency])
         df = df.reset_index()[columns]
-        return Stark(df, lm=lm)
+        return Stark(df, lm=lm, currency=new_curr, curradata=self._currdata)
 
     def loggit(self, var):
         # TODO: implement
@@ -592,13 +592,13 @@ class Stark(GenericPickler):
                     out_stark.df = out_stark.df.ix[out_stark.df[key] == value]
                     continue
                 # We need to replace current level with target one
+                vals_df = self._lm[key]['vals']
                 if level not in vals_df.columns:
                     # FIXME: This is the case in which a value contains a ".":
                     # it deserves a better handling
                     value = val
                     out_stark.df = out_stark.df.ix[out_stark.df[key] == value]
                     continue
-                vals_df = self._lm[key]['vals']
                 sample_val = self._df[key].ix[0]
                 curr_level = self._find_level(key, sample_val)
                 out_stark.df[key] = out_stark.df[key].map(
