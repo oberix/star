@@ -222,9 +222,9 @@ class Stark(GenericPickler):
     def currency(self):
         return self._currency
 
-    @currency.setter
-    def currency(self, newcur):
-        self.changecurr(newcur, inplace=True)
+    # @currency.setter
+    # def currency(self, newcur):
+    #     self.changecurr(newcur, inplace=True)
 
     @property
     def dim(self):
@@ -529,7 +529,7 @@ class Stark(GenericPickler):
         for var in self._curr:
             df[var] = df[var] * (df[new_curr] / df[self._currency])
         df = df.reset_index()[columns]
-        return Stark(df, lm=lm, currency=new_curr, curradata=self._currdata)
+        return Stark(df, lm=lm, currency=new_curr, currdata=self._currdata)
 
     def loggit(self, var):
         # TODO: implement
