@@ -25,7 +25,7 @@ import re
 
 __author__ = "Marco Pattaro <marco.pattaro@servabit.it>"
 __version__ = "1.0"
-__all__ = ['TexTable', 'unique_list', 'escape']
+__all__ = ['TexTable', 'HTMLTable']
 
 OPEN_TEX_TAB = {'tab': """\\begin{tabu} spread \\linewidth""",
                 'ltab': """\\begin{longtabu} spread \\linewidth"""}
@@ -342,17 +342,43 @@ class HTMLTable(Table):
         super(HTMLTable, self).__init__(data, **kwargs)
 
 
+    def parse_lm(self, lm):
+        '''
+        lm have to be dict of dicts.
+        keys are columns.
+        values are dict of form:
+        {
+        'type':'unused',
+        'ord': <int>,
+        'des': <string> the th content,
+        ### optional
+        'th_attrs': <string> putted in `class' attr of unique tr element in thead,
+        'td_attrs': <string> putted in `class' attr of unique tr element in tr in tbody,
+        }
+        '''
+        self._ncols = len(lm.keys())
+
+        # Extract df columns names
+        self._keys = lm.items()
+        self._keys.sort(key=lambda x : x[1].get('ord'))
+        self._keys = [k[0] for k in self._keys]
+
+        self._headings = dict.fromkeys(lm)
+        for k in self._keys:
+            self._headings[k] = lm[k].copy()
+
     def _make_header(self):
         '''
         sezione che costruisce l'header della tabella: thead
         '''
 
         out = '''<thead>'''
-	out += '''<tr>'''
-        for level in self._heading:
-            for i in level:
-                out += '''<th>%s</th>''' % i.replace("|","")
-	out += '''</tr>'''
+        out += '''<tr>'''
+        for k in self._keys:
+            out += '''<th%s>%s</th>''' % (
+                self._headings[k].get('th_attrs', ''),
+                self._headings[k]['des'].replace("|",""))
+        out += '''</tr>'''
         out += '''</thead>\n'''
         return out
 
@@ -365,22 +391,11 @@ class HTMLTable(Table):
         records = self._data.df[self._keys].to_records()
         #self._logger.info("In Make Body %s", records)
         for line in list(records):
-	    out += '''<tr>\n'''
-	    for idx, i in enumerate(list(line)[1:]):
-                if i is None or i == 'None':
-	            out += '''<td>&nbsp;</td>'''
-		else:
-		    align = self._align[idx].replace("|","").replace(" ","")
-		    if align.find("c") >= 0:
-			align = 'style="text-align:center;"'
-		    elif align.find("l") >= 0:
-			align = 'style="text-align:left; padding-left:5px;"'
-		    elif align.find("r") >= 0:
-			align = 'style="text-align:right; padding-right:5px;"'
-		    else:
-			align = ""
-	            out += '''<td %s>%s</td>''' % (align, i)
-	    out += '''\n</tr>\n'''
+            out += '''<tr>\n'''
+            for idx, i in enumerate(list(line)[1:]):
+                heading = self._headings[self._keys[idx]]
+                out += '''<td%s>%s</td>''' % (heading.get('td_attrs', ''), i)
+            out += '''\n</tr>\n'''
         out += '''</tbody>\n'''
         return out
 
@@ -400,8 +415,8 @@ class HTMLTable(Table):
         '''
         out = [
             escape(self._make_header(), HTML_ESCAPE),
-	    self._make_body(),
-	    self._make_footer(),
+            self._make_body(),
+            #self._make_footer(),
             ]
         out = unicode(str().join(out))
         return out

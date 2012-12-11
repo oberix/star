@@ -16,30 +16,37 @@
 #    You should have received a copy of the GNU Affero General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
 ##############################################################################
-import os 
-import string
+# pylint: disable=E1101,W0402
+import os
+import sys
+import re
+import string 
 import copy
-
 import pandas
+import numpy as np
 
-from generic_pickler import GenericPickler
+BASEPATH = os.path.abspath(os.path.join(
+    os.path.dirname(__file__),
+    os.path.pardir, os.pardir))
+sys.path.insert(0, BASEPATH)
+# sys.path = list(set(sys.path))
 
-# pylint: disable=E1101
+from star.share.generic_pickler import GenericPickler
 
 __author__ = 'Marco Pattaro (<marco.pattaro@servabit.it>)'
 __all__ = ['Stark']
 
-
-STYPES = ('elab')
+STYPES = ('elab',)
 TYPES = [
     'D', # Dimensional
-    'I', # Immutable 
+    'I', # Immutable
     'N', # Numeric
     'C', # Currency
     'E', # Elaboration
     'R', # Rate
     ]
 
+TYPE_PATTERN = re.compile("<class \'[a-zA-Z][a-zA-Z0-9.].*\'>")
 
 ##########################
 # Misc utility functions #
@@ -69,7 +76,7 @@ def _filter_tree(meta, outlist):
     the target tree, all of it's childrens are inherited from the parent's
     parent.
 
-    @ param meta: a dictionary 
+    @ param meta: a dictionary
     @ param outlist: a list of keys
     @ return: a new dictionary
 
@@ -143,12 +150,13 @@ class Stark(GenericPickler):
     def __repr__(self):
         """ Delegate to DataFrame.__repr__().
         """
-        return repr(self._df)
+        ret = repr(self._df)
+        return re.sub(TYPE_PATTERN, unicode(type(self)), ret)
 
     def __add__(self, other):
         df = self._df.append(other.df, ignore_index=True,
                              verify_integrity=False)
-        lm = self._lm
+        lm = copy.deepcopy(self._lm)
         out_stark = Stark(df, lm=lm, cod=self.cod, stype=self.stype,
                           currency=self._currency, currdata=self._currdata)
         out_stark._aggregate(inplace=True)
@@ -157,13 +165,14 @@ class Stark(GenericPickler):
     def __getitem__(self, key):
         ''' Delegate to DataFrame.__setitem__().
         '''
-        # TODO: return a new Stark instance
-        return self._df.__getitem__(key)
+        df = self._df.__getitem__(key)
+        lm = _filter_tree(self._lm, key)
+        return Stark(df, lm=lm, currency=self._currency, currdata=self._currdata)
 
     def __setitem__(self, key, value):
         ''' Delegate to DataFrame.__setitem__(). The purpose of this method it
         to permit a DataFrame-like syntax when assigning a new column, while
-        keeping the VD consistent.
+        keeping the lm consistent.
 
         '''
         if isinstance(value, str) or isinstance(value, unicode):
@@ -171,7 +180,7 @@ class Stark(GenericPickler):
                 self._update_df(key, expr=value, var_type='E')
             except NameError:
                 self._update_df(key, series=value, var_type='I')
-        else: 
+        else:
             self._update_df(key, series=value, var_type='N')
 
     def __delitem__(self, key):
@@ -189,21 +198,30 @@ class Stark(GenericPickler):
 
     @property
     def lm(self):
-        return self._lm
+        ''' Return a shallow copy of lm ''' 
+        # TODO: this isn't neither a shallow nor a deep copy, copy of the lm
+        # shold be deep while it encounters nested dictionaries, but it should
+        # behaves as shallow when it reaches DataFrames, so.. implement a
+        # smart_copy() :)
+        return copy.deepcopy(self._lm.copy)
 
     @lm.setter
-    def lm(self, vd):
-        ''' VD setter:
-        Just check VD/DF consistency before proceding.
-        ''' 
-        if vd is None:
-            vd = {}
-        self._lm = vd
+    def lm(self, new_lm):
+        ''' lm setter:
+        Just check lm/df consistency before proceding.
+        '''
+        if not isinstance(new_lm, dict):
+            raise ValueError("lm must be a dictionry '%s' received instead" %\
+                             type(new_lm))
+        self._lm = new_lm
         self._update()
 
     @property
     def df(self):
-        return self._df
+        ''' Return a copy of df selecting just those columns that have some
+        metadata in lm
+        '''
+        return self._df[self.columns]
 
     @df.setter
     def df(self, df):
@@ -215,7 +233,7 @@ class Stark(GenericPickler):
                 "df must be a pandas.DataFrame object, %s received instead",
                 type(df))
         self._df = df
-        # DF changed, re-evaluate calculated data
+        # df changed, re-evaluate calculated data
         self._update()
 
     @property
@@ -252,7 +270,11 @@ class Stark(GenericPickler):
 
     @property
     def columns(self):
-        return self._df.columns
+        return pandas.Index(self._lm.keys())
+
+    @property
+    def ix(self):
+        return self._df.ix
 
     ######################
     # Non public methods #
@@ -273,7 +295,7 @@ class Stark(GenericPickler):
         self._curr = []
         # Sort VD.items() by 'ORD' to have output lists already ordered.
         lm_items = self._lm.items()
-        lm_items.sort(key=lambda x: x[1].get('ORD', 0))
+        # lm_items.sort(key=lambda x: x[1].get('ORD', 0))
         for key, val in lm_items:
             if val['type'] == 'D':
                 self._dim += _unroll({key: val})
@@ -359,8 +381,8 @@ class Stark(GenericPickler):
 
     def _gr_cum(self, series):
         ''' Cumulated growth rate '''
-        exponent = pandas.np.log(series / 100 + 1).sum() / len(series)
-        return (pandas.np.exp(exponent) - 1) * 100
+        exponent = np.log(series / 100 + 1).sum() / len(series) 
+        return (np.exp(exponent) - 1) * 100
 
     def _aggregate(self, func='sum', dim=None, var=None, inplace=False):
         ''' Apply an aggregation function to the DataFrame. If the DataFrame
@@ -413,7 +435,7 @@ class Stark(GenericPickler):
             # others must be re-evaluated
             if lm[name].get('rlp') and lm[name]['rlp'] == 'N':
                 lm[name]['type'] = 'N'
-            # TODO: This is not needed if 'rlp' != 'N', but any other
+            # XXX: This is not needed if 'rlp' != 'N', but any other
             # operation seems to introduce a greater overhead to the
             # computation. This should be invesigated further.
             operations[name] = func
@@ -424,8 +446,7 @@ class Stark(GenericPickler):
             self._lm = lm
             self._update()
             return
-        return Stark(df, lm=lm, currency=self._currency, 
-                     currdata=self._currdata)
+        return Stark(df, lm=lm, currency=self._currency, currdata=self._currdata)
 
     def _find_level(self, key, value):
         ''' Tells to wich level of a dimension a value belongs
@@ -476,6 +497,68 @@ class Stark(GenericPickler):
             ph_dict[ph] = str().join(["self._df['", ph, "']"])
         return eval(templ.substitute(ph_dict), {'self': self})
 
+    def _logit(self, var, how='mean', upper=100.0, prec=0.9):
+        ''' This is the real logit implementation, the logit() just repare the
+        Stark for a later evaluation at update time
+        ''' 
+        if prec <= 0 or prec >= 1:
+            raise ValueError("prec must be in the range (0, 1), %s received instead" %\
+                             prec) 
+        if upper <= 0:
+            raise ValueError("upper must be a positive float, %s received instead" %\
+                             upper)
+        med = 0.0
+        distance = 0.0
+        if how == 'mean':
+            med = self._df[var].mean()
+            distance = np.std(self._df[var])
+        elif how == 'median':
+            med = self._df[var].median()
+            quant = (self._df[var].quantile(q=0.25), self._df[var].quantile(q=0.75))
+            distance = min((med - quant[0]), (quant[1] - med))
+        else:
+            raise ValueError(
+                "parameter 'how' can be one of ['mean' | 'median'], '%s' received instead" % how)
+        beta = -np.log(1 / prec - 1) / distance
+        alpha = med * (-beta)
+        return upper / (1 + np.exp(alpha - beta * self._df[var]))
+
+    def _rollup(self, df, **kwargs):
+        select = {}
+        subs = {}
+        # decide actions
+        for key, val in kwargs.iteritems():
+            splitted = val.split('.', 1)
+            vals_df = self._lm[key]['vals']
+            if len(splitted) == 1 or\
+               (len(splitted) > 1 and splitted[0] not in vals_df.columns): 
+                if val == 'ALL':
+                    continue
+                elif val == 'TOT':
+                    idx = df[key].unique()
+                    subs[key] = pandas.Series(['TOT'] * len(idx), index=idx)
+                else:
+                    select[key] = val
+            elif len(splitted) > 1:
+                curr_level = self._find_level(key, self._df[key].ix[0])
+                subs[key] = vals_df.set_index(
+                    curr_level, verify_integrity=False)[splitted[0]]
+                select[key] = splitted[1]
+            else: # pragma: no cover
+                raise ValueError # be more specific!
+        
+        # substitute
+        for key, val in subs.iteritems():
+            df[key] = df[key].map(val)
+
+        # select
+        conditions = [(df[key] == val) for key, val in select.iteritems()]
+        mask = pandas.Series([True] * len(df))
+        for condition in conditions:
+            mask &= condition
+
+        return df[mask]
+
     ##################
     # Public methods #
     ##################
@@ -501,7 +584,9 @@ class Stark(GenericPickler):
         @ return: a DataFrame
 
         '''
-        return self._df.head(n)
+        lm = copy.deepcopy(self._lm)
+        return Stark(self._df.head(n), lm=lm, currency=self._currency,
+                     currdata=self._currdata)
 
     def tail(self, n=5):
         ''' Return last n elements of the DataFrame 
@@ -510,7 +595,9 @@ class Stark(GenericPickler):
         @ return: a DataFrame
 
         '''
-        return self._df.tail(n)
+        lm = copy.deepcopy(self._lm)
+        return Stark(self._df.tail(n), lm=lm, currency=self._currency,
+                     currdata=self._currdata)
 
     def changecurr(self, new_curr, ts_col='YEAR'):
         ''' Change currency by appling different change rates according to
@@ -531,7 +618,26 @@ class Stark(GenericPickler):
         df = df.reset_index()[columns]
         return Stark(df, lm=lm, currency=new_curr, currdata=self._currdata)
 
-    def loggit(self, var):
+    def logit(self, var, how='mean', upper=100.0, prec=0.9):
+        ''' Calculate the logistic distribution of a DataFrame variable and
+        stores it in a new variable called <var>_LOGIT.
+
+        @ param var: Name of the Series in the df to avaluate lgistic
+        @ param how: 'mean' or 'median', method used to estimate distribution simmetry
+        @ param upper:  upper asintotic bound
+        @ param prec: precision percent. This is the slice of y value to limit
+                      the evauation to, it must be in the intervall (0, 1)
+        '''
+        self._update_lm(
+            key='%s_LOGIT' % var, 
+            entry={
+                'type': 'E',
+                'rlp': 'E',
+                'elab': "self._logit('%s', how='%s', upper= %s, prec=%s)" %\
+                (var, how, upper, prec),
+            })
+
+    def setun(self, var, **kwargs):
         # TODO: implement
         raise NotImplementedError
 
@@ -570,87 +676,14 @@ class Stark(GenericPickler):
         self._df = self._df.reset_index()[self._lm.keys()]
 
     def rollup(self, **kwargs):
-        '''
-        '''
-        out_stark = Stark(self.df.copy(), lm=self._lm, currency=self._currency, currdata=self._currdata)
-        # FIXME: keys and vals may be grouped by type in advance to minimize
-        # iteretions of this loop
-        for key, val in kwargs.iteritems():
-            if key not in self._df.columns:
-                raise ValueError("'%s' is not a dimension" % key)
-            if val == 'TOT':
-                out_stark.df[key] = 'TOT'
-                out_stark = out_stark._aggregate()
-            elif val == 'ALL':
-                continue
-            else:
-                try:
-                    level, value = val.split('.', 1)
-                except ValueError:
-                    # Nothing to split, get on with simple value
-                    value = val
-                    out_stark.df = out_stark.df.ix[out_stark.df[key] == value]
-                    continue
-                # We need to replace current level with target one
-                vals_df = self._lm[key]['vals']
-                if level not in vals_df.columns:
-                    # FIXME: This is the case in which a value contains a ".":
-                    # it deserves a better handling
-                    value = val
-                    out_stark.df = out_stark.df.ix[out_stark.df[key] == value]
-                    continue
-                sample_val = self._df[key].ix[0]
-                curr_level = self._find_level(key, sample_val)
-                out_stark.df[key] = out_stark.df[key].map(
-                    vals_df.set_index(curr_level, verify_integrity=False).to_dict()[level])
-                out_stark = out_stark._aggregate()
-                if value != 'ALL' and value != 'TOT':
-                    out_stark.df = out_stark.df.ix[
-                        out_stark.df[key] == value].reset_index()
-        return out_stark
-
-
-if __name__ == '__main__' :
-    PKL_PATH = '/home/mpattaro/ercole_sorted/country_MER/1-Europa_Occidentale/AUT.pickle'
-    UL_PATH = '/home/mpattaro/workspace/star/trunk/config/ercole/UL.csv'
-    COUNTRY_PATH = '/home/mpattaro/workspace/star/trunk/config/ercole/PaesiUlisse.csv'
-    CURR_PATH = '/home/mpattaro/workspace/star/trunk/config/ercole/CURDATA.csv'
-    
-    s = Stark.load(PKL_PATH)
-    df = s._DF
-    lm = s._VD
-    ul_df = pandas.DataFrame.from_csv(UL_PATH).reset_index()
-    country_df = pandas.DataFrame.from_csv(COUNTRY_PATH).reset_index()
-    curr_df = pandas.DataFrame.from_csv(CURR_PATH).reset_index()
-
-    # convert from v0.1 pickles
-    for k, v in lm.iteritems():
-        v['type'] = v.pop('TIP')
-        if k == 'XER' or k == 'MER':
-            v['vals'] = country_df
-        elif k in ('X', 'M'):
-            v['type'] = 'C'
-        elif k == 'CODE':
-            v['vals'] = ul_df
-        else:
-            v['vals'] = pandas.DataFrame()
-    
-    currdata = pandas.DataFrame.from_csv(CURR_PATH, parse_dates=False).reset_index()
-    currdata['YEAR'] = currdata['YEAR'].map(str)
-    currdata = currdata.set_index('YEAR')
-
-    df['IMM'] = 100
-    lm['IMM'] = {}
-    lm['IMM']['type'] = 'I'
-    s = Stark(df, lm=lm, currdata=currdata)
-    s['TEST'] = '$X / $M'
-    s['TEST_RLP'] = '$X / $M'
-    lm['TEST_RLP']['rlp'] = 'N'
-    
-    s1 = s.changecurr('EUR')
-
-    # s.cagr('X')
-    # s1 = s.rollup(XER='AREA.1-Europa Occidentale')
-    print "ok"
+        """
+        """
+        # FIXME: find a way to avoid this copy, perhaphs _aggregate() should be
+        # called inside _rollup() only when it's really needed.
+        tmp_df = self._df.copy()
+        self._df = self._rollup(self._df, **kwargs)
+        ret = self._aggregate()
+        self._df = tmp_df
+        return ret
 
 
