@@ -24,8 +24,8 @@ import logging
 import pandas
 
 # Servabit libraries
-# from generic_pickler import GenericPickler
-import stark
+from generic_pickler import GenericPickler
+# import stark
 
 __all__ = ['Bag']
 
@@ -37,7 +37,7 @@ STYPES = (
 )
 
 
-class Bag(stark.Stark):
+class Bag(GenericPickler):
     ''' This class associates raw data with printing meta-information.
 
     Bag has the following attributes:
