@@ -19,9 +19,9 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
-import os
 import logging
 import pandas
+import copy
 
 # Servabit libraries
 from generic_pickler import GenericPickler
@@ -118,7 +118,7 @@ class Bag(GenericPickler):
             raise ValueError("lm must be a dictionry '%s' received instead" %\
                              type(new_lm))
         self._lm = new_lm
-        self._update()
+        # self._update()
 
     @property
     def df(self):
@@ -138,7 +138,7 @@ class Bag(GenericPickler):
                 type(df))
         self._df = df
         # df changed, re-evaluate calculated data
-        self._update()
+        # self._update()
 
     @property
     def columns(self):
