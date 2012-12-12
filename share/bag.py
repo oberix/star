@@ -83,7 +83,11 @@ class Bag(GenericPickler):
                  title=None, footnote=None, 
                  size='square', fontsize=10.0,
                  legend=False, **kwargs):
-        super(Bag, self).__init__(df, lm=lm, cod=cod, stype=stype)
+        # super(Bag, self).__init__(df, lm=lm, cod=cod, stype=stype)
+        self._df = df
+        self.cod = cod
+        self._lm = lm
+        self.stype = stype
         self.title = title
         self.footnote = footnote
         self.size = size
