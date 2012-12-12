@@ -107,7 +107,7 @@ class Bag(GenericPickler):
         # shold be deep while it encounters nested dictionaries, but it should
         # behaves as shallow when it reaches DataFrames, so.. implement a
         # smart_copy() :)
-        return copy.deepcopy(self._lm.copy)
+        return copy.deepcopy(self._lm)
 
     @lm.setter
     def lm(self, new_lm):
