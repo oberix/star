@@ -18,7 +18,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
-
+# pylint: disable=W1401
 import sys
 import re
 import codecs
@@ -33,7 +33,6 @@ from star.remida.graph import TexGraph, HTMLGraph
 
 __all__ = ['HTMLSreTemplate', 'TexSreTemplate']
 
-# pylint: disable=W1401
 
 class AbstractSreTemplate(string.Template):
     ''' Abstract Class for Sre template parsing

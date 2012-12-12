@@ -1,39 +1,17 @@
 # -*- coding: utf-8 -*-
-##############################################################################
-#
-#    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
-#    Author: Marco Pattaro (<marco.pattaro@servabit.it>)
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU Affero General Public License as
-#    published by the Free Software Foundation, either version 3 of the
-#    License, or (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU Affero General Public License for more details.
-#
-#    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-##############################################################################
+# pylint: disable=W1401
 
 from copy import copy
 import logging
-import re
 
-__author__ = "Marco Pattaro <marco.pattaro@servabit.it>"
-__version__ = "1.0"
+from star.remida import utils
+
 __all__ = ['TexTable', 'HTMLTable']
 
 OPEN_TEX_TAB = {'tab': """\\begin{tabu} spread \\linewidth""",
                 'ltab': """\\begin{longtabu} spread \\linewidth"""}
 CLOSE_TEX_TAB = {'tab':"""\\end{tabu}""",
                  'ltab':"""\\end{longtabu}"""}
-
-
-# pylint: disable=W1401
 
 FORMATS = {
     '@n' : str(),
@@ -45,57 +23,6 @@ FORMATS = {
     '@p' : "\\pagebreak \n",
 }
 
-TEX_ESCAPE = [
-    (re.compile("€"), "\\officialeuro"),
-    (re.compile("%"), "\\%"),
-    (re.compile("&"), "\\&"),
-    (re.compile("\$(?!\w+)"), "\\$"),
-    (re.compile(">=(?!\{)"), r"$\\ge$"),
-    (re.compile("<=(?!\{)"), r"$\\le$"),
-    (re.compile(">(?!\{)"), r"$>$"),
-    (re.compile("<(?!\{)"), r"$<$"),
-    (re.compile("\n"), "\\\\"),
-    (re.compile("_"), "\_"),
-    (re.compile("/"), "/\-"),
-    (re.compile("\^"), "\textasciicircum"),
-    (re.compile("~"), "\normaltilde"),
-    ]
-
-# TODO: fill this up
-HTML_ESCAPE = [
-    (re.compile("€"), "EURO"),
-    ]
-
-def unique_list(list_):
-    """ Remove all duplicate elements from a list inplace, keeping the order
-    (unlike set()).
-
-    @ param: list
-    """
-    unique = set(list_)
-    for elem in unique:
-        enum = list_.count(elem)
-        i = 0
-        while i < (enum - 1):
-            list_.remove(elem)
-            i += 1
-
-# TODO: move this to template.py
-def escape(string, patterns=None):
-    ''' Escape string to work with LaTeX.
-    The function calls TEX_ESCAPE dictionary to metch regexp with their escaped
-    version.
-
-    @ param string: the string to escape
-    @ param patterns: a pattern/string mapping dictionary
-    @ return: escaped version of string
-
-    '''
-    if patterns is None:
-        patterns = TEX_ESCAPE
-    for pattern, sub in patterns:
-        string = re.sub(pattern, sub, string)
-    return string
 
 class Table(object):
 
@@ -183,7 +110,7 @@ class TexTable(Table):
         part = s.partition(title)
         ret = {'sep1': part[0],
                'span': span,
-               'title': escape(part[1]),
+               'title': utils.escape(part[1]),
                'sep2': part[2],
                }
         if title.strip().strip('|').startswith('@v'):
@@ -204,7 +131,7 @@ class TexTable(Table):
         out = str()
         out_list = list()
         title_list = copy(level)
-        unique_list(title_list)
+        utils.unique_list(title_list)
         for title in title_list:
             # TODO: apply translation
             colspan = level.count(title)
@@ -289,7 +216,7 @@ class TexTable(Table):
                 else:
                     if not isinstance(elem, unicode):
                         elem = unicode(elem, encoding='utf-8')
-                    out_record.append(escape(elem))
+                    out_record.append(utils.escape(elem))
             out += rowstart + """ & """.join(out_record) + \
                 " \\\ %s \n" % self._hsep
         if self._type == 'bodytab':
@@ -414,7 +341,7 @@ class HTMLTable(Table):
         ''' Return a string that contains valid Html code for a table.
         '''
         out = [
-            escape(self._make_header(), HTML_ESCAPE),
+            utils.escape(self._make_header(), utils.HTML_ESCAPE),
             self._make_body(),
             #self._make_footer(),
             ]

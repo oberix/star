@@ -1,23 +1,5 @@
 # -*- coding: utf-8 -*-
-##############################################################################
-#
-#    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
-#    Author: Marco Pattaro (<marco.pattaro@servabit.it>)
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU Affero General Public License as
-#    published by the Free Software Foundation, either version 3 of the
-#    License, or (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU Affero General Public License for more details.
-#
-#    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-##############################################################################
+# pylint: disable=E1101
 
 import matplotlib
 matplotlib.use('Agg')
@@ -25,13 +7,13 @@ import matplotlib.pyplot as plt
 from matplotlib import rc
 import numpy as np
 import logging
-from tempfile import NamedTemporaryFile, TemporaryFile
-import re
+from tempfile import NamedTemporaryFile
+import base64
+import cStringIO
 
 import star.remida.plotters as plotters
+from star.remida import utils
 
-__author__ = "Marco Pattaro <marco.pattaro@servabit.it>"
-__version__ = "0.1"
 __all__ = ['TexGraph', 'HTMLGraph']
 
 TICK_LABEL_LIMIT = 999. # xticks labels length limit
@@ -44,49 +26,6 @@ FIGSIZE = { # (w, h) in inches
     'flag': (3.180, 9.52),
     'scpaese': (3.5, 2.2),
 }
-
-TEX_ESCAPE = {
-    re.compile("€"): "\\officialeuro",
-    re.compile("%"): "\\%",
-    re.compile("&"): "\\&",
-    re.compile("\$(?!\w+)"): "\\$",
-    re.compile(">(?!\{)"): "\\textgreater",
-    re.compile("<(?!\{)"): "\\textless",
-    re.compile("\n"): "\\\\",
-    re.compile("_"): "\_",
-#    re.compile("-"): "$-$",
-    # tell LaTeX that an hyphen can be inserted after a '/'
-    re.compile("/"): "/\-",
-    re.compile("\^"): "\textasciicircum",
-    re.compile("~"): "\normaltilde",
-    }
-
-# TODO: fill this up
-HTML_ESCAPE = {
-    re.compile("<"): "&lt;",
-    re.compile(">"): "&gt;",
-    re.compile("&"): "&amp;",
-    re.compile("\""): "&quot;",
-    re.compile("'"): "&apos;",
-    re.compile("€"): "&euro;",
-    }
-
-# TODO: move this to template.py
-def escape(string, patterns=None):
-    ''' Escape string to work with LaTeX.
-    The function calls TEX_ESCAPE dictionary to metch regexp with their escaped
-    version.
-
-    @ param string: the string to escape
-    @ param patterns: a pattern/string mapping dictionary
-    @ return: escaped version of string
-
-    '''
-    if patterns is None:
-        patterns = TEX_ESCAPE
-    for pattern, sub in patterns.iteritems():
-        string = re.sub(pattern, sub, string)
-    return string
 
 
 class Plotters(object):
@@ -263,10 +202,9 @@ class Graph(object):
             lines.append(line)
             labels.append(col['label'])
 
-        # self._set_x_ax(ax) # Single graphs may change this
         if self._legend:
             handles = [line[0] for line in lines]
-            leg = self._make_legend(fig, handles, labels)
+            self._make_legend(fig, handles, labels)
         return fig
 
     def out(self):
@@ -294,7 +232,7 @@ class TexGraph(Graph):
         rc('text', usetex=True)
 
     def _make_legend(self, figure, handles, labels):
-        labels = [escape(label) for label in labels]
+        labels = [utils.escape(label) for label in labels]
         return super(TexGraph, self)._make_legend(figure, handles, labels)
 
     def out(self):
@@ -313,7 +251,6 @@ class TexGraph(Graph):
 class HTMLGraph(Graph):
 
     def out(self):
-        import base64, cStringIO
         buf = cStringIO.StringIO()
         self._figure.savefig(buf, format='png')
         buf.seek(0)
@@ -322,14 +259,9 @@ class HTMLGraph(Graph):
 
 
 if __name__ == '__main__':
-    ''' TEST '''
-
     import os
-    import sys
     import pandas as pnd
-    import numpy as np
 
-    import star.remida as sre
     from star.share import Bag
 
     logging.basicConfig(level=logging.DEBUG)
