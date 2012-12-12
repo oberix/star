@@ -95,6 +95,62 @@ class Bag(GenericPickler):
         self.legend = legend
         for key, val in kwargs:
             setattr(self, key, val)
+
+    ##############
+    # Properties #
+    ##############
+
+    @property
+    def lm(self):
+        ''' Return a shallow copy of lm ''' 
+        # TODO: this isn't neither a shallow nor a deep copy, copy of the lm
+        # shold be deep while it encounters nested dictionaries, but it should
+        # behaves as shallow when it reaches DataFrames, so.. implement a
+        # smart_copy() :)
+        return copy.deepcopy(self._lm.copy)
+
+    @lm.setter
+    def lm(self, new_lm):
+        ''' lm setter:
+        Just check lm/df consistency before proceding.
+        '''
+        if not isinstance(new_lm, dict):
+            raise ValueError("lm must be a dictionry '%s' received instead" %\
+                             type(new_lm))
+        self._lm = new_lm
+        self._update()
+
+    @property
+    def df(self):
+        ''' Return a copy of df selecting just those columns that have some
+        metadata in lm
+        '''
+        return self._df[self.columns]
+
+    @df.setter
+    def df(self, df):
+        ''' DF settre:
+        Just check VD/DF consistency before proceding.
+        '''
+        if not isinstance(df, pandas.DataFrame):
+            raise TypeError(
+                "df must be a pandas.DataFrame object, %s received instead",
+                type(df))
+        self._df = df
+        # df changed, re-evaluate calculated data
+        self._update()
+
+    @property
+    def columns(self):
+        return pandas.Index(self._lm.keys())
+
+    @property
+    def ix(self):
+        return self._df.ix
+
+    ###########
+    # Publics #
+    ###########
         
     def set_format(self, modlist):
         ''' Insert line style modifiers in the DF.
