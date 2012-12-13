@@ -25,13 +25,13 @@ import copy
 import pandas
 import numpy as np
 
-BASEPATH = os.path.abspath(os.path.join(
-    os.path.dirname(__file__),
-    os.path.pardir, os.pardir))
-sys.path.insert(0, BASEPATH)
-# sys.path = list(set(sys.path))
+# BASEPATH = os.path.abspath(os.path.join(
+#     os.path.dirname(__file__),
+#     os.path.pardir, os.pardir))
+# sys.path.insert(0, BASEPATH)
+# # sys.path = list(set(sys.path))
 
-from star.share.generic_pickler import GenericPickler
+from generic_pickler import GenericPickler
 
 __author__ = 'Marco Pattaro (<marco.pattaro@servabit.it>)'
 __all__ = ['Stark']
@@ -542,7 +542,7 @@ class Stark(GenericPickler):
             elif len(splitted) > 1:
                 curr_level = self._find_level(key, self._df[key].ix[0])
                 subs[key] = vals_df.set_index(
-                    curr_level, verify_integrity=False)[splitted[0]]
+                    curr_level, verify_integrity=False).to_dict()[splitted[0]]
                 select[key] = splitted[1]
             else: # pragma: no cover
                 raise ValueError # be more specific!
