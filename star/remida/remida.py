@@ -110,19 +110,14 @@ def sre(src_path, config=None, **kwargs):
         templ_path = src_path
 
     # Identify type just from filename suffix
-    # FIXME: this part is a bit messy, expetially for LaTeX with multiple files
     if templ_file.endswith('.tex'):
-        for file_ in os.listdir(templ_path):
-            if not file_.endswith('_out.tex') and file_.endswith('.tex'):
-                templ = template.TexSreTemplate(os.path.join(templ_path, file_), config=config)
-                report, fd_list = templ.report()
-                if not isinstance(report, str):
-                    # Error, return errno
-                    return report
-        return _compile_tex(templ_file.replace('.tex', '_out.tex'),
-                            templ_file,
-                            os.path.dirname(templ_file),
-                            fd_list)
+        templ = template.TexSreTemplate(os.path.join(templ_path, templ_file), config=config)
+        report, fd_list = templ.report()
+        if not isinstance(report, str):
+            # Error, return errno
+            return report
+        return _compile_tex(templ_file.replace('.tex', '_out.tex'), templ_file,
+                            os.path.dirname(templ_file),fd_list)
     elif templ_file.endswith('.html'):
         for file_ in os.listdir(templ_path):
             if file_.endswith('.html'):

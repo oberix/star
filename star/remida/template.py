@@ -1,24 +1,5 @@
 # -*- coding: utf-8 -*-
-##############################################################################
-#
-#    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
-#    Author: Marco Pattaro (<marco.pattaro@servabit.it>)
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU Affero General Public License as
-#    published by the Free Software Foundation, either version 3 of the
-#    License, or (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU Affero General Public License for more details.
-#
-#    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-##############################################################################
-# pylint: disable=W1401
+# pylint: disable=W1401,E1101
 import sys
 import re
 import codecs
@@ -44,21 +25,27 @@ class AbstractSreTemplate(string.Template):
 
     def __init__(self, templ_path, config=None):
         self._src_path = os.path.dirname(os.path.abspath(templ_path))
-	self._logger = logging.getLogger(type(self).__name__)
+        self._logger = logging.getLogger(type(self).__name__)
+        if config is None:
+            config = {
+                'template': templ_path,
+                'bags': self._src_path,
+                'dest_path': self._src_path,
+            }
         self._fds = list() # list of opened file descriptors
 	# load template
         self._templ_path = templ_path
-	self._load_template(self._templ_path)
+        self._load_template(self._templ_path)
 	# load Bags
-	try:
+        try:
             bag_path = config['bags']
-	except KeyError:
+        except KeyError:
             bag_path = self._src_path
-	self.bags = self._load_bags(bag_path)
+        self.bags = self._load_bags(bag_path)
 	# other paths
-	try:
+        try:
             self._dest_path = config['dest_path']
-	except KeyError:
+        except KeyError:
             self._dest_path = self._src_path
 
     def _load_template(self, path):
@@ -157,9 +144,9 @@ class AbstractSreTemplate(string.Template):
         raise NotImplementedError
 
     def report(self, **kwargs):
-        ''' Load report template and make the placeholders substitutions.
+        ''' Make placeholders substitution and store the result in a new file.
 
-        @ return texi2pdf exit value or -1 if an error happend.
+        @ return: path to the new file, list of file descriptors of temporary files.
 
         '''
         if not os.path.exists(os.path.dirname(self._dest_path)):
@@ -201,14 +188,21 @@ class TexSreTemplate(AbstractSreTemplate):
     comment = "%.*"
     _suffix = '.tex'
     _suffix_out = '_out.tex'
-
-    input_re = [re.compile("\\import{.*}"),
-                re.compile("\\input{.*}")]
+    # regexps to match LaTeX imports
+    input_re = [
+        re.compile("^\\import{.*}$"),
+        re.compile("^\\input{.*}$"),
+    ]
 
     def _substitute_includes(self):
         ''' Change input and includes LaTeX statements inside a template to
-        refere to the _out files
+        refere to the _out files. It returns a list of files to parse for
+        placeholders.
+
+        @ return: a list of filenames
+
         '''
+        input_files = []
         for regexp in TexSreTemplate.input_re:
             matches = re.findall(regexp, self.template)
             for match in matches:
@@ -217,6 +211,13 @@ class TexSreTemplate(AbstractSreTemplate):
                 repl.append('out')
                 repl = ''.join(['_'.join(repl), '}'])
                 self.template = self.template.replace(match, repl)
+                # Make a list of the input files to use as templates
+                input_file = u'.'.join([match.split('}')[0].split('{')[-1], u'tex'])
+                input_files.append(os.path.join(
+                    os.path.dirname(self._templ_path),
+                    input_file
+                ))
+        return input_files
 
     def _make_table(self, data, **kwargs):
         return  TexTable(data, **kwargs)
@@ -225,7 +226,17 @@ class TexSreTemplate(AbstractSreTemplate):
         return  TexGraph(data, **kwargs)
 
     def report(self, **kwargs):
-        self._substitute_includes()
+        input_files = self._substitute_includes()
+        for file_ in input_files:
+            # FIXME: this is redundant with __init__
+            config = {
+                'template': file_,
+                'bags': self._src_path,
+                'dest_path': self._src_path,
+            }
+            filename, fds = TexSreTemplate(
+                file_, config=config).report(**kwargs)
+            self._fds.extend(fds)
         return super(TexSreTemplate, self).report(**kwargs)
 
 class HTMLSreTemplate(AbstractSreTemplate):
