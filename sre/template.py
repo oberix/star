@@ -117,20 +117,20 @@ class AbstractSreTemplate(string.Template):
                     self._logger.warning('%s; skipping...', err)
                     continue
             # Generate string to substitute to the placeholder
-            if bags[base].TI == 'tab':
+            if bags[base].stype == 'tab':
                 ret[base] = self._make_table(bags[base], **kwargs).out()
-            elif bags[base].TI == 'ltab':
+            elif bags[base].stype == 'ltab':
                 ret[base] = self._make_table(bags[base], tab_type='ltab', **kwargs).out()
-            elif bags[base].TI == 'bodytab':
+            elif bags[base].stype == 'bodytab':
                 ret[base] = self._make_table(bags[base], tab_type='bodytab', **kwargs).out()
-            elif bags[base].TI == 'graph':
+            elif bags[base].stype == 'graph':
                 ret[base], fd = self._make_graph(bags[base], **kwargs).out()
                 self._fds.append(fd)
             else: # TODO: handle other types
                 self._logger.debug('bags = %s', bags)
                 self._logger.warning(
-                    "Unhandled bag TI '%s' found in %s, skipping...", 
-                    bags[base].TI, base)
+                    "Unhandled bag stype '%s' found in %s, skipping...", 
+                    bags[base].stype, base)
                 continue
             if len(ph_parts) > 1 and \
                     hasattr(bags[base], '.'.join(ph_parts[1:])):
