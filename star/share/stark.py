@@ -18,18 +18,11 @@
 ##############################################################################
 # pylint: disable=E1101,W0402
 import os
-import sys
 import re
 import string 
 import copy
 import pandas
 import numpy as np
-
-BASEPATH = os.path.abspath(os.path.join(
-    os.path.dirname(__file__),
-    os.path.pardir, os.pardir))
-sys.path.insert(0, BASEPATH)
-# sys.path = list(set(sys.path))
 
 from star.share.generic_pickler import GenericPickler
 
@@ -154,9 +147,22 @@ class Stark(GenericPickler):
         return re.sub(TYPE_PATTERN, unicode(type(self)), ret)
 
     def __add__(self, other):
+        ''' Add two Stark instances. This operation imply a DataFrame.append()
+        and a Stark.rollup().
+        '''
+        local_keys = self._lm.keys()
+        other_keys = other.lm.keys()
+
         df = self._df.append(other.df, ignore_index=True,
                              verify_integrity=False)
-        lm = copy.deepcopy(self._lm)
+        lm = self.lm # implies a deepcopy()
+
+        # Do not sum columns with different measure unit.
+        for key in local_keys:
+            if self._lm[key].get('munit', None) != other.lm[key].get('munit', None):
+                df[key] = np.nan
+                lm[key]['munit'] = None
+
         out_stark = Stark(df, lm=lm, cod=self.cod, stype=self.stype,
                           currency=self._currency, currdata=self._currdata)
         out_stark._aggregate(inplace=True)
@@ -687,23 +693,3 @@ class Stark(GenericPickler):
         ret = self._aggregate()
         self._df = tmp_df
         return ret
-
-# import matplotlib.pyplot as plt
-if __name__ == '__main__' :
-
-    STAR_PATH = '/home/mpattaro/workspace/star/trunk/star'
-    PKL_PATH = '/home/mpattaro/ercole_sorted/country_MER/1-Europa_Occidentale/AUT.pickle'
-    UL_PATH = '/home/mpattaro/workspace/star/trunk/config/ercole/UL.csv'
-    COUNTRY_PATH = '/home/mpattaro/workspace/star/trunk/config/ercole/PaesiUlisse.csv'
-    CURR_PATH = '/home/mpattaro/workspace/star/trunk/config/ercole/CURDATA.csv'
-
-    sys.path.insert(0, STAR_PATH)
-
-    s = Stark.load(PKL_PATH)
-
-    s.logit('X')
-    s1 = s.rollup(XER='AREA.1-Europa Occidentale')
-
-    print "ok"
-
-
