@@ -1,0 +1,22 @@
+--- a/star/sre/graph.py
++++ b/star/sre/graph.py
+@@ -226,7 +226,7 @@ class Graph(object):
+     def _set_x_ax(self, ax):
+         ticks = []
+         rotation = 0
+-        delta = (self._lax.max() - self._lax.min()) / len(self._lax)
++        delta = (max(self._lax) - min(self._lax)) / len(self._lax)
+         # Draw only even ticks
+         for idx, elem in enumerate(self._lax):
+             if idx % TICK_STEP == 0:
+@@ -234,8 +234,8 @@ class Graph(object):
+             if elem > TICK_LABEL_LIMIT:
+                 rotation = 30
+         ax.set_xticks(ticks)
+-        ax.set_xlim(self._lax.min() - delta,
+-                    self._lax.max() + delta)
++        ax.set_xlim(min(self._lax) - delta,
++                    max(self._lax) + delta)
+         plt.setp(plt.xticks()[1], rotation=rotation)
+         plt.subplots_adjust(hspace=0, bottom=0.13)
+ 

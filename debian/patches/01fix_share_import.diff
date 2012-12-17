@@ -1,0 +1,1491 @@
+--- a/star/__init__.py
++++ b/star/__init__.py
+@@ -18,7 +18,7 @@
+ #
+ ##############################################################################
+ 
+-import share
++import star.share as share
+ import star.etl as etl
+ import sda
+ import sre
+--- a/star/etl/DBmap2.py
++++ b/star/etl/DBmap2.py
+@@ -36,7 +36,7 @@ import logging
+ 
+ # Servabit libraries
+ import star.etl as etl
+-from share.config import Config
++from star.share.config import Config
+ 
+ 
+ #genero una classe di nome Base da usare con SQLAlchemy
+--- a/star/etl/Goal2Stark.py
++++ b/star/etl/Goal2Stark.py
+@@ -28,8 +28,8 @@ import star.etl as etl
+ import DBmap2
+ import create_dict
+ import parallel_jobs
+-from share import Stark
+-from share.config import Config
++from star.share import Stark
++from star.share.config import Config
+ 
+ 
+ def create_dict(cl_dmap2, dict_path, company_name):
+--- a/star/etl/ercole_sort.py
++++ b/star/etl/ercole_sort.py
+@@ -1,6 +1,6 @@
+ # -*- coding: utf-8 -*-
+ ##############################################################################
+-#    
++#
+ #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
+ #    Author: Marco Pattaro (<marco.pattaro@servabit.it>)
+ #
+@@ -15,7 +15,7 @@
+ #    GNU Affero General Public License for more details.
+ #
+ #    You should have received a copy of the GNU Affero General Public License
+-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
++#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ #
+ ##############################################################################
+ 
+@@ -35,9 +35,9 @@ sys.path.append(BASEPATH)
+ sys.path = list(set(sys.path))
+ 
+ #import etl
+-from share import Config
+-from share import parallel_jobs
+-from share import Stark
++from star.share import Config
++from star.share import parallel_jobs
++from star.share import Stark
+ 
+ COLUMNS = ['YEAR', 'CODE', 'XER', 'MER', 'R', 'X', 'M', 'K', 'U', 'Q']
+ META = {
+@@ -64,7 +64,7 @@ _logger = logging.getLogger(sys.argv[0])
+ def _list_files(level, root):
+     ''' Make a list of files at a given level of directory nesting, starting
+     from root.
+-    
++
+     @ param level: the nesting level to search as an integer
+     @ param root: the directories tree root
+ 
+@@ -99,7 +99,7 @@ def _by_country(root, mapping, country,
+     @ country: ISO3 code on which we are aggregating
+     @ group: DataFrame containing records to be added
+ 
+-    ''' 
++    '''
+     stark_group = Stark(group, META)
+     try:
+         area = mapping.ix[country].replace(' ', '_')
+@@ -110,7 +110,7 @@ def _by_country(root, mapping, country,
+         # create dir if it does not exists
+         if not os.path.isdir(os.path.dirname(out_file)):
+             os.makedirs(os.path.dirname(out_file))
+-        # Create a brand new Stark        
++        # Create a brand new Stark
+         stark_group.save(out_file)
+     else:
+         fd = open(out_file, 'ab')
+@@ -122,7 +122,7 @@ def _by_country(root, mapping, country,
+ def _consolidate(file_):
+     ''' Read Starks from a pickle and add them together, finally it saves back
+     the result in the original file.
+-    
++
+     @ param file_: path to the file to consolidate.
+     '''
+     _logger.info('Consolidating %s', file_)
+@@ -141,7 +141,7 @@ def _consolidate(file_):
+ def _test_by_country(file_, root, mapping):
+     ''' Utility function to debug _by_country() procedure.
+     '''
+-    stark_curr = Stark.load(file_)    
++    stark_curr = Stark.load(file_)
+     groups = stark_curr.DF.groupby('XER')
+     # Single process
+     for country, group in groups:
+@@ -150,7 +150,7 @@ def _test_by_country(file_, root, mappin
+ def by_country(level, in_path, root, mapping, key):
+     ''' Reshape DataFrames classified by product code into DataFrame organized
+     by country (ISO3 code). A product aggregation level can be specified.
+-    
++
+     @ param level: product code aggregation level
+     @ param in_path: input files root path
+     @ param root: output root path
+@@ -240,7 +240,7 @@ def from_hs(level, in_path, root, prod_m
+     @ param prod_map: product codes mapping DataFrame
+     @ param start_year: record must have YEAR >= start_year
+ 
+-    ''' 
++    '''
+     prod_groups = prod_map.groupby(level)
+     if _logger.getEffectiveLevel() <= logging.DEBUG:
+         for code, group in prod_groups:
+@@ -248,7 +248,7 @@ def from_hs(level, in_path, root, prod_m
+     else:
+         args = [(_from_hs, [level, in_path, root, code, group, start_year]) for code, group in prod_groups]
+         parallel_jobs.do_jobs_efficiently(args)
+-        
++
+ def aggregate(root, mapping, pkey=None):
+     ''' Aggregates DataFrames stored in Python pickle files. This function
+     performs a bottom-up walk of a directory subtree, aggregating DataFrames in
+@@ -312,7 +312,7 @@ def init(input_dir, ulisse_codes, countr
+     return (country_map, ul3000, uom_df)
+ 
+ def main(input_dir=None, root=None, start_year=None,
+-         countries=None, ulisse_codes=None, uom=None, 
++         countries=None, ulisse_codes=None, uom=None,
+          country_aggr_level='UL20', prod_aggr_level='UL3000',
+          **kwargs):
+     """
+@@ -326,7 +326,7 @@ def main(input_dir=None, root=None, star
+     ul_root = os.path.join(root, 'prod')
+     from_hs(prod_aggr_level, input_dir, ul_root, ul3000, start_year)
+     aggregate(ul_root, ul3000)
+- 
++
+     # # Transform by ISO3 code and aggregate
+     iso3_root = os.path.join(root, 'country_MER')
+     by_country(country_aggr_level, ul_root, iso3_root, country_map, 'MER')
+--- a/star/sda/ReportIva.py
++++ b/star/sda/ReportIva.py
+@@ -1,7 +1,7 @@
+ #!/usr/bin/python
+ # -*- coding: utf-8 -*-
+ ##############################################################################
+-#    
++#
+ #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
+ #
+ #    This program is free software: you can redistribute it and/or modify
+@@ -15,7 +15,7 @@
+ #    GNU Affero General Public License for more details.
+ #
+ #    You should have received a copy of the GNU Affero General Public License
+-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
++#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ #
+ ##############################################################################
+ 
+@@ -33,7 +33,7 @@ lm_registri_iva = {
+         'BASE': [6, '0.5r', 'Imponibile',"@v1"],
+         'TAX': [7, '0.5r', 'Imposta',"@v2"],
+         }
+-        
++
+ lm_riepiloghi_iva = {
+         'TEXT': [0, '2c', "@v1","@v2",],
+         'T_NAME': [1, '2c', "@v1","Tipo imposta"],
+@@ -42,7 +42,7 @@ lm_riepiloghi_iva = {
+         'BASE_CRED': [4, '0.5r', 'Iva a credito',"Imponibile "],
+         'TAX_CRED': [5, '0.5r', 'Iva a credito',"Imposta "],
+         }
+-        
++
+ lm_pagamenti_iva_differita = {
+         'DAT_PAY': [0, 'c', 'Data incasso',"o pagamento"],
+         'SEQUENCE': [1, '1.5c', 'Registro IVA',"@v1"],
+@@ -52,7 +52,7 @@ lm_pagamenti_iva_differita = {
+         'T_NAME': [5, '2c', 'Tipo',"imposta"],
+         'AMOUNT': [6, '0.5r', 'Imposta',"@v3"],
+         }
+-        
++
+ lm_da_pagare_iva_differita = {
+         'SEQUENCE': [0, '1.5c', 'Registro IVA',"@v1"],
+         'M_NUM': [1, 'c', 'Numero', 'protocollo'],
+@@ -61,20 +61,20 @@ lm_da_pagare_iva_differita = {
+         'T_NAME': [4, '2c', 'Tipo', 'imposta'],
+         'AMOUNT': [5, '0.5r', 'Imposta',"@v3"],
+         }
+-        
++
+ lm_riepilogo_differita = {
+         'T_NAME': [0, '2.5l', "@v1"],
+         'TEXT': [1, 'l', "@v2"],
+         'AMOUNT': [2, '0.5r', 'Imposta'],
+         }
+-        
++
+ lm_liquidazione_iva = {
+         'TEXT': [0, '2l', "@v1"],
+         'SEQUENCE': [1, 'l', "@v2"],
+         'DBT': [2, '0.5r', 'Iva a debito'],
+         'CRT': [3, '0.5r', 'Iva a credito'],
+         }
+-        
++
+ lm_controllo_esercizio = {
+         'TEXT': [0, '4l', "@v1"],
+         'DBT': [1, '0.5r', 'Iva a debito'],
+@@ -90,9 +90,9 @@ import numpy
+ from datetime import date
+ 
+ import sda
+-from share import Config
+-from share import Stark
+-from share import Bag
++from star.share import Config
++from star.share import Stark
++from star.share import Bag
+ 
+ # Servabit libraries
+ # BASEPATH = os.path.abspath(os.path.join(
+@@ -105,7 +105,7 @@ SRE_PATH = os.path.join(BASEPATH,"sre")
+ 
+ 
+ def main(dirname):
+-    #legge il file config    
++    #legge il file config
+     configFilePath = os.path.join(BASEPATH,"config","report_iva.cfg")
+     config = Config(configFilePath)
+     config.parse()
+@@ -118,7 +118,7 @@ def main(dirname):
+     sequenceName=config.options.get('sequence',False)
+     treasuryVatAccountCode=config.options.get('treasury_vat_account_code',False)
+     #verifica che la stringa associata al parametro only_validated_moves inserita in config
+-    #sia effettivamente un valore boleano 
++    #sia effettivamente un valore boleano
+     onlyValML=True
+     if str(config.options.get('only_validated_moves',True))=='False':
+         onlyValML=False
+@@ -137,7 +137,7 @@ def main(dirname):
+         if reportType==1:
+             vatRegister = getVatRegister(vatDf, comNam, onlyValML, fiscalyearName=fiscalyearName, sequenceName=sequenceName)
+             OUT_PATH = os.path.join(SRE_PATH, 'registro_iva')
+-            bagVatRegister = Bag(vatRegister, os.path.join(OUT_PATH, 'vat_register.pickle'), 
++            bagVatRegister = Bag(vatRegister, os.path.join(OUT_PATH, 'vat_register.pickle'),
+                                  bag_type='tab',meta=lm_registri_iva)
+             setattr(bagVatRegister,"SEQUENCE",sequenceName)
+             setattr(bagVatRegister,"YEAR",fiscalyearName)
+@@ -148,7 +148,7 @@ def main(dirname):
+             vatSummary = getVatSummary(vatDf, comNam, onlyValML,
+                                        periodName=periodName, sequenceName=sequenceName)
+             OUT_PATH = os.path.join(SRE_PATH, 'riepilogo_iva')
+-            bagVatSummary = Bag(vatSummary,os.path.join(OUT_PATH, 'vat_summary.pickle'), 
++            bagVatSummary = Bag(vatSummary,os.path.join(OUT_PATH, 'vat_summary.pickle'),
+                                 bag_type='tab',meta=lm_riepiloghi_iva)
+             setattr(bagVatSummary,"SEQUENCE",sequenceName)
+             setattr(bagVatSummary,"PERIOD",periodName)
+@@ -169,7 +169,7 @@ def main(dirname):
+             bagVatRegister.save()
+             bagVatSummary.save()
+         #deferred vat detail
+-        elif reportType==4:            
++        elif reportType==4:
+             payments = getDeferredVatDetailPayments(vatDf, comNam, onlyValML, paymentsPeriodName=periodName)
+             notPayed = getDeferredVatDetailNotPayed(vatDf, comNam, onlyValML, periodDf, paymentsPeriodName=periodName)
+             OUT_PATH = os.path.join(SRE_PATH, 'dettaglio_iva_differita')
+@@ -184,9 +184,9 @@ def main(dirname):
+         #deferred vat summary
+         elif reportType==5:
+             OUT_PATH = os.path.join(SRE_PATH, 'riepilogo_iva_differita')
+-            deferredVatSummaryDf = getDeferredVatSummary(vatDf, comNam, onlyValML, 
++            deferredVatSummaryDf = getDeferredVatSummary(vatDf, comNam, onlyValML,
+                                                             periodDf, paymentsPeriodName=periodName)
+-            bagSummary= Bag(deferredVatSummaryDf['dfSummary'], 
++            bagSummary= Bag(deferredVatSummaryDf['dfSummary'],
+                             os.path.join(OUT_PATH, 'deferred_vat_summary.pickle'),
+                             bag_type='tab',meta=lm_riepilogo_differita,title="Riepilogo")
+             setattr(bagSummary,"PERIOD",periodName)
+@@ -201,7 +201,7 @@ def main(dirname):
+             OUT_PATH = os.path.join(SRE_PATH, 'liquidazione_iva')
+             liquidationSummary = getVatLiquidationSummary(vatDf, periodDf,
+                                                                 comNam, onlyValML, treasuryVatAccountCode, periodName=periodName)
+-            bagLiquidationSummary = Bag(liquidationSummary, 
++            bagLiquidationSummary = Bag(liquidationSummary,
+                                         os.path.join(OUT_PATH, 'liquidation_summary.pickle'),
+                                         bag_type='tab',meta=lm_liquidazione_iva,title='Prospetto liquidazione Iva')
+             setattr(bagLiquidationSummary,"PERIOD",periodName)
+@@ -210,7 +210,7 @@ def main(dirname):
+         #exercise control summary
+         elif reportType==7:
+             vatSummary = getVatSummary(vatDf, comNam, onlyValML, fiscalyearName=fiscalyearName)
+-            vatControlSummaryDf = getVatControlSummary(fiscalyearName, vatSummary, vatDf, 
++            vatControlSummaryDf = getVatControlSummary(fiscalyearName, vatSummary, vatDf,
+                                                             periodDf, comNam, onlyValML, treasuryVatAccountCode)
+             OUT_PATH = os.path.join(SRE_PATH, 'controllo_esercizio')
+             bagVatSummary = Bag(vatSummary,
+@@ -240,14 +240,14 @@ def main(dirname):
+ def GroupInterOrd(group):
+     group['ORD']=range(len(group))
+     S=group
+-    return S    
++    return S
+ 
+ def getVatRegister(vatDf, companyName, onlyValidatedMoves, sequenceName=None, periodName=None, fiscalyearName=None):
+     '''
+     funzione per il calcolo dei registri iva
+     @param vatDf: è il dataframe contenente le informazioni specifiche per i report iva
+     @param onlyValidatedMoves: booleano che indica se filtrare solo le scritture validate oppure no
+-    
++
+     Nel porgramma vengono usate le seguenti variabili
+     ESER        anno fiscale
+     M_NUM       numero di protocollo
+@@ -304,11 +304,11 @@ def getVatRegister(vatDf, companyName, o
+         df7['ST_TAX'] = 'TAX'
+         df7['ST_TAX'].ix[df7['T_TAX']==False] = 'BASE'
+         #aggiunta colonne BASE e TAX con importi di imponibile e imposta a seconda delle righe
+-        df8 = pandas.pivot_table(df7,values='AMOUNT', cols=['ST_TAX'], 
++        df8 = pandas.pivot_table(df7,values='AMOUNT', cols=['ST_TAX'],
+                         rows=['M_NAME','T_NAME'])
+         df8 = df8.reset_index()
+-        #in df8 ci sono le imposte e la base imponibile in colonna. 
+-        #la chiave univoca che identifica ciascuna riga è composta 
++        #in df8 ci sono le imposte e la base imponibile in colonna.
++        #la chiave univoca che identifica ciascuna riga è composta
+         #dal nome della move (M_NUM) e dal nome della tassa (T_NAME)
+         # aggiungo al df8 le altre variabili di interesse
+         #vatDf = vatDf.ix[vatDf['T_TAX']==True]
+@@ -317,11 +317,11 @@ def getVatRegister(vatDf, companyName, o
+         #df10 = pandas.merge(vatDf,df8,on=["M_NUM","T_NAME"])
+         #recupero le variabili che servono e che sono associate alla move
+         df9 = df1[['M_NUM','DATE','DATE_DOC','M_REF','PARTNER','M_NAME']]
+-        df9 = df9.drop_duplicates() 
++        df9 = df9.drop_duplicates()
+         #recupero le variabili che servono e che sono associate al nome dell'imposte
+         df10 = df1[['T_NAME','T_DET','T_CRED','T_IMM', 'T_EXI']]
+         df10 = df10[df10['T_DET'].notnull()]
+-        df10 = df10.drop_duplicates() 
++        df10 = df10.drop_duplicates()
+         #combino il df8 prima con i dati associati alla move e
+         # quindi con i dati associati alla tassa
+         df11 = pandas.merge(df8 , df9,on=["M_NAME"], how='left')
+@@ -358,13 +358,13 @@ def getVatRegister(vatDf, companyName, o
+         return pandas.DataFrame(columns=LVAR)
+ 
+ 
+-def getVatSummary(vatDf, companyName, onlyValidatedMoves, 
++def getVatSummary(vatDf, companyName, onlyValidatedMoves,
+                     sequenceName=None, periodName=None, fiscalyearName=None):
+     '''
+     funzione per il calcolo dei riepiloghi iva
+     @param vatDf: è il dataframe contenente le informazioni specifiche per i report iva
+     @param onlyValidatedMoves: booleano che indica se filtrare solo le scritture validate oppure no
+-    
++
+     ESER        anno fiscale
+     M_NUM       numero di protocollo
+     M_NAME      name della move
+@@ -389,7 +389,7 @@ def getVatSummary(vatDf, companyName, on
+     AMOUNT      importo (di imponibile o imposta o pagamento)
+     '''
+     LVAR=['TEXT','T_NAME','BASE_DEB','TAX_DEB','BASE_CRED','TAX_CRED','T_DET','T_IMM','TOTAL']
+-    
++
+     df1 = getVatRegister(vatDf, companyName, onlyValidatedMoves, periodName=periodName, fiscalyearName=fiscalyearName, sequenceName=sequenceName)
+     del df1['DATE']
+     del df1['M_NUM']
+@@ -469,14 +469,14 @@ def getVatSummary(vatDf, companyName, on
+     dfResult = pandas.concat([dfResult,dfR1]).reset_index(drop=True)
+     #aggiunta totale detr + indetr
+     dfResult = pandas.concat([dfResult,dfDetPlusIndetTotal]).reset_index(drop=True)
+-    
++
+     dfResult['TEXT'].ix[dfResult['TEXT'].isnull()] = ""
+     dfResult['T_NAME'].ix[dfResult['T_NAME'].isnull()] = ""
+     dfResult = dfResult[LVAR]
+     return dfResult
+ 
+-def getDeferredVatDetailPayments(vatDf, companyName, onlyValidatedMoves, 
+-                        billsPeriodName=None, billsFiscalyearName=None, 
++def getDeferredVatDetailPayments(vatDf, companyName, onlyValidatedMoves,
++                        billsPeriodName=None, billsFiscalyearName=None,
+                         paymentsPeriodName=None, paymentsFiscalyearName=None):
+     '''
+     funzione che restituisce l'iva differita pagata nel il periodo (o l'anno fiscale) passati come parametro
+@@ -631,7 +631,7 @@ def getDeferredVatDetailNotPayed(vatDf,
+     return df2
+ 
+ def getDeferredVatSummary(vatDf, companyName, onlyValidatedMoves, periodDf,
+-                        billsPeriodName=None, billsFiscalyearName=None, 
++                        billsPeriodName=None, billsFiscalyearName=None,
+                         paymentsPeriodName=None, paymentsFiscalyearName=None):
+     '''
+     funzione che restituisce il riepilogo dell'iva differita.
+@@ -665,8 +665,8 @@ def getDeferredVatSummary(vatDf, company
+     '''
+     if not paymentsPeriodName and not paymentsFiscalyearName:
+         raise RuntimeError("Errore: i parametri paymentsPeriodName e paymentsFiscalyearName non devono essere entrambi nulli")
+-    payments = getDeferredVatDetailPayments(vatDf, companyName, onlyValidatedMoves, 
+-                                paymentsPeriodName=paymentsPeriodName, paymentsFiscalyearName=paymentsFiscalyearName, 
++    payments = getDeferredVatDetailPayments(vatDf, companyName, onlyValidatedMoves,
++                                paymentsPeriodName=paymentsPeriodName, paymentsFiscalyearName=paymentsFiscalyearName,
+                                 billsPeriodName=billsPeriodName, billsFiscalyearName=billsFiscalyearName)
+     notPayed = getDeferredVatDetailNotPayed(vatDf, companyName, onlyValidatedMoves, periodDf,
+                                 paymentsPeriodName=paymentsPeriodName, paymentsFiscalyearName=paymentsFiscalyearName)
+@@ -674,10 +674,10 @@ def getDeferredVatSummary(vatDf, company
+     notPayed = notPayed[['AMOUNT','T_NAME','SEQUENCE','T_CRED']]
+     payments['PAYM'] = True
+     notPayed['PAYM'] = False
+-    
++
+     dfToPrint1 = pandas.DataFrame(columns=['T_NAME','TEXT','AMOUNT','T_CRED','PAYM'])
+     dfToPrint2 = pandas.DataFrame()
+-    
++
+     def getTotalRow(dataDf,payments,credit,tName=False):
+         '''
+         funzione che restituisce un dataframe con una riga di totale dei dataframe di stampa
+@@ -699,7 +699,7 @@ def getDeferredVatSummary(vatDf, company
+                             'PAYM': [payments,],
+                             })
+         return df2
+-    
++
+     ###
+     #costruzione dataframe di riepilogo
+     ###
+@@ -712,7 +712,7 @@ def getDeferredVatSummary(vatDf, company
+         df3 = df2[['SEQUENCE']]
+         df3 = df3.drop_duplicates()
+         sequences = list(df3['SEQUENCE'])
+-        
++
+         def computeTotalRow(df,searchPayments,credit,sequenceName=None):
+             '''
+             funzione per il calcolo dei totali del dataframe con i dati di riepilogo
+@@ -730,7 +730,7 @@ def getDeferredVatSummary(vatDf, company
+                 return tempDf.reset_index(drop=True)
+             else:
+                 return pandas.DataFrame()
+-        #aggiunta totali per ogni sequenza    
++        #aggiunta totali per ogni sequenza
+         for sequence in sequences:
+             df3 = computeTotalRow(df2,True,True,sequence)
+             df4 = computeTotalRow(df2,True,False,sequence)
+@@ -775,7 +775,7 @@ def getDeferredVatSummary(vatDf, company
+                                     'AMOUNT':[amount,],
+                                     })
+                 dfToPrint1 = pandas.concat([dfToPrint1,df9]).reset_index(drop=True)
+-            
++
+             ###
+             #aggiunta righe 'totale incassata o pagata'
+             ###
+@@ -787,7 +787,7 @@ def getDeferredVatSummary(vatDf, company
+             #aggiungo riga totale a credito
+             df10 = getTotalRow(df2,True,True,True)
+             dfToPrint1 = pandas.concat([dfToPrint1,df10]).reset_index(drop=True)
+-            
++
+             ###
+             #aggiunta righe 'totale da incassare o pagare'
+             ###
+@@ -799,11 +799,11 @@ def getDeferredVatSummary(vatDf, company
+             #aggiungo riga totale a credito
+             df10 = getTotalRow(df2,False,True,True)
+             dfToPrint1 = pandas.concat([dfToPrint1,df10]).reset_index(drop=True)
+-            
++
+             ###aggiunta riga vuota
+             df11 = pandas.DataFrame({'T_NAME':['',]})
+             dfToPrint1 = pandas.concat([dfToPrint1,df11]).reset_index(drop=True)
+-    
++
+     ###
+     #costruzione dataframe di sintesi
+     ###
+@@ -828,7 +828,7 @@ def getDeferredVatSummary(vatDf, company
+     #aggiungo riga totale a credito
+     df10 = getTotalRow(df4,False,True)
+     dfToPrint2 = pandas.concat([dfToPrint2,df10]).reset_index(drop=True)
+-    
++
+     ###
+     #ultime formattazioni
+     ###
+@@ -843,7 +843,7 @@ def getDeferredVatSummary(vatDf, company
+         dfToPrint1['AMOUNT']=dfToPrint1['AMOUNT'].map(str)
+         dfToPrint1['AMOUNT'].ix[dfToPrint1['AMOUNT']=='-1.0'] = ''
+     dfToPrint1 = dfToPrint1[['T_NAME','TEXT','AMOUNT','T_CRED','PAYM']]
+-    
++
+     dfToPrint2['T_NAME'].ix[dfToPrint2['T_NAME'].isnull()] = ''
+     dfToPrint2['TEXT'].ix[dfToPrint2['TEXT'].isnull()] = ''
+     dfToPrint2['PAYM'].ix[dfToPrint2['PAYM'].isnull()] = ''
+@@ -852,7 +852,7 @@ def getDeferredVatSummary(vatDf, company
+     dfToPrint2['AMOUNT']=dfToPrint2['AMOUNT'].map(str)
+     dfToPrint2['AMOUNT'].ix[dfToPrint2['AMOUNT']=='-1.0'] = ''
+     dfToPrint2 = dfToPrint2[['T_NAME','TEXT','AMOUNT','T_CRED','PAYM']]
+-    
++
+     return {
+         'dfSummary': dfToPrint1,
+         'dfSynthesis': dfToPrint2,
+@@ -865,7 +865,7 @@ def _appendLineToVatLiquidationDict(liqD
+     liqDict['CRT'].append(crt)
+ 
+ def addLiquidationSummaryFinalResults(vatDf, periodDf, debitVat, creditVat,
+-                                    companyName, onlyValidatedMoves, treasuryVatAccountCode, 
++                                    companyName, onlyValidatedMoves, treasuryVatAccountCode,
+                                     periodName=None, fiscalyearName=None, liquidationDict=None):
+     '''
+     ESER        anno fiscale
+@@ -972,14 +972,14 @@ def getVatLiquidationSummary(vatDf, peri
+     '''
+     if not periodName and not fiscalyearName:
+         raise RuntimeError("Errore: i parametri periodName e fiscalyearName non devono essere entrambi nulli")
+-    
++
+     vatLiquidationDict = {
+          'TEXT': [],
+          'SEQUENCE': [],
+          'DBT': [],
+          'CRT': [],
+          }
+-    
++
+     #recupero il nome delle sequenze iva per cui ci sono dei movimenti nel periodo d'interesse
+     df1 = vatDf[['SEQUENCE']]
+     df1 = df1.drop_duplicates()
+@@ -1016,14 +1016,14 @@ def getVatLiquidationSummary(vatDf, peri
+     _appendLineToVatLiquidationDict(vatLiquidationDict,"Totale","",debitVatTotal,creditVatTotal)
+     #aggiunta righe finali
+     vatLiquidationDict = addLiquidationSummaryFinalResults(
+-                                        vatDf, periodDf, debitVatTotal, creditVatTotal, 
+-                                        companyName, onlyValidatedMoves, treasuryVatAccountCode, periodName=periodName, 
++                                        vatDf, periodDf, debitVatTotal, creditVatTotal,
++                                        companyName, onlyValidatedMoves, treasuryVatAccountCode, periodName=periodName,
+                                         fiscalyearName=fiscalyearName, liquidationDict=vatLiquidationDict)
+     vatLiquidationDf = pandas.DataFrame(vatLiquidationDict)
+     vatLiquidationDf = vatLiquidationDf[['TEXT','SEQUENCE','DBT','CRT']]
+     return vatLiquidationDf
+-    
+-def getVatControlSummary(fiscalyearName, vatSummary, vatDf, periodDf, companyName, 
++
++def getVatControlSummary(fiscalyearName, vatSummary, vatDf, periodDf, companyName,
+                         onlyValidatedMoves, treasuryVatAccountCode):
+     '''
+     funzione che restituisce il df con il prospetto di controllo d'esercizio
+@@ -1078,11 +1078,11 @@ def getVatControlSummary(fiscalyearName,
+         deferredSummary = getDeferredVatSummary(vatDf, companyName, onlyValidatedMoves, periodDf,
+                         billsFiscalyearName=previousFiscalyearName, paymentsFiscalyearName=fiscalyearName)
+         deferredSummarySynthesis = deferredSummary['dfSynthesis']
+-        df0 = deferredSummarySynthesis.ix[(deferredSummarySynthesis['PAYM']==True) & 
++        df0 = deferredSummarySynthesis.ix[(deferredSummarySynthesis['PAYM']==True) &
+                                             (deferredSummarySynthesis['T_CRED']==True)].reset_index()
+         if len(df0) > 0:
+             previousDeferredVatCredit = df0['AMOUNT'][0]
+-        df0 = deferredSummarySynthesis.ix[(deferredSummarySynthesis['PAYM']==True) & 
++        df0 = deferredSummarySynthesis.ix[(deferredSummarySynthesis['PAYM']==True) &
+                                             (deferredSummarySynthesis['T_CRED']==False)].reset_index()
+         if len(df0) > 0:
+             previousDeferredVatDebit = df0['AMOUNT'][0]
+@@ -1092,11 +1092,11 @@ def getVatControlSummary(fiscalyearName,
+     deferredSummary = getDeferredVatSummary(vatDf, companyName, onlyValidatedMoves, periodDf,
+                         billsFiscalyearName=fiscalyearName, paymentsFiscalyearName=fiscalyearName)
+     deferredSummarySynthesis = deferredSummary['dfSynthesis']
+-    df0 = deferredSummarySynthesis.ix[(deferredSummarySynthesis['PAYM']==True) & 
++    df0 = deferredSummarySynthesis.ix[(deferredSummarySynthesis['PAYM']==True) &
+                                         (deferredSummarySynthesis['T_CRED']==True)].reset_index()
+     if len(df0) > 0:
+         currentDeferredVatCredit = df0['AMOUNT'][0]
+-    df0 = deferredSummarySynthesis.ix[(deferredSummarySynthesis['PAYM']==True) & 
++    df0 = deferredSummarySynthesis.ix[(deferredSummarySynthesis['PAYM']==True) &
+                                         (deferredSummarySynthesis['T_CRED']==False)].reset_index()
+     if len(df0) > 0:
+         currentDeferredVatDebit = df0['AMOUNT'][0]
+@@ -1158,7 +1158,7 @@ def getVatControlSummary(fiscalyearName,
+     #aggiunta righe finali liquidazione iva
+     vatLiquidationDict = addLiquidationSummaryFinalResults(
+                                         vatDf, periodDf, immediateDebitVat + debitDeferredVatNowExigible,
+-                                        immediateCreditVat + creditDeferredVatNowExigible, companyName, 
++                                        immediateCreditVat + creditDeferredVatNowExigible, companyName,
+                                         onlyValidatedMoves, treasuryVatAccountCode, fiscalyearName=fiscalyearName)
+     vatLiquidationDf = pandas.DataFrame(vatLiquidationDict)
+     vatLiquidationDf = vatLiquidationDf[['TEXT','DBT','CRT']]
+--- a/star/sda/SDABalance.py
++++ b/star/sda/SDABalance.py
+@@ -11,9 +11,9 @@ from datetime import date
+ 
+ import sda
+ import SDABalanceLib
+-from share import Config
+-from share import Stark
+-from share import Bag
++from star.share import Config
++from star.share import Stark
++from star.share import Bag
+ 
+ OUT_PATH = '/home/contabilita/star_branch/sre/bilancio/'
+ #-----------------------------------------------------------------------------------------------------------
+@@ -23,8 +23,8 @@ OUT_PATH = '/home/contabilita/star_branc
+ #----------------------------------------------------------------------------------------------------------
+ 
+ # local libs (librerie locali)
+-PathCsv="/home/contabilita/star_branch/config/SDABalance/" 
+-#legge il file config    
++PathCsv="/home/contabilita/star_branch/config/SDABalance/"
++#legge il file config
+ configFilePath = os.path.join(BASEPATH,"config","balance.cfg")
+ config = Config(configFilePath)
+ config.parse()
+@@ -33,7 +33,7 @@ comNam=config.options.get('company',Fals
+ picklesPath = config.options.get('pickles_path',False)
+ fiscalyearName=config.options.get('fiscalyear',False)
+ #verifica che la stringa associata al parametro only_validated_moves inserita in config
+-#sia effettivamente un valore boleano 
++#sia effettivamente un valore boleano
+ onlyValML=True
+ if str(config.options.get('only_validated_moves',True))=='False':
+     onlyValML=False
+@@ -73,7 +73,7 @@ DIZP1M1={
+     'Costi'                                     : +1,
+     'Ricavi'                                    : -1   }
+ 
+-#lettura dei csv della tassonomia e calcolo livello massimo della gerarchia dei conti cee 
++#lettura dei csv della tassonomia e calcolo livello massimo della gerarchia dei conti cee
+ taxonomyDf = pandas.read_csv(PathCsv+"chart_ese.csv", sep=",", header=0)
+ # teniamo le variabili che ci servono
+ # abstract          identifica i conti Etichetta
+@@ -84,7 +84,7 @@ taxonomyDf = pandas.read_csv(PathCsv+"ch
+ # cal_parent        conto padre utilzzato per le somme
+ # level             livello di profondità delle gerarchia, utilizzato perle somme
+ #_OR_               l'ordine dei conti nella stampa del bilancio
+-taxonomyDf=taxonomyDf[['abstract','children','name','label','parent','cal_parent','level','_OR_']]    
++taxonomyDf=taxonomyDf[['abstract','children','name','label','parent','cal_parent','level','_OR_']]
+ #individuo il grado più profondo del livello della tassonomia
+ DF1 = taxonomyDf[["level"]]
+ DF1 = DF1[DF1["level"].notnull()].drop_duplicates()
+@@ -112,16 +112,16 @@ FINDF['2010'] = numpy.where(FINDF['2010'
+ #sostituiamo le Z nelle colonne dei nomi dei conti con degli spazi vuoti
+ FINDF['NewLab']=FINDF['NewLab'].map(lambda s: s.replace('Z', '\hspace*{2pt}'))
+ FINDF = FINDF.reset_index(drop=True)
+-#cerchiamo l'indice che corrisponde alla riga 'Conto economico' 
++#cerchiamo l'indice che corrisponde alla riga 'Conto economico'
+ indexCE = int(FINDF.ix[FINDF['NewLab'] == 'Conto economico'].index)
+ #dividiamo il dataframe in due: uno che comprende lo stato patrimoniale, uno per il conto economico
+ dfSP = FINDF[:indexCE]
+ dfCE = FINDF[indexCE:]
+ 
+-# Creo un dizionario LM (descrive il layout della tabella).                     
+-# Le barre verticali "|" indicano quali separatori disegnare; i numeri a fianco 
+-# dell'indicazione dell'allineamento sono le dimensioni relativi delle colonne  
+-# (0.5 metà delle altre colonne; 2 doppio delle altre colonne, etc.) 
++# Creo un dizionario LM (descrive il layout della tabella).
++# Le barre verticali "|" indicano quali separatori disegnare; i numeri a fianco
++# dell'indicazione dell'allineamento sono le dimensioni relativi delle colonne
++# (0.5 metà delle altre colonne; 2 doppio delle altre colonne, etc.)
+ lm = {
+     'NewLab': [0,'4l','@v0',],
+     '2011': [1,'r','2011',],
+@@ -132,13 +132,13 @@ lm = {
+ # Giornale'. Il parametro TIP='tab' indica al sistama che si intende generare
+ # una tabella da questi dati, presto sarà supportato anche TIP='graph' per
+ # generare un grafico.
+-BG01 = Bag(dfSP, os.path.join(OUT_PATH, 'StaPatr.pickle'), 
++BG01 = Bag(dfSP, os.path.join(OUT_PATH, 'StaPatr.pickle'),
+            meta=lm, title="Stato Patrimoniale", bag_type='tab')
+-BG02 = Bag(dfCE, os.path.join(OUT_PATH, 'ConEco.pickle'), 
++BG02 = Bag(dfCE, os.path.join(OUT_PATH, 'ConEco.pickle'),
+            meta=lm, title="Conto Economico", bag_type='tab')
+ 
+-anag = Bag(pandas.DataFrame(), 
+-           os.path.join(OUT_PATH, 'anag.pickle'), 
++anag = Bag(pandas.DataFrame(),
++           os.path.join(OUT_PATH, 'anag.pickle'),
+            title='Dati anagrafici',
+            ragsoc='Studiabo Srl')
+ # Infine salvo l'oggetto bag in un file pickle
+--- a/star/sda/Scadenziario.py
++++ b/star/sda/Scadenziario.py
+@@ -1,7 +1,7 @@
+ #!/usr/bin/python
+ # -*- coding: utf-8 -*-
+ ##############################################################################
+-#    
++#
+ #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
+ #
+ #    This program is free software: you can redistribute it and/or modify
+@@ -15,7 +15,7 @@
+ #    GNU Affero General Public License for more details.
+ #
+ #    You should have received a copy of the GNU Affero General Public License
+-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
++#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ #
+ ##############################################################################
+ 
+@@ -31,7 +31,7 @@ lm_fatture = {
+         'PARTNER': [3, '2l', 'Controparte',"@v3"],
+         'TOTAL': [4, '0.5r', 'Importo',"@v4"],
+         }
+-        
++
+ lm_liquidazioni = {
+         'DATE_DUE': [0, 'c', 'Data','scadenza'],
+         'NUM': [1, 'c', 'Numero','@v1'],
+@@ -47,15 +47,15 @@ import getopt
+ import ScadenziarioLib
+ 
+ import sda
+-from share import Config
+-from share import Stark
+-from share import Bag
++from star.share import Config
++from star.share import Stark
++from star.share import Bag
+ 
+ SRE_PATH = os.path.join(BASEPATH,"sre")
+ 
+ 
+ def main(dirname):
+-    #legge il file config    
++    #legge il file config
+     configFilePath = os.path.join(BASEPATH,"config","scadenziario.cfg")
+     config = Config(configFilePath)
+     config.parse()
+@@ -92,8 +92,8 @@ def main(dirname):
+     outInvoicesBag.save()
+     purchaseVoucherBag.save()
+     return 0
+-    
+-    
++
++
+ if __name__ == "__main__":
+     abspath=os.path.abspath(sys.argv[0])
+     dirname=os.path.dirname(abspath)
+--- a/star/sda/esempio.py
++++ b/star/sda/esempio.py
+@@ -1,6 +1,6 @@
+ # -*- coding: utf-8 -*-
+ ##############################################################################
+-#    
++#
+ #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
+ #
+ #    This program is free software: you can redistribute it and/or modify
+@@ -14,7 +14,7 @@
+ #    GNU Affero General Public License for more details.
+ #
+ #    You should have received a copy of the GNU Affero General Public License
+-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
++#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ #
+ ##############################################################################
+ 
+@@ -34,35 +34,35 @@
+ import os
+ import sys
+ # pandas non è usato direttamente in questo esempio, ma in genere sarà utile
+-import pandas 
++import pandas
+ import sda
+ 
+-# Definizione di costanti:                                                        
+-# tutto ciò che non verrà modificato dall'esecuzione del codice, ma il cui        
+-# cambiamento potrebbe essere cruciale per determinarne il comportamento). E'     
+-# consuetudine distiguere queste vaiabili da quelle 'di elaborazione' scrivendole 
+-# tutte in maiuscolo.                                                             
++# Definizione di costanti:
++# tutto ciò che non verrà modificato dall'esecuzione del codice, ma il cui
++# cambiamento potrebbe essere cruciale per determinarne il comportamento). E'
++# consuetudine distiguere queste vaiabili da quelle 'di elaborazione' scrivendole
++# tutte in maiuscolo.
+ #LIB_PATH = '/tmp/star_branch/'
+ PKL_PATH = '/tmp/Goal-PKL/'
+ COMPANY = 'Vicem'
+ OUT_PATH = '/tmp/esempio/'
+ 
+-# Indico a python dove si trovano le librerie di star:                         
+-# sys.path è una comune lista di stringhe, ciascuna delle quali rappresenta un 
+-# path, un percorso all'interno del filesystem; quando si esegue l'istruzione  
+-# "import", Python cerca in tutti questi percorsi per trovare il file (modulo) 
+-# richiesto.                                                                   
++# Indico a python dove si trovano le librerie di star:
++# sys.path è una comune lista di stringhe, ciascuna delle quali rappresenta un
++# path, un percorso all'interno del filesystem; quando si esegue l'istruzione
++# "import", Python cerca in tutti questi percorsi per trovare il file (modulo)
++# richiesto.
+ #sys.path.append(LIB_PATH)
+ 
+ # librerie di star
+-from share import Bag
+-from share import Stark
++from star.share import Bag
++from star.share import Stark
+ 
+-# Carico un oggetto Stark da un file pickle.                                     
+-# L'istruzione os.path.join serve a concatenare più parti di un path             
+-# (/home/contabilita; star_branch/sre; esempio'); è facile cascare in     
+-# errori facendo una semplice concatenazione di stringhe, quindi si consiglia di 
+-# usare questo metodo per concatenare diverse parti di un path.                  
++# Carico un oggetto Stark da un file pickle.
++# L'istruzione os.path.join serve a concatenare più parti di un path
++# (/home/contabilita; star_branch/sre; esempio'); è facile cascare in
++# errori facendo una semplice concatenazione di stringhe, quindi si consiglia di
++# usare questo metodo per concatenare diverse parti di un path.
+ ST01 = Stark.load(os.path.join(PKL_PATH, COMPANY, 'MVL.pickle'))
+ 
+ # Estraggo il DataFrame dall'oggetto Stark e lo salvo in DF01
+@@ -71,10 +71,10 @@ DF01 = ST01.df
+ #considero un sottoinsieme di DF01, estaendo solo le variabili di interesse
+ DF01 = DF01[['DAT_MVL','COD_CON','NAM_CON','NAM_PAR','DBT_MVL','CRT_MVL',]]
+ 
+-# Creo un dizionario LM (descrive il layout della tabella).                     
+-# Le barre verticali "|" indicano quali separatori disegnare; i numeri a fianco 
+-# dell'indicazione dell'allineamento sono le dimensioni relativi delle colonne  
+-# (0.5 metà delle altre colonne; 2 doppio delle altre colonne, etc.)            
++# Creo un dizionario LM (descrive il layout della tabella).
++# Le barre verticali "|" indicano quali separatori disegnare; i numeri a fianco
++# dell'indicazione dell'allineamento sono le dimensioni relativi delle colonne
++# (0.5 metà delle altre colonne; 2 doppio delle altre colonne, etc.)
+ lm = {
+     'DAT_MVL': [0,   '|c|'  , '|@v0|', '|Data|'],
+     'COD_CON': [2,   ' l|'  , '|@v0|', 'Codice Conto|'],
+@@ -93,8 +93,8 @@ BG01 = Bag(df=DF01, meta=lm, title='Libr
+ # Infine salvo l'oggetto bag in un file pickle
+ BG01.save(os.path.join(OUT_PATH, 'table0.pickle'))
+ 
+-# Rimane solamente da generare il report con SRE :) 
+-# Per farlo, andate nella cartella sre ed eseguite  
+-# $ python sre.py esempio                    
++# Rimane solamente da generare il report con SRE :)
++# Per farlo, andate nella cartella sre ed eseguite
++# $ python sre.py esempio
+ 
+ # Happy coding!
+--- a/star/sda/libro_giornale.py
++++ b/star/sda/libro_giornale.py
+@@ -1,6 +1,6 @@
+ # -*- coding: utf-8 -*-
+ ##############################################################################
+-#    
++#
+ #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
+ #
+ #    This program is free software: you can redistribute it and/or modify
+@@ -14,7 +14,7 @@
+ #    GNU Affero General Public License for more details.
+ #
+ #    You should have received a copy of the GNU Affero General Public License
+-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
++#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ #
+ ##############################################################################
+ 
+@@ -38,11 +38,11 @@ import pandas
+ #La data è un oggetto, quindi importo dalla libreria datetime, la funzione data
+ from datetime import date
+ 
+-# Definizione di costanti:                                                        
+-# tutto ciò che non verrà modificato dall'esecuzione del codice, ma il cui        
+-# cambiamento potrebbe essere cruciale per determinarne il comportamento). E'     
+-# consuetudine distiguere queste vaiabili da quelle 'di elaborazione' scrivendole 
+-# tutte in maiuscolo.                                                             
++# Definizione di costanti:
++# tutto ciò che non verrà modificato dall'esecuzione del codice, ma il cui
++# cambiamento potrebbe essere cruciale per determinarne il comportamento). E'
++# consuetudine distiguere queste vaiabili da quelle 'di elaborazione' scrivendole
++# tutte in maiuscolo.
+ PKL_PATH = '/home/contabilita/Goal-PKL/'
+ COMPANY = 'Vicem'
+ OUT_PATH = '/home/contabilita/star_branch/sre/libro_giornale/'
+@@ -52,17 +52,17 @@ ADR= 'Via Santo Stefano 57'
+ CAP='40125 Bologna'
+ FY = 2011
+ 
+-# librerie di star 
++# librerie di star
+ import sda
+-from share import Bag
+-from share import Stark
++from star.share import Bag
++from star.share import Stark
++
++# Carico un oggetto Stark da un file pickle.
++# L'istruzione os.path.join serve a concatenare più parti di un path
++# (/home/contabilita; star_branch/sre; esempio'); è facile cascare in
++# errori facendo una semplice concatenazione di stringhe, quindi si consiglia di
++# usare questo metodo per concatenare diverse parti di un path.
+ 
+-# Carico un oggetto Stark da un file pickle.                                     
+-# L'istruzione os.path.join serve a concatenare più parti di un path             
+-# (/home/contabilita; star_branch/sre; esempio'); è facile cascare in     
+-# errori facendo una semplice concatenazione di stringhe, quindi si consiglia di 
+-# usare questo metodo per concatenare diverse parti di un path.  
+-                
+ ST01 = Stark.load(os.path.join(PKL_PATH, COMPANY, 'MVL.pickle'))
+ 
+ # Estraggo il DataFrame dall'oggetto Stark e lo salvo in DF01
+@@ -73,8 +73,8 @@ DF01 = DF01[['DAT_MVL','NAM_PAR', 'NAM_M
+ 
+ #Creo e definisco gli oggetti data inizio e data fine
+ #SD = start date
+-#ED = end date 
+-#FY = year 
++#ED = end date
++#FY = year
+ 
+ #Generalizzo la gestione delle date di estrazione
+ SD = date(FY,01,01)
+@@ -84,7 +84,7 @@ ED = date(FY,12,31)
+ 
+ DF02=DF01[(DF01['DAT_MVL'] >= SD) & (DF01['DAT_MVL'] <= ED)]
+ 
+-#Definisco il commando di ordinamento, ordinando prima per ordine cronologico, ed in seguito per nome di move, in modo da avere ordinate tutte le move che corrispondono ad una determinata data. 
++#Definisco il commando di ordinamento, ordinando prima per ordine cronologico, ed in seguito per nome di move, in modo da avere ordinate tutte le move che corrispondono ad una determinata data.
+ 
+ DF03=DF02.sort(columns=['DAT_MVL', 'NAM_MOV'])
+ 
+@@ -113,10 +113,10 @@ for I in range(len(PROG)):
+ 
+ MOV01['PROG'] = LPROG
+ MOV01=MOV01[['index','PROG']]
+-	
+ 
+ 
+-#La variabile 'NOM_MOV' è replicata più volte per la stessa moveline. Quindi, aggrego la stessa, eliminando tutte le righe con lo stesso numero di move, appartenenti alla stessa data. 
++
++#La variabile 'NOM_MOV' è replicata più volte per la stessa moveline. Quindi, aggrego la stessa, eliminando tutte le righe con lo stesso numero di move, appartenenti alla stessa data.
+ 
+ #MOV02 = MOV01.drop_duplicates(cols=['DAT_MVL','NAM_MOV'])
+ 
+@@ -129,7 +129,7 @@ MOV01=MOV01[['index','PROG']]
+ # Attribuisco al dataframe MOV02, la lista dei progressivi, appena creata
+ #MOV02['PROG'] = LISTPROG
+ 
+-#Faccio il merge tra il MOV02 e il DF03 che è già ordinato per ordine cronologico, con tutte le variabili di interesse. La chiave del merge sarà sempre, sia la data, che in nome del move. 
++#Faccio il merge tra il MOV02 e il DF03 che è già ordinato per ordine cronologico, con tutte le variabili di interesse. La chiave del merge sarà sempre, sia la data, che in nome del move.
+ 
+ DF04=pandas.merge(DF03,MOV01,on=['index'],how='left')
+ del DF04['index']
+@@ -139,10 +139,10 @@ del DF04['index']
+ 
+ DF04['DAT_MVL'] = DF04['DAT_MVL'].map(lambda x : x.strftime('%d-%m'))
+ 
+-# Creo un dizionario LM (descrive il layout della tabella).                     
+-# Le barre verticali "|" indicano quali separatori disegnare; i numeri a fianco 
+-# dell'indicazione dell'allineamento sono le dimensioni relativi delle colonne  
+-# (0.5 metà delle altre colonne; 2 doppio delle altre colonne, etc.)            
++# Creo un dizionario LM (descrive il layout della tabella).
++# Le barre verticali "|" indicano quali separatori disegnare; i numeri a fianco
++# dell'indicazione dell'allineamento sono le dimensioni relativi delle colonne
++# (0.5 metà delle altre colonne; 2 doppio delle altre colonne, etc.)
+ lm = {
+     'DAT_MVL': [0,   '|0.5c|'  , '|Data|'],
+     'PROG':    [1,   '0.1c|'  , 'Nr.|'],
+@@ -170,8 +170,8 @@ BG01.cap = CAP
+ BG01.save()
+ 
+ 
+-# Rimane solamente da generare il report con SRE :) 
+-# Per farlo, andate nella cartella sre ed eseguite  
+-# $ python sre.py esempio                    
++# Rimane solamente da generare il report con SRE :)
++# Per farlo, andate nella cartella sre ed eseguite
++# $ python sre.py esempio
+ 
+ # Happy coding!
+--- a/star/share/__init__.py
++++ b/star/share/__init__.py
+@@ -1,6 +1,6 @@
+ # -*- coding: utf-8 -*-
+ ##############################################################################
+-#    
++#
+ #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
+ #
+ #    This program is free software: you can redistribute it and/or modify
+@@ -14,15 +14,15 @@
+ #    GNU Affero General Public License for more details.
+ #
+ #    You should have received a copy of the GNU General Public License
+-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
++#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ #
+ ##############################################################################
+ 
+ 
+-from config import *
+-from generic_pickler import *
+-from stark import *
+-from bag import *
++from star.share.config import *
++from star.share.generic_pickler import *
++from star.share.stark import *
++from star.share.bag import *
+ 
+ # import config
+ # import generic_pickler
+--- a/star/sre/graph.py
++++ b/star/sre/graph.py
+@@ -46,8 +46,8 @@ FIGSIZE = { # (w, h) in inches
+ }
+ 
+ TEX_ESCAPE = {
+-    re.compile("€"): "\\officialeuro", 
+-    re.compile("%"): "\\%", 
++    re.compile("€"): "\\officialeuro",
++    re.compile("%"): "\\%",
+     re.compile("&"): "\\&",
+     re.compile("\$(?!\w+)"): "\\$",
+     re.compile(">(?!\{)"): "\\textgreater",
+@@ -56,7 +56,7 @@ TEX_ESCAPE = {
+     re.compile("_"): "\_",
+ #    re.compile("-"): "$-$",
+     # tell LaTeX that an hyphen can be inserted after a '/'
+-    re.compile("/"): "/\-", 
++    re.compile("/"): "/\-",
+     re.compile("\^"): "\textasciicircum",
+     re.compile("~"): "\normaltilde",
+     }
+@@ -91,7 +91,7 @@ def escape(string, patterns=None):
+ 
+ class Plotters(object):
+     ''' Plotter factory.
+-    
++
+     This class manage instanciation of concrete implementations of BasePlotter
+     by ensuring that there is at most one instance of each of them.
+ 
+@@ -130,9 +130,9 @@ class Graph(object):
+     def __init__(self, data, **kwargs):
+         self._logger = logging.getLogger(type(self).__name__)
+         rc('legend', **{
+-                'markerscale': 1, 
+-                'labelspacing': 0, 
+-                'columnspacing': 1, 
++                'markerscale': 1,
++                'labelspacing': 0,
++                'columnspacing': 1,
+                 'borderpad': 0,
+                 })
+         self._title = data.title
+@@ -157,7 +157,7 @@ class Graph(object):
+     def _make_legend(self, figure, handles, labels):
+         ''' Create legend for the graph, evaluate how the whole figure must be
+         scaled to make room for the legend.
+-        
++
+         @ param figure: Figure object that must contain the legend
+         @ param hadles: list of Line an Path objects used to populate the
+              graph.
+@@ -173,7 +173,7 @@ class Graph(object):
+             ncol = 2
+         # Estimate new hight needed for the legend
+         dheight = ((len(handles)/ncol) + 1) * self._fontsize * 0.01
+-        dheight_perc = dheight / figure.get_figheight() 
++        dheight_perc = dheight / figure.get_figheight()
+         # Scale figure and adjust subplot
+         figure.set_figheight(figure.get_figheight() + dheight)
+         figure.subplots_adjust(top=(0.9-dheight_perc))
+@@ -244,7 +244,7 @@ class Graph(object):
+         in Bag.lm.
+ 
+         @ return: the Figure instance created
+-        
++
+         '''
+         fig = plt.figure(figsize=self._size)
+         ax = fig.add_subplot(1, 1, 1, axisbg='w', autoscale_on=True,
+@@ -257,7 +257,7 @@ class Graph(object):
+                 line = self._plotters[col['type']].plot(ax, col)
+             except KeyError:
+                 self._logger.warning(
+-                    "Unhandled graph type '%s', I will ignore entry '%s'", 
++                    "Unhandled graph type '%s', I will ignore entry '%s'",
+                     col['type'], col['key'])
+                 continue
+             lines.append(line)
+@@ -284,15 +284,15 @@ class TexGraph(Graph):
+ 
+     def __init__(self, data, **kwargs):
+         ''' Just set some rc params
+-        ''' 
++        '''
+         super(TexGraph, self).__init__(data, **kwargs)
+         # Tell matplotlib to use LaTeX to render text
+         rc('font', **{
+                 'family': 'serif',
+-                'serif':['Computer Modern Roman'], 
++                'serif':['Computer Modern Roman'],
+                 'size':self._fontsize})
+         rc('text', usetex=True)
+-    
++
+     def _make_legend(self, figure, handles, labels):
+         labels = [escape(label) for label in labels]
+         return super(TexGraph, self)._make_legend(figure, handles, labels)
+@@ -330,47 +330,47 @@ if __name__ == '__main__':
+     import numpy as np
+ 
+     import sre
+-    from share import Bag
+-    
++    from star.share import Bag
++
+     logging.basicConfig(level=logging.DEBUG)
+ 
+     lm_bar = {
+-        'a': {'type': 'lax', 
++        'a': {'type': 'lax',
+               'label': 'AAA'},
+-        'b': {'type': 'bar', 
++        'b': {'type': 'bar',
+               'label': 'BBB',
+               'color': 'b',},
+-        'c': {'type': 'bar', 
++        'c': {'type': 'bar',
+               'ax': 'dx',
+-              'label': "CCC", 
++              'label': "CCC",
+               'color': 'g',
+               'cum': 'b'},
+         }
+ 
+     lm_barh = {
+-        'a': {'type': 'lax', 
++        'a': {'type': 'lax',
+               'label': 'AAA'},
+-        'b': {'type': 'barh', 
+-              'ax': 'sx', 
++        'b': {'type': 'barh',
++              'ax': 'sx',
+               'label': 'BBB',
+               'color': 'b'},
+-        'c': {'type': 'barh', 
+-              'ax': 'dx', 
+-              'label': "CCC", 
++        'c': {'type': 'barh',
++              'ax': 'dx',
++              'label': "CCC",
+               'color': 'g',
+               'cum': 'b'},
+         }
+ 
+     lm_plot = {
+-        'a': {'type': 'lax', 
++        'a': {'type': 'lax',
+               'label': 'AAA'},
+-        'b': {'type': 'bar', 
+-              'ax': 'sx', 
++        'b': {'type': 'bar',
++              'ax': 'sx',
+               'label': 'BBB',
+               'color': 'b'},
+-        'c': {'type': 'plot', 
+-              'ax': 'dx', 
+-              'label': "CCC", 
++        'c': {'type': 'plot',
++              'ax': 'dx',
++              'label': "CCC",
+               'color': 'g',}
+         }
+ 
+@@ -383,11 +383,11 @@ if __name__ == '__main__':
+ #    import ipdb; ipdb.set_trace()
+ 
+     lm_sc = {
+-        'a': {'type': 'lax', 
+-              'ax': 'sx', 
++        'a': {'type': 'lax',
++              'ax': 'sx',
+               'label': 'AAA'},
+-        'b': {'type': 'scatter', 
+-              'ax': 'sx', 
++        'b': {'type': 'scatter',
++              'ax': 'sx',
+               'label': 'BBB',
+               'color': 'b'},
+         }
+@@ -397,19 +397,19 @@ if __name__ == '__main__':
+             'b': [13.6, 7.1, 2],
+             })
+ 
+-    bar = Bag(df, meta=lm_bar, bag_type='graph', title='USRobotics', 
++    bar = Bag(df, meta=lm_bar, bag_type='graph', title='USRobotics',
+               size='stamp',
+               legend=True,
+               fontsize=10.0)
+-    barh = Bag(df,  meta=lm_barh, bag_type='graph', title='USRobotics', 
++    barh = Bag(df,  meta=lm_barh, bag_type='graph', title='USRobotics',
+               size='stamp',
+               legend=True,
+               fontsize=10.0)
+-    plot = Bag(df,  meta=lm_plot, bag_type='graph', title='USRobotics', 
++    plot = Bag(df,  meta=lm_plot, bag_type='graph', title='USRobotics',
+               size='stamp',
+               legend=True,
+               fontsize=10.0)
+-    scat = Bag(df_sc, meta=lm_sc, bag_type='graph', title='USRobotics', 
++    scat = Bag(df_sc, meta=lm_sc, bag_type='graph', title='USRobotics',
+               size='stamp',
+               legend=False,
+               fontsize=10.0)
+--- a/star/sre/sre.py
++++ b/star/sre/sre.py
+@@ -1,7 +1,7 @@
+ #!/usr/bin/python
+ # -*- coding: utf-8 -*-
+ ##############################################################################
+-#    
++#
+ #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
+ #    Author: Marco Pattaro (<marco.pattaro@servabit.it>)
+ #
+@@ -16,7 +16,7 @@
+ #    GNU Affero General Public License for more details.
+ #
+ #    You should have received a copy of the GNU Affero General Public License
+-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
++#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ #
+ ##############################################################################
+ 
+@@ -32,7 +32,7 @@ sys.path.append(BASEPATH)
+ sys.path = list(set(sys.path))
+ 
+ import sre
+-from share import Config
++from star.share import Config
+ import template
+ 
+ __all__ = ['sre']
+@@ -59,7 +59,7 @@ def _load_config(src_path, confpath=None
+ 
+ def _compile_tex(file_, template, dest, fds):
+     ''' Compile LaTeX, calls texi2dvi via system(3)
+-    
++
+     @ param file_: main .tex file path
+     @ param template: template file path, used to handle output names
+     @ param dest: output file path
+@@ -97,20 +97,20 @@ def _compile_tex(file_, template, dest,
+         fd.close()
+     if ret > 0:
+         _logger.warning(
+-            "texi2pdf exited with bad exit status, you can inspect what went wrong in %s", 
++            "texi2pdf exited with bad exit status, you can inspect what went wrong in %s",
+             os.path.join(dest, file_.replace('.tex', '.log')))
+         return ret
+     _logger.info("Done.")
+-    return ret                  
++    return ret
+ 
+ def sre(src_path, config=None, **kwargs):
+-    ''' Main procedure to generate a report. 
++    ''' Main procedure to generate a report.
+     Besically the procedure is splitted into these steps:
+         - load configuration file
+         - load template
+         - load bags
+         - build the report
+-    
++
+     In most cases every file needed to build the report is stored in the same
+     directory (src_path); anyway, if a configuration file is present inside the
+     src_path, it can be used to specicy different parameters.
+@@ -134,7 +134,7 @@ def sre(src_path, config=None, **kwargs)
+ 	elif os.path.isfile(os.path.join(src_path, 'main.html')):
+             templ_file = os.path.join(src_path, 'main.html')
+         templ_path = src_path
+-    
++
+     # Identify type just from filename suffix
+     # FIXME: this part is a bit messy, expetially for LaTeX with multiple files
+     if templ_file.endswith('.tex'):
+@@ -145,9 +145,9 @@ def sre(src_path, config=None, **kwargs)
+                 if not isinstance(report, str):
+                     # Error, return errno
+                     return report
+-        return _compile_tex(templ_file.replace('.tex', '_out.tex'), 
+-                            templ_file, 
+-                            os.path.dirname(templ_file), 
++        return _compile_tex(templ_file.replace('.tex', '_out.tex'),
++                            templ_file,
++                            os.path.dirname(templ_file),
+                             fd_list)
+     elif templ_file.endswith('.html'):
+         for file_ in os.listdir(templ_path):
+@@ -157,7 +157,7 @@ def sre(src_path, config=None, **kwargs)
+                 if not isinstance(report, str):
+                     # Error, return errno
+                     return report
+-    else: 
++    else:
+         _logger.error("Could not find a valid template, exiting.")
+         return 1
+     return 0
+--- a/star/sre/template.py
++++ b/star/sre/template.py
+@@ -1,6 +1,6 @@
+ # -*- coding: utf-8 -*-
+ ##############################################################################
+-#    
++#
+ #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
+ #    Author: Marco Pattaro (<marco.pattaro@servabit.it>)
+ #
+@@ -15,7 +15,7 @@
+ #    GNU Affero General Public License for more details.
+ #
+ #    You should have received a copy of the GNU Affero General Public License
+-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
++#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ #
+ ##############################################################################
+ 
+@@ -27,7 +27,7 @@ import string
+ import logging
+ 
+ # import sre
+-from share.bag import Bag
++from star.share.bag import Bag
+ from table import TexTable, HTMLTable
+ from graph import TexGraph, HTMLGraph
+ 
+@@ -129,7 +129,7 @@ class AbstractSreTemplate(string.Templat
+             else: # TODO: handle other types
+                 self._logger.debug('bags = %s', bags)
+                 self._logger.warning(
+-                    "Unhandled bag TI '%s' found in %s, skipping...", 
++                    "Unhandled bag TI '%s' found in %s, skipping...",
+                     bags[base].TI, base)
+                 continue
+             if len(ph_parts) > 1 and \
+@@ -145,16 +145,16 @@ class AbstractSreTemplate(string.Templat
+         implementation.
+ 
+         @ return: a Table object
+-        ''' 
++        '''
+         raise NotImplementedError
+ 
+     def _make_graph(self, data, **kwargs):
+         ''' Create a table from the given DataFrame.
+         This is a virtual method and must be overriden by subclass
+         implementation.
+-        
++
+         @return: a Graph object
+-        ''' 
++        '''
+         raise NotImplementedError
+ 
+     def report(self, **kwargs):
+@@ -192,24 +192,24 @@ class TexSreTemplate(AbstractSreTemplate
+           placeholder's name (in case we need to acces just one attribute)
+ 
+     NOTE: This are class attribute in the superclass, changing them at runtime
+-    produces no effects. The only way is subclassing. 
++    produces no effects. The only way is subclassing.
+     Thanks to Doug Hellmann <http://www.doughellmann.com/PyMOTW/string/>.
+ 
+     '''
+ 
+     delimiter = '\SRE'
+-    idpattern = '[_a-z][_a-z0-9.]*' 
+-    comment = "%.*" 
++    idpattern = '[_a-z][_a-z0-9.]*'
++    comment = "%.*"
+     _suffix = '.tex'
+     _suffix_out = '_out.tex'
+ 
+-    input_re = [re.compile("\\import{.*}"), 
++    input_re = [re.compile("\\import{.*}"),
+                 re.compile("\\input{.*}")]
+ 
+     def _substitute_includes(self):
+         ''' Change input and includes LaTeX statements inside a template to
+         refere to the _out files
+-        ''' 
++        '''
+         for regexp in TexSreTemplate.input_re:
+             matches = re.findall(regexp, self.template)
+             for match in matches:
+@@ -240,14 +240,14 @@ class HTMLSreTemplate(AbstractSreTemplat
+           placeholder's name (in case we need to acces just one attribute)
+ 
+     NOTE: This are class attribute in the superclass, changing them at runtime
+-    produces no effects. The only way is subclassing. 
++    produces no effects. The only way is subclassing.
+     Thanks to Doug Hellmann <http://www.doughellmann.com/PyMOTW/string/>.
+ 
+     '''
+     # TODO: change delimiter for HTML
+     # TODO: check comment
+     delimiter = '\SRE'
+-    idpattern = '[_a-z][_a-z0-9.]*' 
++    idpattern = '[_a-z][_a-z0-9.]*'
+     comment = "<!--.*-->"
+     _suffix = '.html'
+     _suffix_out = '_out.html'
+--- a/star/sda/FlussiCassa.py
++++ b/star/sda/FlussiCassa.py
+@@ -1,7 +1,7 @@
+ #!/usr/bin/python
+ # -*- coding: utf-8 -*-
+ ##############################################################################
+-#    
++#
+ #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
+ #
+ #    This program is free software: you can redistribute it and/or modify
+@@ -15,7 +15,7 @@
+ #    GNU Affero General Public License for more details.
+ #
+ #    You should have received a copy of the GNU Affero General Public License
+-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
++#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ #
+ ##############################################################################
+ 
+@@ -40,7 +40,7 @@ lm_flussi = {
+         12: [12, 'r', 'dic'],
+         'TOTAL': [13, 'r', 'TOTALE'],
+         }
+-        
++
+ lm_journals = {
+         'NAM_JRN': [0, '3l', '@v10'],
+         1: [1, 'r', 'gen'],
+@@ -68,14 +68,14 @@ from datetime import date
+ from datetime import datetime
+ 
+ import sda
+-from share import Config
+-from share import Stark
+-from share import Bag
++from star.share import Config
++from star.share import Stark
++from star.share import Bag
+ 
+ SRE_PATH = os.path.join(BASEPATH,"sre")
+ 
+ def main(dirname):
+-    #legge il file config    
++    #legge il file config
+     configFilePath = os.path.join(BASEPATH,"config","flussi_cassa.cfg")
+     config = Config(configFilePath)
+     config.parse()
+@@ -98,7 +98,7 @@ def main(dirname):
+         referenceDate = datetime.strptime(referenceDate,"%d-%m-%Y")
+         referenceDate = referenceDate.date()
+     #verifica che la stringa associata al parametro only_validated_moves inserita in config
+-    #sia effettivamente un valore boleano 
++    #sia effettivamente un valore boleano
+     onlyValidatedMoves = True
+     if str(config.options.get('only_validated_moves',True))=='False':
+         onlyValidatedMoves = False
+@@ -139,7 +139,7 @@ def main(dirname):
+     bagForecastedFlows = Bag(forecastedFlowsDf, os.path.join(OUT_PATH, 'forecasted_flows.pickle'), bag_type='tab',meta=lm_flussi)
+     bagForecastedFlows.save()
+     return 0
+-    
++
+ if __name__ == "__main__":
+     abspath=os.path.abspath(sys.argv[0])
+     dirname=os.path.dirname(abspath)

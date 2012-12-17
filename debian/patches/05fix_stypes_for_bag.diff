@@ -1,0 +1,252 @@
+--- a/star/share/__init__.py
++++ b/star/share/__init__.py
+@@ -18,6 +18,7 @@
+ #
+ ##############################################################################
+ 
++STYPES = ('elab', 'tab', 'graph')
+ 
+ from star.share.config import *
+ from star.share.generic_pickler import *
+--- a/star/share/stark.py
++++ b/star/share/stark.py
+@@ -14,13 +14,13 @@
+ #    GNU Affero General Public License for more details.
+ #
+ #    You should have received a copy of the GNU Affero General Public License
+-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
++#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ ##############################################################################
+ # pylint: disable=E1101,W0402
+ import os
+ import sys
+ import re
+-import string 
++import string
+ import copy
+ import pandas
+ import numpy as np
+@@ -36,7 +36,7 @@ from star.share.generic_pickler import G
+ __author__ = 'Marco Pattaro (<marco.pattaro@servabit.it>)'
+ __all__ = ['Stark']
+ 
+-STYPES = ('elab',)
++from star.share import STYPES
+ TYPES = [
+     'D', # Dimensional
+     'I', # Immutable
+@@ -91,7 +91,7 @@ def _filter_tree(meta, outlist):
+         elif val.get('child'):
+             ret.update(_filter_tree(val['child'], outlist))
+     return ret
+- 
++
+ 
+ class Stark(GenericPickler):
+     """ This is the artifact that outputs mainly from etl procedures. It is a
+@@ -198,7 +198,7 @@ class Stark(GenericPickler):
+ 
+     @property
+     def lm(self):
+-        ''' Return a shallow copy of lm ''' 
++        ''' Return a shallow copy of lm '''
+         # TODO: this isn't neither a shallow nor a deep copy, copy of the lm
+         # shold be deep while it encounters nested dictionaries, but it should
+         # behaves as shallow when it reaches DataFrames, so.. implement a
+@@ -285,7 +285,7 @@ class Stark(GenericPickler):
+         Iter over VD and fill up different lists of keys, each list contains
+         names from each data type.
+ 
+-        ''' 
++        '''
+         # Start from clean lists
+         self._dim = []
+         self._elab = []
+@@ -315,7 +315,7 @@ class Stark(GenericPickler):
+ 
+     def _update_lm(self, key, entry):
+         ''' Update VD dictionary with a new entry.
+-        
++
+         @ param key: new key in the dictionary
+         @ param entry: value to assign
+         @ raise ValueError: if DF/VD consistency would broke
+@@ -325,10 +325,10 @@ class Stark(GenericPickler):
+         self._lm[key] = entry
+         self._update()
+ 
+-    def _update_df(self, col, series=None, var_type='N', expr=None, rlp='E', 
++    def _update_df(self, col, series=None, var_type='N', expr=None, rlp='E',
+                    des=None, munit=None, vals=None):
+         ''' Utility method to safely add/update a DataFrame column.
+-        
++
+         Add or modify a column of the DataFrame trying to preserve DF/VD
+         consistency. This method has two main beheviours:
+             1 - When passing an already calculated series or list to assign to
+@@ -363,13 +363,13 @@ class Stark(GenericPickler):
+ 
+         if vals is None:
+             vals = pandas.DataFrame()
+-            
++
+         self._update_lm(col, {
+             'type' : var_type,
+             'des' : des,
+             'munit' : munit,
+             'elab' : expr,
+-            'rlp' : rlp, 
++            'rlp' : rlp,
+             'vals': vals,
+         })
+ 
+@@ -381,7 +381,7 @@ class Stark(GenericPickler):
+ 
+     def _gr_cum(self, series):
+         ''' Cumulated growth rate '''
+-        exponent = np.log(series / 100 + 1).sum() / len(series) 
++        exponent = np.log(series / 100 + 1).sum() / len(series)
+         return (np.exp(exponent) - 1) * 100
+ 
+     def _aggregate(self, func='sum', dim=None, var=None, inplace=False):
+@@ -450,7 +450,7 @@ class Stark(GenericPickler):
+ 
+     def _find_level(self, key, value):
+         ''' Tells to wich level of a dimension a value belongs
+-        
++
+         @ param key: dimension name
+         @ param value: value to search
+         @ reutrn: level name
+@@ -460,9 +460,9 @@ class Stark(GenericPickler):
+         for col in df.columns:
+             try:
+                 rows = df.ix[df[col] == value]
+-            except TypeError: 
++            except TypeError:
+                 # If column dtype is not compatible with value type
+-                continue 
++                continue
+             if len(rows) > 0:
+                 return col
+         raise ValueError(
+@@ -470,7 +470,7 @@ class Stark(GenericPickler):
+ 
+     def _eval(self, func):
+         ''' Evaluate a function with DataFrame columns'es placeholders.
+-        
++
+         Without placeholders this function is just a common python eval; when
+         func contains column's names preceded by '$', this will be substituted
+         with actual column's reference before passing the whole string to
+@@ -484,7 +484,7 @@ class Stark(GenericPickler):
+ 
+         Example:
+             "$B / $C * 100"
+-        
++
+         '''
+         if not isinstance(func, str) or isinstance(func, unicode):
+             raise AttributeError(
+@@ -500,10 +500,10 @@ class Stark(GenericPickler):
+     def _logit(self, var, how='mean', upper=100.0, prec=0.9):
+         ''' This is the real logit implementation, the logit() just repare the
+         Stark for a later evaluation at update time
+-        ''' 
++        '''
+         if prec <= 0 or prec >= 1:
+             raise ValueError("prec must be in the range (0, 1), %s received instead" %\
+-                             prec) 
++                             prec)
+         if upper <= 0:
+             raise ValueError("upper must be a positive float, %s received instead" %\
+                              upper)
+@@ -531,7 +531,7 @@ class Stark(GenericPickler):
+             splitted = val.split('.', 1)
+             vals_df = self._lm[key]['vals']
+             if len(splitted) == 1 or\
+-               (len(splitted) > 1 and splitted[0] not in vals_df.columns): 
++               (len(splitted) > 1 and splitted[0] not in vals_df.columns):
+                 if val == 'ALL':
+                     continue
+                 elif val == 'TOT':
+@@ -546,7 +546,7 @@ class Stark(GenericPickler):
+                 select[key] = splitted[1]
+             else: # pragma: no cover
+                 raise ValueError # be more specific!
+-        
++
+         # substitute
+         for key, val in subs.iteritems():
+             df[key] = df[key].map(val)
+@@ -565,11 +565,11 @@ class Stark(GenericPickler):
+ 
+     def save(self, file_=None):
+         ''' Save object as pickle file.
+-        
++
+         If a filename is not provided, the one stored in self.cod will be used.
+ 
+-        @ param file_: destination file path 
+-        
++        @ param file_: destination file path
++
+         '''
+         if file_ is None:
+             file_ = self.cod
+@@ -578,7 +578,7 @@ class Stark(GenericPickler):
+         super(Stark, self).save(file_)
+ 
+     def head(self, n=5):
+-        ''' Return first n elements of the DataFrame 
++        ''' Return first n elements of the DataFrame
+ 
+         @ param n: number of rows to return
+         @ return: a DataFrame
+@@ -589,8 +589,8 @@ class Stark(GenericPickler):
+                      currdata=self._currdata)
+ 
+     def tail(self, n=5):
+-        ''' Return last n elements of the DataFrame 
+-        
++        ''' Return last n elements of the DataFrame
++
+         @ param n: number of rows to return
+         @ return: a DataFrame
+ 
+@@ -609,7 +609,7 @@ class Stark(GenericPickler):
+ 
+         '''
+         if new_curr not in self._currdata.columns:
+-            raise ValueError("%s is not a known currency" % new_curr)        
++            raise ValueError("%s is not a known currency" % new_curr)
+         lm = copy.deepcopy(self._lm)
+         columns = self._df.columns
+         df = self._df.join(self._currdata, on=ts_col)
+@@ -629,7 +629,7 @@ class Stark(GenericPickler):
+                       the evauation to, it must be in the intervall (0, 1)
+         '''
+         self._update_lm(
+-            key='%s_LOGIT' % var, 
++            key='%s_LOGIT' % var,
+             entry={
+                 'type': 'E',
+                 'rlp': 'E',
+@@ -643,7 +643,7 @@ class Stark(GenericPickler):
+ 
+     def cagr(self, var, ts_col='YEAR'):
+         ''' Calculate grouth rate of a variable and stores it in a new
+-        DataFrame column calles <variable_name>_GR. 
++        DataFrame column calles <variable_name>_GR.
+ 
+         cagr() works inplace.
+ 
+@@ -663,7 +663,7 @@ class Stark(GenericPickler):
+         tmp_df.set_index(self.dim, inplace=True)
+         self._df.set_index(self.dim, inplace=True)
+         self._df = pandas.merge(self._df, tmp_df, left_index=True,
+-                                right_index=True, how='left', 
++                                right_index=True, how='left',
+                                 suffixes=('', '_tmp'))
+         self._df[varname] =  100 * (self._df[var] / self._df['%s_tmp' % var] - 1)
+         self._update_lm(varname, {

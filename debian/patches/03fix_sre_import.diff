@@ -1,0 +1,40 @@
+--- a/star/sre/graph.py
++++ b/star/sre/graph.py
+@@ -28,7 +28,7 @@ from tempfile import NamedTemporaryFile,
+ # import pandas
+ import re
+ 
+-import plotters
++import star.sre.plotters as plotters
+ 
+ __author__ = "Marco Pattaro <marco.pattaro@servabit.it>"
+ __version__ = "0.1"
+@@ -329,7 +329,7 @@ if __name__ == '__main__':
+     import pandas as pnd
+     import numpy as np
+ 
+-    import sre
++    import star.sre as sre
+     from star.share import Bag
+ 
+     logging.basicConfig(level=logging.DEBUG)
+--- a/star/sre/sre.py
++++ b/star/sre/sre.py
+@@ -31,7 +31,7 @@ BASEPATH = os.path.abspath(os.path.join(
+ sys.path.append(BASEPATH)
+ sys.path = list(set(sys.path))
+ 
+-import sre
++import star.sre as sre
+ from star.share import Config
+ import template
+ 
+--- a/star/__init__.py
++++ b/star/__init__.py
+@@ -21,5 +21,5 @@
+ import star.share as share
+ import star.etl as etl
+ import star.sda as sda
+-import sre
++import star.sre as sre
+ #from share import stark

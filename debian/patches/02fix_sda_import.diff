@@ -1,0 +1,187 @@
+--- a/star/sda/ReportIva.py
++++ b/star/sda/ReportIva.py
+@@ -89,7 +89,7 @@ import pandas
+ import numpy
+ from datetime import date
+ 
+-import sda
++import star.sda as sda
+ from star.share import Config
+ from star.share import Stark
+ from star.share import Bag
+--- a/star/sda/SDABalance.py
++++ b/star/sda/SDABalance.py
+@@ -9,7 +9,7 @@ from datetime import date
+ 
+ # Servabit libraries
+ 
+-import sda
++import star.sda as sda
+ import SDABalanceLib
+ from star.share import Config
+ from star.share import Stark
+--- a/star/sda/SDABalanceLib.py
++++ b/star/sda/SDABalanceLib.py
+@@ -13,14 +13,14 @@ from datetime import date
+ # sys.path.append(BASEPATH)
+ # sys.path = list(set(sys.path))
+ 
+-import sda
++import star.sda as sda
+ 
+ def str2list(string):
+     string=string.replace("'","")
+     string=string.replace(" ","")
+     ret_list = [i for i in string[1:len(string)-1].split(',')]
+     return ret_list
+-    
++
+ def CreDatYear (YEAR, periodDf,moveLineDf,accountDf,DIZP1M1,TUTPDC, contiIfoDf, taxonomyDf, maxLevel):
+     ''' Questa funzione calcola per un dato anno, la struttura dati che deve essere inserita in un bilancio
+         Gli argomenti di questa funzione sono
+@@ -70,13 +70,13 @@ def CreDatYear (YEAR, periodDf,moveLineD
+     df4=df4[["COD_CON","NEXT",'DBT_MVL','CRT_MVL','GOV_CON']]
+     df4=df4[df4['GOV_CON']!="Transitori"]
+     #Costruisco il saldo tra dare e avere, tenendo conto delle diverse aree del piano dei conti.
+-    #Pertanto per i conti dell'attivo dello stato patrimoniale il saldo sarà calcolato come Dare-Avere, 
+-    # per i conti  del passivo dello stato patrimoniale il saldo sarà calcololto come Avere - Dare ,   e così via. 
+-    #Utilizzo il "barbatrucco" di definire Avere-Dare come -1*(Dare-Avere). 
+-    #Quindi sevo asociare un valore 1 ai conti il cui saldo voglio sia Dare - Avere e 
++    #Pertanto per i conti dell'attivo dello stato patrimoniale il saldo sarà calcolato come Dare-Avere,
++    # per i conti  del passivo dello stato patrimoniale il saldo sarà calcololto come Avere - Dare ,   e così via.
++    #Utilizzo il "barbatrucco" di definire Avere-Dare come -1*(Dare-Avere).
++    #Quindi sevo asociare un valore 1 ai conti il cui saldo voglio sia Dare - Avere e
+     # devo associare un valore -1 ai conti il cui saldo voglio sia Avere-Dare
+     # Utilizzo la variabile P1M1 per contenere questi valori.
+-    # Per costruire questa variabile ed associarla a df4, utilizzo il dizionario DIZP1M1: 
++    # Per costruire questa variabile ed associarla a df4, utilizzo il dizionario DIZP1M1:
+     #--------------------------------------
+     df4['P1M1']=df4['GOV_CON'].map(DIZP1M1)
+     df4['SALDO']=df4['P1M1']*(df4['DBT_MVL']-df4['CRT_MVL'])
+@@ -91,7 +91,7 @@ def CreDatYear (YEAR, periodDf,moveLineD
+     #NEXT       Valore booleano che indica se la data di scadenza è superiore al 31.12 dell'anno successivo alla chiusura del bilancio
+     df7 = df7[['SALDO','cee_code','name','sign','to_discompose','NEXT']]
+     #sommo i diversi importi per conto IV D. CEE, considerando il segno corretto
+-    df7['SALDO']=df7['SALDO'].map(float) 
++    df7['SALDO']=df7['SALDO'].map(float)
+     df7['SALDO'] = df7['SALDO'] * df7['sign']
+     df8 = df7.groupby(['cee_code',"NEXT"]).sum().reset_index()
+     df8=df8[["cee_code","NEXT","SALDO"]]
+@@ -116,7 +116,7 @@ def CreDatYear (YEAR, periodDf,moveLineD
+     df13 = pandas.concat([df10,df11,df12]).reset_index()
+     df13 = df13[["name","SALDO"]]
+     #unisco il df con i dati di bilancio al df della tassonomia
+-    #pongo a zero gli importi dei conti rispetto ai quali non ci sono stati movimenti di bilancio 
++    #pongo a zero gli importi dei conti rispetto ai quali non ci sono stati movimenti di bilancio
+     totalsDf = pandas.merge(df13,taxonomyDf, on="name", how='right')
+     totalsDf["USED_FOR_CALC"] = False
+     totalsDf["SALDO"][totalsDf["SALDO"].isnull()] = 0
+@@ -128,7 +128,7 @@ def CreDatYear (YEAR, periodDf,moveLineD
+         #print "usati per il calcolo"
+         #print df18[["name","SALDO"]]
+         if len(df18)>0:
+-            #aggrego i dati per parent superiore 
++            #aggrego i dati per parent superiore
+             df19 = df18.groupby(['cal_parent']).sum()[['SALDO']].reset_index()
+             df19 = df19.rename(columns={'cal_parent' : 'name'})
+             #print "saldi calcolati"
+@@ -147,11 +147,11 @@ def CreDatYear (YEAR, periodDf,moveLineD
+     totalsDf=totalsDf.sort(columns=['_OR_'])
+     totalsDf=totalsDf.reset_index(drop=True)
+     return totalsDf
+- 
++
+ 
+ 
+ def LevBalSec(DIZ1,DESEC,COSEC):
+-    '''Questa funzione scende lungo i rami dell'ambero della sttruttura dei conti, 
++    '''Questa funzione scende lungo i rami dell'ambero della sttruttura dei conti,
+         per infividuare il livello a cui è posizionato ciascun conto
+     '''
+     #inizailizzo la lista finale dei conti
+@@ -162,13 +162,13 @@ def LevBalSec(DIZ1,DESEC,COSEC):
+     LC1=DIZ1[DESEC]
+     #individuo i "figli" della radice
+     LC1=str2list(LC1)
+-    #includo la radice nella lista finale dei conti e dei livelli 
++    #includo la radice nella lista finale dei conti e dei livelli
+     LCFIN.append(DESEC)
+     LCLIV.append(0)
+     #print('Liv 1', LC1)
+     #inizio ciclo per figli radice
+     for I1 in range(len(LC1)):
+-        #inserisco i figli nella lista finale dei conti e dei livelli 
++        #inserisco i figli nella lista finale dei conti e dei livelli
+         LCFIN.append(LC1[I1])
+         LCLIV.append(1)
+         #individuo i "figli" dei "figli"
+@@ -203,7 +203,7 @@ def LevBalSec(DIZ1,DESEC,COSEC):
+                                     for I5 in range(len(LC5)):
+                                         LCFIN.append(LC5[I5])
+                                         LCLIV.append(5)
+-     
++
+     DFLIV=pandas.DataFrame({'name':LCFIN, 'lev1':LCLIV})
+     DFLIV['SEC']=COSEC
+     return DFLIV
+--- a/star/sda/Scadenziario.py
++++ b/star/sda/Scadenziario.py
+@@ -46,7 +46,7 @@ import os
+ import getopt
+ import ScadenziarioLib
+ 
+-import sda
++import star.sda as sda
+ from star.share import Config
+ from star.share import Stark
+ from star.share import Bag
+--- a/star/sda/esempio.py
++++ b/star/sda/esempio.py
+@@ -35,7 +35,7 @@ import os
+ import sys
+ # pandas non è usato direttamente in questo esempio, ma in genere sarà utile
+ import pandas
+-import sda
++import star.sda as sda
+ 
+ # Definizione di costanti:
+ # tutto ciò che non verrà modificato dall'esecuzione del codice, ma il cui
+--- a/star/sda/libro_giornale.py
++++ b/star/sda/libro_giornale.py
+@@ -53,7 +53,7 @@ CAP='40125 Bologna'
+ FY = 2011
+ 
+ # librerie di star
+-import sda
++import star.sda as sda
+ from star.share import Bag
+ from star.share import Stark
+ 
+--- a/star/__init__.py
++++ b/star/__init__.py
+@@ -20,6 +20,6 @@
+ 
+ import star.share as share
+ import star.etl as etl
+-import sda
++import star.sda as sda
+ import sre
+ #from share import stark
+--- a/star/sda/FlussiCassa.py
++++ b/star/sda/FlussiCassa.py
+@@ -62,12 +62,12 @@ import sys
+ import os
+ import getopt
+ import pandas
+-import FlussiCassaLib
+-import ScadenziarioLib
++import star.sda.FlussiCassaLib as FlussiCassaLib
++import star.sda.ScadenziarioLib as ScadenziarioLib
+ from datetime import date
+ from datetime import datetime
+ 
+-import sda
++import star.sda as sda
+ from star.share import Config
+ from star.share import Stark
+ from star.share import Bag

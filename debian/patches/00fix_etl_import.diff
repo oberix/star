@@ -1,0 +1,733 @@
+--- a/star/etl/DBmap2.py
++++ b/star/etl/DBmap2.py
+@@ -1,6 +1,6 @@
+ # -*- coding: utf-8 -*-
+ ##############################################################################
+-#    
++#
+ #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
+ #
+ #    This program is free software: you can redistribute it and/or modify
+@@ -14,7 +14,7 @@
+ #    GNU Affero General Public License for more details.
+ #
+ #    You should have received a copy of the GNU Affero General Public License
+-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
++#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ #
+ ##############################################################################
+ 
+@@ -35,7 +35,7 @@ from sqlalchemy import create_engine, Co
+ import logging
+ 
+ # Servabit libraries
+-import etl
++import star.etl as etl
+ from share.config import Config
+ 
+ 
+@@ -55,93 +55,93 @@ logger = logging.getLogger('DBMapping')
+ class IrSequence(Base):
+     '''Mmappatura della tabella contenente i dati relativi alle sequenza associate ad un journal '''
+     __tablename__ = 'ir_sequence'
+-    
++
+     name = Column(String(64), nullable=False)
+     code = Column(String(64), nullable=False)
+     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
+     company_id = Column(Integer, ForeignKey('res_company.id'), nullable=False)
+-    
++
+     #one2many
+     journals = relationship("AccountJournal")
+     company = relationship("ResCompany")
+-    
+-    
++
++
+ class ResCompany(Base):
+     '''Mappatura della tabella contenente i dati relativi ad una company, ossia all'impresa
+-    di cui il database contiene i dati'''    
++    di cui il database contiene i dati'''
+     __tablename__ = 'res_company'
+-    
++
+     name = Column(String(64), nullable=False)
+     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
+     partner_id = Column(Integer, ForeignKey('res_partner.id'), nullable=False)
+     #one2one
+     partner = relationship("ResPartner",  primaryjoin="ResCompany.partner_id==ResPartner.id", uselist=False)
+     ateco_2007_vat_activity = Column(String(300))
+-    
+-        
++
++
+ class ResPartner(Base):
+     '''Mappatura della tabella contenente i dati relativi ad un partner
+         - nome/ragione sociale
+         - partita iva
+         - codice fiscale (tax)
+         - indirizzi associati al partner
+-    '''    
++    '''
+     __tablename__ = 'res_partner'
+-    
++
+     name = Column(String(64), nullable=False)
+     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
+     vat = Column(String(32))
+     tax = Column(String(36))
+     company_id = Column(Integer, ForeignKey('res_company.id'), nullable=True)
+-    
++
+     #one2one
+     company = relationship("ResCompany", primaryjoin="ResCompany.id==ResPartner.company_id")
+     #one2many
+     addresses = relationship("ResPartnerAddress")
+-    
+-    
++
++
+ class ResPartnerAddress(Base):
+     '''Mappatura della tabella contenente i dati relativi ad un indirizzo
+         - nome identificativo del'indirizzo
+         - id del partner
+         - via
+         - città
+-        - Codice avviamento postale        
+-    '''    
++        - Codice avviamento postale
++    '''
+     __tablename__ = 'res_partner_address'
+-    
++
+     name = Column(String(64), nullable=False)
+     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
+     partner_id = Column(Integer, ForeignKey('res_partner.id'), nullable=False)
+     street = Column(String(128))
+     city = Column(String(128))
+     zip = Column(String(24))
+-    
++
+     #many2one
+     partner = relationship("ResPartner")
+-        
+-        
++
++
+ class AccountFiscalyear(Base):
+     '''Mappatura della tabella contenente i dati relativi ad un Anno fiscale
+         - nome identificativo dell'anno
+         - company_id
+         - data inizio
+         - data fine
+-    '''    
++    '''
+     __tablename__ = 'account_fiscalyear'
+-    
++
+     name = Column(String(64), nullable=False)
+     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
+     company_id = Column(Integer, ForeignKey('res_company.id'), nullable=False)
+     date_start = Column(Date, nullable=False)
+     date_stop = Column(Date, nullable=False)
+-    
++
+     #one2many
+     periods = relationship("AccountPeriod")
+     #many2one
+     company = relationship("ResCompany")
+-        
+-    
++
++
+ class AccountPeriod(Base):
+     '''Mappatura della tabella contenente i dati relativi ad un Periodo Fiscale
+         - nome identificativo del periodo
+@@ -150,44 +150,44 @@ class AccountPeriod(Base):
+         - data fine
+         - special ??????
+         - anno fiscale di riferimento
+-    '''    
++    '''
+     __tablename__ = 'account_period'
+-    
++
+     name = Column(String(64), nullable=False)
+     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
+     company_id = Column(Integer, ForeignKey('res_company.id'), nullable=False)
+     date_start = Column(Date, nullable=False)
+     date_stop = Column(Date, nullable=False)
+     special = Column(Boolean)
+-    
++
+     fiscalyear_id = Column(Integer, ForeignKey('account_fiscalyear.id'), nullable=False)
+     fiscalyear = relationship("AccountFiscalyear")
+     company = relationship("ResCompany")
+-    
+-    
++
++
+ class AccountAccountType(Base):
+     '''Mappatura della tabella contenente i dati relativi ad tipo di Conto
+         - nome identificativo del tipo
+         - codice che identifica il tipo
+-    '''    
++    '''
+     __tablename__ = 'account_account_type'
+-    
++
+     name = Column(String(64), nullable=False)
+     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
+     code = Column(String(32), nullable=False)
+-    
++
+ 
+ class AccountAccount(Base):
+     '''Mappatura della tabella contenente i dati relativi al Conto di un piano dei conti
+-        - nome identificativo del conto 
++        - nome identificativo del conto
+         - codice che identifica del conto
+         - comapny_id
+         - riferimento al tipo di conto
+         - type ????
+         - conto padre
+-    '''    
++    '''
+     __tablename__ = 'account_account'
+-    
++
+     name = Column(String(128), nullable=False)
+     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
+     code = Column(String(64))
+@@ -198,20 +198,20 @@ class AccountAccount(Base):
+     account_type = relationship("AccountAccountType")
+     company = relationship("ResCompany")
+     parent = relationship("AccountAccount", remote_side=[id])
+-    
+-    
++
++
+ class AccountJournal(Base):
+     '''Mappatura della tabella contenente i dati relativi al Journal
+         - nome identificativo del journal
+         - type ????
+         - riferimneto alla sequenza aassociata al Journal
+-    '''    
++    '''
+     __tablename__ = 'account_journal'
+-    
++
+     name = Column(String(64), nullable=False)
+     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
+     type = Column(String(32), nullable=False)
+-    
++
+     sequence_id = Column(Integer, ForeignKey('ir_sequence.id'), nullable=False)
+     sequence = relationship("IrSequence")
+ 
+@@ -223,27 +223,27 @@ class AccountTax(Base):
+         - base code: è il codice associato alla base imponibile che nella contabiltà delle tasse riporta l'ammontare della base imponibile
+         - ref tax code: idem che tax code ma riferito ad un reso
+         - ref base code: idem che base code ma riferito ad un reso
+-    '''    
++    '''
+     __tablename__ = 'account_tax'
+-    
++
+     name = Column(String(64), nullable=False)
+     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
+     company_id = Column(Integer, ForeignKey('res_company.id'))
+-    
++
+     tax_code_id = Column(Integer, ForeignKey('account_tax_code.id'), nullable=False)
+     base_code_id = Column(Integer, ForeignKey('account_tax_code.id'), nullable=False)
+     ref_tax_code_id = Column(Integer, ForeignKey('account_tax_code.id'), nullable=False)
+     ref_base_code_id = Column(Integer, ForeignKey('account_tax_code.id'), nullable=False)
+-    
++
+     company = relationship("ResCompany")
+-    
++
+ class AccountTaxCode(Base):
+     '''Mappatura della tabella contenente i dati relativi Codici della Contabilità delle Tasse/Imposte
+         - nome identificativo del Codice
+         - id identificatvo
+-    '''    
++    '''
+     __tablename__ = 'account_tax_code'
+-    
++
+     name = Column(String(64), nullable=False)
+     id = Column(Integer, Sequence('user_id_seq'), primary_key=True, )
+ 
+@@ -253,20 +253,20 @@ class AccountVoucher(Base):
+         - id identificatvo
+         - company_id
+         - period_id
+-        - scrittura contabile (relazione meny2one) 
++        - scrittura contabile (relazione meny2one)
+         - partner
+         - data di registrazione
+         - data di scadenza
+         - numero ??
+         - stato  : registrato o meno
+         - type   ??
+-        - importo 
+-    '''    
++        - importo
++    '''
+     __tablename__ = 'account_voucher'
+-    
++
+     name = Column(String(64), nullable=False)
+     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
+-    
++
+     company_id = Column(Integer, ForeignKey('res_company.id'))
+     period_id = Column(Integer, ForeignKey('account_period.id'))
+     move_id = Column(Integer, ForeignKey('account_move.id'))
+@@ -292,19 +292,19 @@ class AccountInvoice(Base):
+         - id identificatvo
+         - company_id
+         - period_id
+-        - scrittura contabile (relazione many2one) 
++        - scrittura contabile (relazione many2one)
+         - partner
+         - data del documento
+         - data della fattura - diventer la data di registrazione
+         - data di scadenza
+         - numero del documento
+-        - importo 
++        - importo
+     '''
+     __tablename__ = 'account_invoice'
+-  
++
+     name = Column(String(64), nullable=False)
+     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
+-    
++
+     company_id = Column(Integer, ForeignKey('res_company.id'))
+     period_id = Column(Integer, ForeignKey('account_period.id'))
+     move_id = Column(Integer, ForeignKey('account_move.id'))
+@@ -317,14 +317,14 @@ class AccountInvoice(Base):
+     state = Column(String(16))
+     type = Column(String(16))
+     amount_total = Column(postgresql.NUMERIC)
+-    
++
+     move = relationship("AccountMove",  uselist=False)
+     partner = relationship("ResPartner",  uselist=False)
+     company = relationship("ResCompany")
+     period = relationship("AccountPeriod")
+     journal = relationship("AccountJournal")
+ 
+-    
++
+ class AccountMove(Base):
+     '''Mappatura della tabella contenente i dati relativi ad una scrittura (composta da più linee)
+         - nome identificativo della scrittura
+@@ -339,10 +339,10 @@ class AccountMove(Base):
+         - fattura di riferimento
+         - da controllare
+         - linee della scrittura (relazione one2many)
+-    '''    
++    '''
+ 
+     __tablename__ = 'account_move'
+-    
++
+     name = Column(String(64), nullable=False)
+     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
+     ref = Column(String(64))
+@@ -361,7 +361,7 @@ class AccountMove(Base):
+     company = relationship("ResCompany")
+     period = relationship("AccountPeriod")
+     journal = relationship("AccountJournal")
+-           
++
+ class AccountMoveLine(Base):
+     '''Mappatura della tabella contenente i dati relativi ad una linea di scrittura
+         - nome identificativo della linea
+@@ -384,35 +384,35 @@ class AccountMoveLine(Base):
+         - importo a debito
+         - importo a credito
+         - importo della imposta/tassa o della base imponibile
+-    '''    
++    '''
+     __tablename__ = 'account_move_line'
+-    
++
+     name = Column(String(64), nullable=False)
+     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
+     ref = Column(String(64))
+     state = Column(String(16))
+-    
++
+     company_id = Column(Integer, ForeignKey('res_company.id'))
+     journal_id = Column(Integer, ForeignKey('account_journal.id'), nullable=False)
+     period_id = Column(Integer, ForeignKey('account_period.id'), nullable=False)
+     account_id = Column(Integer, ForeignKey('account_account.id'), nullable=False)
+     move_id = Column(Integer, ForeignKey('account_move.id'), nullable=False)
+     tax_code_id = Column(Integer, ForeignKey('account_tax_code.id'), nullable=False)
+-    
++
+     reconcile_id = Column(Integer, ForeignKey('account_move_reconcile.id'), nullable=False)
+     reconcile = relationship("AccountMoveReconcile", primaryjoin="AccountMoveReconcile.id==AccountMoveLine.reconcile_id")
+-    
++
+     reconcile_partial_id = Column(Integer, ForeignKey('account_move_reconcile.id'), nullable=False)
+     reconcile_partial = relationship("AccountMoveReconcile", primaryjoin="AccountMoveReconcile.id==AccountMoveLine.reconcile_partial_id")
+-    
++
+     partner_id = Column(Integer, ForeignKey('res_partner.id'))
+-    
++
+     date = Column(Date, nullable=False)
+     date_maturity = Column(Date)
+     debit = Column(postgresql.NUMERIC)
+     credit = Column(postgresql.NUMERIC)
+     tax_amount = Column(postgresql.NUMERIC)
+-    
++
+     #many2one
+     move = relationship("AccountMove")
+     journal = relationship("AccountJournal")
+@@ -420,7 +420,7 @@ class AccountMoveLine(Base):
+     partner = relationship("ResPartner")
+     company = relationship("ResCompany")
+     period = relationship("AccountPeriod")
+-    
++
+ class AccountMoveReconcile(Base):
+     '''Mappatura della tabella contenente i dati relativi alla Riconciliazione
+         - nome identificativo della linea
+@@ -428,13 +428,13 @@ class AccountMoveReconcile(Base):
+         - tipo
+         - riferimento alla linea di registrazione
+         - riferimneto della riconciliazione partiale alla linea di registrazione
+-    '''    
++    '''
+     __tablename__ = 'account_move_reconcile'
+-    
++
+     name = Column(String(64), nullable=False)
+     type = Column(String(16), nullable=False)
+     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
+-    
++
+     lines = relationship("AccountMoveLine", primaryjoin="AccountMoveReconcile.id==AccountMoveLine.reconcile_id")
+     partial_lines = relationship("AccountMoveLine", primaryjoin="AccountMoveReconcile.id==AccountMoveLine.reconcile_partial_id")
+ 
+--- a/star/etl/Goal2Stark.py
++++ b/star/etl/Goal2Stark.py
+@@ -1,6 +1,6 @@
+ # -*- coding: utf-8 -*-
+ ##############################################################################
+-#    
++#
+ #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
+ #
+ #    This program is free software: you can redistribute it and/or modify
+@@ -14,7 +14,7 @@
+ #    GNU Affero General Public License for more details.
+ #
+ #    You should have received a copy of the GNU Affero General Public License
+-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
++#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ #
+ ##############################################################################
+ 
+@@ -24,7 +24,7 @@ import pandas
+ import sqlalchemy
+ 
+ # Servabit libraries
+-import etl
++import star.etl as etl
+ import DBmap2
+ import create_dict
+ import parallel_jobs
+@@ -43,7 +43,7 @@ def create_dict(cl_dmap2, dict_path, com
+                         'NAMEVAR' : [data, data, data, .....]
+                         }
+     '''
+-    
++
+     def tuple2attr(obj, tpl):
+         el = tpl
+         while(el[1] != None):
+@@ -53,18 +53,18 @@ def create_dict(cl_dmap2, dict_path, com
+             obj = obj[0]
+         obj = getattr(obj, el[0])
+         return obj
+-    
++
+     def get_obj(session, cl_dbmap2, company_name):
+         objs = None
+         try:
+             getattr(cl_dbmap2, 'company')
+             objs = session.query(cl_dbmap2).filter(cl_dbmap2.company.has(name=company_name)).all()
+-        except AttributeError:    
++        except AttributeError:
+             objs = session.query(cl_dbmap2).all()
+         return objs
+-    
++
+     session = DBmap2.open_session()
+-    out_dict = {}    
++    out_dict = {}
+     objs = get_obj(session, cl_dmap2, company_name)
+     for key in dict_path.iterkeys():
+         out_dict[key] = []
+@@ -83,18 +83,18 @@ def createDWComp(companyName,picklesPath
+                 deferredVatDebitAccountCode,treasuryVatAccountCode):
+     '''Questa funzione serve a generare per una Company i diversi file pickle che compongono il
+        Datawarehouse di quella impresa
+-    ''' 
++    '''
+     path = os.path.join(picklesPath,companyName)
+-    
++
+     ############################################################################################
+     #  importazione dei dati della classe Account Account
+     #  contenente le informazioni sui conti del piano dei conti
+     ############################################################################################
+     ACCD = {
+-             'ID0_CON' : ('id', None), 
++             'ID0_CON' : ('id', None),
+              'NAM_CON' : ('name', None),
+              'COD_CON' : ('code', None),
+-             'NAM_IMP' : ('company', ('name', None)), 
++             'NAM_IMP' : ('company', ('name', None)),
+              'GOV_CON' : ('account_type', ('name', None)),
+              'TYP_CON' : ('type', None),
+              'PAN_CON' : ('parent', ('name', None)),
+@@ -113,7 +113,7 @@ def createDWComp(companyName,picklesPath
+     #effettuo il primo abbellimento di Stark
+     ACC.lm = {
+         'ID0_CON': {'DES': unicode('ID identificativo del conto','utf-8')},
+-        'NAM_CON': {'DES': unicode('Nome descrittivo del conto','utf-8')}, 
++        'NAM_CON': {'DES': unicode('Nome descrittivo del conto','utf-8')},
+         'COD_CON': {'DES': unicode('Codice menorico identificativo del conto','utf-8')},
+         'GOV_CON': {'DES': unicode('Tipologia che governa la gestione del conto','utf-8')},
+         'PAN_CON': {'DES': unicode('Nome descrittivo del conto padre','utf-8')},
+@@ -128,9 +128,9 @@ def createDWComp(companyName,picklesPath
+     #  contenente le informazioni sulle line di scrittura contabile
+     ############################################################################################
+     MVLD = {
+-             'ID0_MVL' : ('id', None), 
++             'ID0_MVL' : ('id', None),
+              'NAM_MOV' : ('move', ('name', None)),
+-             'REF_MOV' : ('move', ('ref', None)), 
++             'REF_MOV' : ('move', ('ref', None)),
+              'CHK_MOV' : ('move', ('to_check', None)),
+              'STA_MOV'  : ('move', ('state', None)),
+              'DAT_DOC' : ('move', ('invoice', ('date_document', None))),
+@@ -146,15 +146,15 @@ def createDWComp(companyName,picklesPath
+              'NAM_PAR'  : ('partner', ('name', None)),
+              'NAM_CON'  : ('account', ('name', None)),
+              'NAM_JRN'  : ('journal', ('name', None)),
+-             'TYP_JRN' : ('journal', ('type', None)), 
++             'TYP_JRN' : ('journal', ('type', None)),
+              'DBT_MVL'  : ('debit', None),
+              'CRT_MVL'  : ('credit', None),
+              'ID_REC'  : ('reconcile_id',  None),
+              'ID_REC_P'  : ('reconcile_partial_id', None),
+-             'TAX_COD'  : ('tax_code_id', None), 
+-             'TAX_AMO'  : ('tax_amount', None), 
+-             'NAM_SEQ'  : ('journal', ('sequence', ('name', None))), 
+-             'COD_SEQ'  : ('journal', ('sequence', ('code', None))), 
++             'TAX_COD'  : ('tax_code_id', None),
++             'TAX_AMO'  : ('tax_amount', None),
++             'NAM_SEQ'  : ('journal', ('sequence', ('name', None))),
++             'COD_SEQ'  : ('journal', ('sequence', ('code', None))),
+              }
+     #assegno a MOVL la classe AccountMoveLine
+     MVL = DBmap2.AccountMoveLine
+@@ -185,12 +185,12 @@ def createDWComp(companyName,picklesPath
+     MVL.save()
+ 
+ ############################################################################################
+-    #  importazione dei dati della classe Account Move 
++    #  importazione dei dati della classe Account Move
+     #  contenente le informazioni sulle line di scrittura contabile
+     ############################################################################################
+     #MOVD = {
+-             #'ID0_MOL' : ('id', None), 
+-             #'NAM_MOV' : ('name', None), 
++             #'ID0_MOL' : ('id', None),
++             #'NAM_MOV' : ('name', None),
+              #'REF_MOV' : ('ref', None),
+              #'DAT_MOV' : ('date', None),
+              #'NAM_PRD'  : ('period', ('name', None)),
+@@ -221,12 +221,12 @@ def createDWComp(companyName,picklesPath
+     #MOV.Dumpk('MOV.pickle')
+ 
+ ############################################################################################
+-    #  importazione dei dati della classe Partner 
++    #  importazione dei dati della classe Partner
+     #  contenente le informazioni sulle line di scrittura contabile
+     ############################################################################################
+     PARD = {
+-             'ID0_PAR' : ('id', None), 
+-             'NAM_PAR' : ('name', None), 
++             'ID0_PAR' : ('id', None),
++             'NAM_PAR' : ('name', None),
+              'CFS_PAR' : ('tax', None),
+              'IVA_PAR' : ('vat', None),
+              'NAM_IMP'  : ('company', ('name', None)),
+@@ -250,8 +250,8 @@ def createDWComp(companyName,picklesPath
+         }
+     # PAR.DefPathPkl(path)
+     PAR.save()
+-    
+-    
++
++
+     ############################################################################################
+     #  importazione dei dati della classe Account Tax
+     #  contenente le informazioni sulle tasse
+@@ -283,7 +283,7 @@ def createDWComp(companyName,picklesPath
+         'REF_BASE_CODE': {'DES': unicode("identificativo del tax_code di imponibile (per le note di credito)",'utf-8')},
+         }
+     TAX.save()
+-    
++
+     ############################################################################################
+     #  importazione dei dati della classe AccountPeriod
+     #  contenente le informazioni sui periodi
+@@ -340,7 +340,7 @@ def createDWComp(companyName,picklesPath
+     #SEQUENCE.DES['COD_SEQ']['DESVAR']=unicode("codice della sequenza",'utf-8')
+     #SEQUENCE.DES['NAM_SEQ']['DESVAR']=unicode("nome della sequenza",'utf-8')
+     #SEQUENCE.save(os.path.join(path, 'SEQUENCE.pickle'))
+-    
++
+     ############################################################################################
+     #  creazione del dataframe specifico per i report iva
+     ############################################################################################
+@@ -359,7 +359,7 @@ def createDWComp(companyName,picklesPath
+                                             'NAM_SEQ' : 'SEQUENCE',
+                                             'COD_CON' : 'T_ACC',
+                                             })
+-    
++
+     vatDatasDf = moveLineDf.ix[(moveLineDf["COD_SEQ"]=='RIVA') & (moveLineDf["TAX_COD"].notnull())].reset_index()
+     #aggiunta colonne T_NAME e T_TAX
+     df3 = pandas.DataFrame()
+@@ -439,10 +439,10 @@ def createDWComp(companyName,picklesPath
+         if accountCode in [deferredVatDebitAccountCode,deferredVatCreditAccountCode]:
+             vatDatasDf['CASH'][i:i+1] = (debit>0 and accountCode==deferredVatDebitAccountCode)\
+                                         or (credit>0 and accountCode==deferredVatCreditAccountCode)
+-    
++
+     vatDatasDf['CRED'] = True
+     vatDatasDf['CRED'].ix[vatDatasDf['DBT_MVL']>0] = False
+-    
++
+     vatDatasDf['AMOUNT'] = 0.00
+     for i in range(len(vatDatasDf)):
+         row = vatDatasDf[i:i+1]
+@@ -459,26 +459,26 @@ def createDWComp(companyName,picklesPath
+             vatDatasDf['AMOUNT'][i:i+1] = -amount
+         else:
+             vatDatasDf['AMOUNT'][i:i+1] = amount
+-    
++
+     vatDatasDf['T_CRED'] = None
+     vatDatasDf['T_CRED'].ix[vatDatasDf['T_TAX']==True] = False
+-    vatDatasDf['T_CRED'].ix[(vatDatasDf['T_TAX']==True) & 
++    vatDatasDf['T_CRED'].ix[(vatDatasDf['T_TAX']==True) &
+                              (vatDatasDf['T_ACC'].isin([immediateVatCreditAccountCode,deferredVatCreditAccountCode]))
+                              ]= True
+     vatDatasDf['T_CRED'].ix[(vatDatasDf['T_TAX']==True) & ((vatDatasDf['DBT_MVL']>0) | (vatDatasDf['TAX_AMO']<0)) &
+                              (vatDatasDf['T_ACC']!=immediateVatDebitAccountCode) &
+                              (vatDatasDf['T_ACC']!=deferredVatDebitAccountCode)
+-                             ]= True                       
+-    
++                             ]= True
++
+     vatDatasDf['T_DET'] = None
+     vatDatasDf['T_DET'].ix[vatDatasDf['T_TAX'] == True] = False
+-    vatDatasDf['T_DET'].ix[(vatDatasDf['T_TAX'] == True) & 
++    vatDatasDf['T_DET'].ix[(vatDatasDf['T_TAX'] == True) &
+                             vatDatasDf['T_ACC'].isin([
+                                     immediateVatCreditAccountCode,immediateVatDebitAccountCode,
+                                     deferredVatCreditAccountCode,deferredVatDebitAccountCode])] = True
+     vatDatasDf['T_IMM'] = None
+     vatDatasDf['T_IMM'].ix[(vatDatasDf['T_TAX']==True) & (vatDatasDf['T_DET']==True)] = False
+-    vatDatasDf['T_IMM'].ix[(vatDatasDf['T_TAX']==True) & (vatDatasDf['T_DET']==True) & 
++    vatDatasDf['T_IMM'].ix[(vatDatasDf['T_TAX']==True) & (vatDatasDf['T_DET']==True) &
+                             (vatDatasDf['T_ACC'].isin([immediateVatCreditAccountCode,immediateVatDebitAccountCode]))
+                             ] = True
+     vatDatasDf['T_EXI'] = None
+@@ -519,7 +519,7 @@ def createDWComp(companyName,picklesPath
+         }
+     vatDatasStark.save()
+     #vatDatasDf.to_csv("df"+companyName+".csv",sep=";",encoding="utf-8")
+-    
++
+     ############################################################################################
+     #  importazione dei dati della classe ResCompany
+     #  contenente le informazioni sull'impresa
+@@ -553,7 +553,7 @@ def createDWComp(companyName,picklesPath
+         'PHONE': {'DES': unicode("telefono",'utf-8')},
+         }
+     ResCompanyStark.save()
+-    
++
+     ############################################################################################
+     #  importazione dei dati della classe AccountInvoice
+     #  contenente le informazioni sulle fatture
+@@ -587,7 +587,7 @@ def createDWComp(companyName,picklesPath
+         'NAM_MOV': {'DES': unicode("nome della scrittura contabile associata",'utf-8')},
+         }
+     invoiceStark.save()
+-    
++
+     ############################################################################################
+     #  importazione dei dati della classe AccountVoucher
+     #  contenente le informazioni sulle fatture
+@@ -641,7 +641,7 @@ def main():
+     assert(deferredVatDebitAccountCode)
+     treasuryVatAccountCode = config.options.get('treasury_vat_account_code',False)
+     assert(treasuryVatAccountCode)
+-    
++
+     processes = []
+     for companyName in companiesNames:
+         companyName = companyName.replace(" ","")
+@@ -650,7 +650,7 @@ def main():
+                 immediateVatDebitAccountCode,deferredVatCreditAccountCode,
+                 deferredVatDebitAccountCode,treasuryVatAccountCode])
+         processes.append(companyProcess)
+-        
++
+     parallel_jobs.do_jobs_efficiently(processes)
+ 
+ if __name__ == '__main__':
+--- a/star/__init__.py
++++ b/star/__init__.py
+@@ -1,6 +1,6 @@
+ # -*- coding: utf-8 -*-
+ ##############################################################################
+-#    
++#
+ #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
+ #
+ #    This program is free software: you can redistribute it and/or modify
+@@ -14,12 +14,12 @@
+ #    GNU Affero General Public License for more details.
+ #
+ #    You should have received a copy of the GNU General Public License
+-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
++#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ #
+ ##############################################################################
+ 
+ import share
+-import etl
++import star.etl as etl
+ import sda
+ import sre
+ #from share import stark
