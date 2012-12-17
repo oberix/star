@@ -542,7 +542,7 @@ class Stark(GenericPickler):
             elif len(splitted) > 1:
                 curr_level = self._find_level(key, self._df[key].ix[0])
                 subs[key] = vals_df.set_index(
-                    curr_level, verify_integrity=False)[splitted[0]]
+                    curr_level, verify_integrity=False).to_dict()[splitted[0]]
                 select[key] = splitted[1]
             else: # pragma: no cover
                 raise ValueError # be more specific!
