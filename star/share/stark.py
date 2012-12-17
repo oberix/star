@@ -85,6 +85,21 @@ def _filter_tree(meta, outlist):
             ret.update(_filter_tree(val['child'], outlist))
     return ret
 
+def _smartcopy(dict_):
+    ''' Make a copy of a dictionary recursivly copiing any subdictionary (deep
+    copy), but just copy the references to any other mutable object (shallow
+    copy).
+
+    @ param dict_: the dictionary to copy
+    @ return: a Python dictionary
+    '''
+    out = {}
+    for key, val in dict_.iteritems():
+        if isinstance(val, dict):
+            out[key] = _smartcopy(val)
+        else:
+            out[key] = val
+    return out
 
 class Stark(GenericPickler):
     """ This is the artifact that outputs mainly from etl procedures. It is a
@@ -150,19 +165,15 @@ class Stark(GenericPickler):
         ''' Add two Stark instances. This operation imply a DataFrame.append()
         and a Stark.rollup().
         '''
-        local_keys = self._lm.keys()
-        other_keys = other.lm.keys()
-
         df = self._df.append(other.df, ignore_index=True,
                              verify_integrity=False)
-        lm = self.lm # implies a deepcopy()
-
+        lm = self.lm
         # Do not sum columns with different measure unit.
-        for key in local_keys:
+        for key in self._lm.keys():
             if self._lm[key].get('munit', None) != other.lm[key].get('munit', None):
                 df[key] = np.nan
                 lm[key]['munit'] = None
-
+        # Create a new Stark
         out_stark = Stark(df, lm=lm, cod=self.cod, stype=self.stype,
                           currency=self._currency, currdata=self._currdata)
         out_stark._aggregate(inplace=True)
@@ -205,11 +216,7 @@ class Stark(GenericPickler):
     @property
     def lm(self):
         ''' Return a shallow copy of lm ''' 
-        # TODO: this isn't neither a shallow nor a deep copy, copy of the lm
-        # shold be deep while it encounters nested dictionaries, but it should
-        # behaves as shallow when it reaches DataFrames, so.. implement a
-        # smart_copy() :)
-        return copy.deepcopy(self._lm)
+        return _smartcopy(self._lm)
 
     @lm.setter
     def lm(self, new_lm):

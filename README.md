@@ -1,4 +1,4 @@
-star
+STAR
 ====
 
-Data Analisys and reporting engine
+Data Analisys and reporting engine in Python
