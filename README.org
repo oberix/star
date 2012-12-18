@@ -1,2 +1,9 @@
 * STAR
-  Data Analisys and reporting engine in Python
+  STAR is a tool that provides basic business inteligence functionalites and a
+  reporting engine that work with LaTeX and HTML.
+
+  It's build upon Python Pandas (http://pandas.pydata.org) and matplotlib
+  (http://matplotlib.otg) with the intent to provide an easy and reusable way
+  to define BI models and data rappresentation.
+
+
