@@ -43,7 +43,7 @@ if __name__ == '__main__':
               'label': 'BBB',
               'color': 'b',},
         'c': {'type': 'bar',
-              'ax': 'dx',
+              'ax': 'sx',
               'label': "CCC",
               'color': 'g',
               'cum': 'b'},
@@ -59,7 +59,7 @@ if __name__ == '__main__':
               'label': 'BBB',
               'color': 'b'},
         'c': {'type': 'barh',
-              'ax': 'dx',
+              'ax': 'sx',
               'label': "CCC",
               'color': 'g',
               'cum': 'b'},
@@ -131,10 +131,10 @@ if __name__ == '__main__':
         fd.write(TEMPLATE)
     finally:
         fd.close()
-    fd = open(os.path.join(base, 'config.cfg'), 'w')
-    try:
-        fd.write('[paths]\n')
-    finally:
-        fd.close()
+    # fd = open(os.path.join(base, 'config.cfg'), 'w')
+    # try:
+    #     fd.write('[paths]\n')
+    # finally:
+    #     fd.close()
 
     sre(base)

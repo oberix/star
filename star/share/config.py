@@ -41,7 +41,7 @@ LOGLEVELS = {
 }
 
 # Some defaults
-DEF_CONFIG = os.path.join('config.cfg')
+DEF_CONFIG = 'config.cfg'
 
 __all__ = ['Config']
 

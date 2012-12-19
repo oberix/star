@@ -33,7 +33,7 @@ def _load_config(src_path, confpath=None):
         confpath = os.path.join(src_path, 'config.cfg')
     if not os.path.isfile(confpath):
         logging.warning('No config file found in %s', confpath)
-        return {}
+        # return {}
     config = Config(confpath)
     config.parse()
     logging.debug(config)
@@ -103,13 +103,10 @@ def sre(src_path, config=None, **kwargs):
     @ return: _report() return value
 
     '''
-    if config is None:
-        config = {}
-    else:
-        config = _load_config(src_path, confpath=config)
-    # templ_file = 'main.tex'
+    config = _load_config(src_path, confpath=config)
     global _logger
     _logger = logging.getLogger('sre')
+    templ_file = None
     try:
         templ_file = config['template']
         templ_path = os.path.dirname(templ_file)
