@@ -2,6 +2,7 @@
 # pylint: disable=W1401
 
 from copy import copy
+from StringIO import StringIO
 import logging
 
 from star.remida import utils
@@ -172,12 +173,12 @@ class TexTable(Table):
         @ return: str
 
         '''
-        ret = "\\tabucline- \\endfoot \n"
+        ret = "\\tabucline- \n"
         span = len(self._align)
-        if self._data.FOOTNOTE is not None:
+        if self._data.footnote is not None:
             ret = str().join([
                     '\multicolumn{%s}{|c|}{'% span,
-                    self._data.FOOTNOTE,
+                    self._data.footnote,
                     '} \\\ \\tabucline- \\endfoot \n'])
         return ret
 
@@ -193,36 +194,14 @@ class TexTable(Table):
         except KeyError:
             # keep it unsorted
             pass
-        try:
-            self._keys.append('_FR_')
-            records = self._data.df[self._keys].to_records()
-            # End is used to remove _FR_ values when generating the output
-            # string.
-            end = -1
-        except KeyError:
-            self._keys.remove('_FR_')
-            records = self._data.df[self._keys].to_records()
-            end = None
-        for record in records:
-            rowstart = unicode()
-            if end is not None:
-                rowstart = FORMATS.get(record[end], str())
-            # Remove first element because it's the df index and eventually
-            # last value if it contains _FR_ values.
-            out_record = list()
-            for elem in list(record)[1:end]:
-                if elem is None or elem == 'None':
-                    out_record.append(unicode())
-                else:
-                    if not isinstance(elem, unicode):
-                        elem = unicode(elem, encoding='utf-8')
-                    out_record.append(utils.escape(elem))
-            out += rowstart + """ & """.join(out_record) + \
-                " \\\ %s \n" % self._hsep
-        if self._type == 'bodytab':
-            out += " \n"
-        else:
-            out += "\\tabucline- \n"
+        records = StringIO()
+        self._data.df.to_string(
+            buf=records, float_format=lambda x: '%.3f' % x, 
+            columns=self._keys, header=False, index=False)
+        records.seek(0)
+        for record in records.readlines():
+            out += u' & '.join(record.split())
+            out += ' \\\ \n'
         return out
 
     # Public

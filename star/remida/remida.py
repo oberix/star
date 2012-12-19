@@ -6,8 +6,16 @@ import sys
 import subprocess
 import logging
 
-from star.share.config import Config
-import star.remida.template as template
+try:
+    from star.share.config import Config
+    import star.remida.template as template
+except ImportError:
+    sys.path.insert(0, os.path.abspath(os.path.join(
+        os.path.dirname(__file__),
+        os.path.pardir, os.path.pardir)))
+    from star.share.config import Config
+    import star.remida.template as template
+                    
 
 __all__ = ['sre']
 
@@ -95,8 +103,11 @@ def sre(src_path, config=None, **kwargs):
     @ return: _report() return value
 
     '''
-    config = _load_config(src_path, confpath=config)
-    templ_file = 'main.tex'
+    if config is None:
+        config = {}
+    else:
+        config = _load_config(src_path, confpath=config)
+    # templ_file = 'main.tex'
     global _logger
     _logger = logging.getLogger('sre')
     try:
@@ -113,7 +124,7 @@ def sre(src_path, config=None, **kwargs):
     if templ_file.endswith('.tex'):
         templ = template.TexSreTemplate(os.path.join(templ_path, templ_file), config=config)
         report, fd_list = templ.report()
-        if not isinstance(report, str):
+        if not (isinstance(report, str) or isinstance(report, unicode)):
             # Error, return errno
             return report
         return _compile_tex(templ_file.replace('.tex', '_out.tex'), templ_file,
