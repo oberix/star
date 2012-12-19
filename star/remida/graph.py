@@ -194,11 +194,14 @@ class Graph(object):
         for idx, col in enumerate(self._y_meta):
             try:
                 line = self._plotters[col['type']].plot(ax, col)
-            except KeyError:
-                self._logger.warning(
-                    "Unhandled graph type '%s', I will ignore entry '%s'",
-                    col['type'], col['key'])
-                continue
+            except KeyError, err:
+                if err.args[0].startswith("Unhandled graph type"):
+                    self._logger.warning(
+                        "Unhandled graph type '%s', I will ignore entry '%s'",
+                        col['type'], col['key'])
+                    continue
+                else:
+                    raise err
             lines.append(line)
             labels.append(col['label'])
 

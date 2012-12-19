@@ -92,7 +92,7 @@ if __name__ == '__main__':
         'b': {'type': 'scatter',
               'ax': 'sx',
               'label': 'BBB',
-              'colnnnor': 'b'},
+              'color': 'b'},
         }
 
     df_sc = pandas.DataFrame({
