@@ -243,9 +243,8 @@ class TexGraph(Graph):
             delete = False
         fd = NamedTemporaryFile(suffix='.pdf', delete=delete)
         self._figure.savefig(fd, format='pdf')
-
         # TODO: convert inches to cm
-        ret = "\\includegraphics[width=%s, height=%s, keepaspectratio=True]{%s}" %\
+        ret = "\\includegraphics[width=%sin, height=%sin, keepaspectratio=True]{%s}" %\
               (self._size[0], self._size[1], fd.name)
         self._logger.debug("graph file name is '%s'", fd.name)
         return ret, fd

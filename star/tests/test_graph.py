@@ -1,11 +1,39 @@
 import os
 import numpy as np
-import pandas as pnd
+import pandas
 from star.share.bag import Bag
+from star.remida.remida import sre
 
-def curpath():
-    pth, _ = os.path.split(os.path.abspath(__file__))
-    return pth
+TEMPLATE = '''
+\\documentclass[a4paper, 10pt]{article}
+\\usepackage{graphicx, caption, subcaption}
+
+\\newcommand{\\SRE}[1]{\\textit{insert[#1]}}
+
+\\begin{document}
+
+\\section*{Graph test}
+
+\\begin{figure}[h!]
+  \\begin{subfigure}[cm]{0.5\\linewidth}
+    \\SRE{bar}
+  \\end{subfigure}
+  ~
+  \\begin{subfigure}[cm]{0.5\\linewidth}    
+      \\SRE{barh}
+  \\end{subfigure}
+  \\\\
+  \\begin{subfigure}[cm]{0.5\\linewidth}    
+      \\SRE{plot}
+  \\end{subfigure}
+  ~ 
+  \\begin{subfigure}[cm]{0.5\\linewidth}    
+      \\SRE{scatter}
+  \\end{subfigure}
+\\end{figure}
+
+\\end{document}
+'''
 
 if __name__ == '__main__':
     lm_bar = {
@@ -50,7 +78,7 @@ if __name__ == '__main__':
               'color': 'g',}
         }
 
-    df = pnd.DataFrame({
+    df = pandas.DataFrame({
         'a': np.arange(0, 11, 1),
         'b': np.arange(5, 16, 1),
         'c': np.arange(0, 5.5, 0.5),
@@ -67,7 +95,7 @@ if __name__ == '__main__':
               'colnnnor': 'b'},
         }
 
-    df_sc = pnd.DataFrame({
+    df_sc = pandas.DataFrame({
             'a': [59.9, 46.2, 0],
             'b': [13.6, 7.1, 2],
             })
@@ -89,7 +117,24 @@ if __name__ == '__main__':
               legend=False,
               fontsize=10.0)
 
-    bar.save(os.path.join(curpath(), "../reports/esempio/bar.pickle"))
-    barh.save(os.path.join(curpath(), "../reports/esempio/barh.pickle"))
-    plot.save(os.path.join(curpath(), "../reports/esempio/plot.pickle"))
-    scat.save(os.path.join(curpath(), "../reports/esempio/scatter.pickle"))
+    base = '/tmp/test/'
+    if not os.path.isdir(base):
+        os.makedirs(base)
+
+    bar.save(os.path.join(base, "bar.pickle"))
+    barh.save(os.path.join(base, "barh.pickle"))
+    plot.save(os.path.join(base, "plot.pickle"))
+    scat.save(os.path.join(base, "scatter.pickle"))
+
+    fd = open(os.path.join(base, 'main.tex'), 'w')
+    try:
+        fd.write(TEMPLATE)
+    finally:
+        fd.close()
+    fd = open(os.path.join(base, 'config.cfg'), 'w')
+    try:
+        fd.write('[paths]\n')
+    finally:
+        fd.close()
+
+    sre(base)

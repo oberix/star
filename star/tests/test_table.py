@@ -13,7 +13,8 @@ TEMPLATE = '''
 \\newcommand{\\SRE}[1]{\\textit{insert[#1]}}
 
 \\begin{document}
- Table test
+\\section*{Table test}
+
  \\begin{center}
 
     \\SRE{mybag}
