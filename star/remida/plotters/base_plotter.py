@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
-
 import logging
-
-__author__ = "Marco Pattaro <marco.pattaro@servabit.it>"
 
 
 class BasePlotter(object):
@@ -40,3 +37,11 @@ class BasePlotter(object):
 
 
         
+
+
+
+
+
+
+
+

@@ -48,14 +48,14 @@ class Scatter(BasePlotter):
                 facecolor=color, zorder=1)
             ax.add_patch(rect)
         # Draw dot
-        scat = [ax.scatter(val[0], val[1], s=20, c=col['color'],
-                          color=col['color'], antialiased=True, zorder=3)]
+        scat = [ax.scatter(val[0], val[1], s=20, c=col.get('color', None),
+                          color=col.get('color', None), antialiased=True, zorder=3)]
         
         offset = (margin[0]/15.0, margin[1]/15.0)
         # Add a lable to the dot
         # TODO: this string should be escaped
         label = ax.text(val[0] + offset[0], val[1] + offset[1], self._graph._title,
-                        color=col['color'], clip_on=False, zorder=4)
+                        color=col.get('color', None), clip_on=False, zorder=4)
         ax.add_artist(label)
 
         # bechmark axes

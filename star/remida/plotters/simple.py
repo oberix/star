@@ -63,7 +63,7 @@ class Bar(AbstractBar):
         if col.get('ax') == 'dx':
             ax = ax.twinx()
         ret = ax.bar(self._graph._lax, yvals,
-                     color=kwargs['color'], align=kwargs['align'],
+                     color=kwargs.get('color', None), align=kwargs['align'],
                      bottom=kwargs['bottom'], width=kwargs['dim'],
                      zorder=0, rasterized=True, alpha=0.8)
 #        ax.relim()
