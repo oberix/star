@@ -309,7 +309,6 @@ class HTMLTable(Table):
         ''' Prepare footer for Html table
         This is pretty simple: just draw a line at the bottom of the table.
         '''
-
         ret = str()
         span = self._align
         if self._data.footnore is not None:

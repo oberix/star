@@ -86,16 +86,16 @@ def _filter_tree(meta, outlist):
     return ret
 
 def _smartcopy(dict_):
-    ''' Make a copy of a dictionary recursivly copiing any subdictionary (deep
-    copy), but just copy the references to any other mutable object (shallow
-    copy).
+    ''' Make a copy of a dictionary recursivly copiing any subdictionary or
+    list (deep copy), but just copy the references to any other mutable object
+    (shallow copy).
 
     @ param dict_: the dictionary to copy
     @ return: a Python dictionary
     '''
     out = {}
     for key, val in dict_.iteritems():
-        if isinstance(val, dict):
+        if isinstance(val, dict) or isinstance(val, list):
             out[key] = _smartcopy(val)
         else:
             out[key] = val
@@ -156,15 +156,12 @@ class Stark(GenericPickler):
         self._update()
 
     def __repr__(self):
-        """ Delegate to DataFrame.__repr__().
-        """
         ret = repr(self._df)
         return re.sub(TYPE_PATTERN, unicode(type(self)), ret)
 
     def __add__(self, other):
-        ''' Add two Stark instances. This operation imply a DataFrame.append()
-        and a Stark.rollup().
-        '''
+        # Add two Stark instances. This operation imply a DataFrame.append()
+        # and a Stark.rollup().
         df = self._df.append(other.df, ignore_index=True,
                              verify_integrity=False)
         lm = self.lm
@@ -180,18 +177,13 @@ class Stark(GenericPickler):
         return out_stark
 
     def __getitem__(self, key):
-        ''' Delegate to DataFrame.__setitem__().
-        '''
         df = self._df.__getitem__(key)
         lm = _filter_tree(self._lm, key)
         return Stark(df, lm=lm, currency=self._currency, currdata=self._currdata)
 
     def __setitem__(self, key, value):
-        ''' Delegate to DataFrame.__setitem__(). The purpose of this method it
-        to permit a DataFrame-like syntax when assigning a new column, while
-        keeping the lm consistent.
-
-        '''
+        # The purpose of this method is to permit a DataFrame-like syntax when
+        # assigning a new column, while keeping the lm consistent.
         if isinstance(value, str) or isinstance(value, unicode):
             try:
                 self._update_df(key, expr=value, var_type='E')
