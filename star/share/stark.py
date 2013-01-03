@@ -1,21 +1,24 @@
 # -*- coding: utf-8 -*-
-##############################################################################
-#    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
-#    Author: Marco Pattaro (<marco.pattaro@servabit.it>)
+
+#######################################################################
+# Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).      
+# Author: Marco Pattaro (<marco.pattaro@servabit.it>) 
 #
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU Affero General Public License as
-#    published by the Free Software Foundation, either version 3 of the
-#    License, or (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU Affero General Public License for more details.
-#
-#    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-##############################################################################
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#                                                                     
+# This program is distributed in the hope that it will be useful, but 
+# WITHOUT ANY WARRANTY; without even the implied warranty of          
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU   
+# Affero General Public License for more details.                     
+#                                                                     
+# You should have received a copy of the GNU Affero General Public    
+# License along with this program.  If not, see                       
+# <http://www.gnu.org/licenses/>.                                     
+#######################################################################
+
 # pylint: disable=E1101,W0402
 import os
 import re
@@ -26,7 +29,6 @@ import numpy as np
 
 from star.share.generic_pickler import GenericPickler
 
-__author__ = 'Marco Pattaro (<marco.pattaro@servabit.it>)'
 __all__ = ['Stark']
 
 STYPES = ('elab',)
@@ -46,8 +48,9 @@ TYPE_PATTERN = re.compile("<class \'[a-zA-Z][a-zA-Z0-9.].*\'>")
 ##########################
 
 def _unroll(dict_):
-    """ Unroll tree-like nested dictionary in depth-first order, following
-    'child' keys. Siblings order can be defined with 'ORD' key.
+    """ Unroll tree-like nested dictionary in depth-first order,
+    following 'child' keys. Siblings order can be defined with 'ORD'
+    key.
 
     @ param dict_: python dictionary
     @ return: ordered list
@@ -64,10 +67,10 @@ def _unroll(dict_):
     return ret
 
 def _filter_tree(meta, outlist):
-    """ Create a new tree selecting only those elements present in a list and
-    keeping origninal parent-child relastionship, if a parent is missing from
-    the target tree, all of it's childrens are inherited from the parent's
-    parent.
+    """ Create a new tree selecting only those elements present in a
+    list and keeping origninal parent-child relastionship, if a parent
+    is missing from the target tree, all of it's childrens are
+    inherited from the parent's parent.
 
     @ param meta: a dictionary
     @ param outlist: a list of keys
@@ -86,9 +89,9 @@ def _filter_tree(meta, outlist):
     return ret
 
 def _smartcopy(dict_):
-    ''' Make a copy of a dictionary recursivly copiing any subdictionary or
-    list (deep copy), but just copy the references to any other mutable object
-    (shallow copy).
+    ''' Make a copy of a dictionary recursivly copiing any
+    subdictionary or list (deep copy), but just copy the references to
+    any other mutable object (shallow copy).
 
     @ param dict_: the dictionary to copy
     @ return: a Python dictionary
@@ -102,8 +105,9 @@ def _smartcopy(dict_):
     return out
 
 class Stark(GenericPickler):
-    """ This is the artifact that outputs mainly from etl procedures. It is a
-    collection of meta-information around datas inside a pandas DataFrame.
+    """ This is the artifact that outputs mainly from etl
+    procedures. It is a collection of meta-information around datas
+    inside a pandas DataFrame.
 
     Stark has the following attributes:
         df: a pandas DataFrame
@@ -286,9 +290,9 @@ class Stark(GenericPickler):
     ######################
 
     def _update(self):
-        ''' Call this method every time VD is changed to update Stark data.
-        Iter over VD and fill up different lists of keys, each list contains
-        names from each data type.
+        ''' Call this method every time VD is changed to update Stark
+        data.  Iter over VD and fill up different lists of keys, each
+        list contains names from each data type.
 
         '''
         # Start from clean lists
@@ -336,18 +340,19 @@ class Stark(GenericPickler):
 
         Add or modify a column of the DataFrame trying to preserve DF/VD
         consistency. This method has two main beheviours:
-            1 - When passing an already calculated series or list to assign to
-                a column, it consequently modify the VD.
-            2 - When passing an expression, the new column is automatically
-                calculated and assinged; finally the VD is updated.
+            1 - When passing an already calculated series or list to
+                assign to a column, it consequently modify the LM.
+            2 - When passing an expression, the new column is
+                automatically calculated and assinged; finally the VD
+                is updated.
 
         @ param col: Column's name
-        @ param series: Series or list or any other type accepted as DataFrame
-            column.
-        @ param var_type: One of lm type values, if it's 'E' an expr must not be
-            None
-        @ param expr: The expression to calculate the column's value, it can
-            either be a string or a tuple.
+        @ param series: Series or list or any other type accepted as
+            DataFrame column.
+        @ param var_type: One of lm type values, if it's 'E' an expr
+            must not be None
+        @ param expr: The expression to calculate the column's value,
+            it can either be a string or a tuple.
         @ param des: Descriprion
         @ param munit: Unit of measure.
         @ raise ValueError: when parameters are inconsistent
@@ -390,21 +395,24 @@ class Stark(GenericPickler):
         return (np.exp(exponent) - 1) * 100
 
     def _aggregate(self, func='sum', dim=None, var=None, inplace=False):
-        ''' Apply an aggregation function to the DataFrame. If the DataFrame
-        contains datas that are calculated as a transformation of other columns
-        from the same DataFrame, this will be re-calculated in the output one.
+        ''' Apply an aggregation function to the DataFrame. If the
+        DataFrame contains datas that are calculated as a
+        transformation of other columns from the same DataFrame, this
+        will be re-calculated in the output one.
 
-        The user can specify which dimension should be used in the grouping
-        operation and which columns must appear int the output DataFrame.
+        The user can specify which dimension should be used in the
+        grouping operation and which columns must appear int the
+        output DataFrame.
 
-        @ param func: function used to aggregate, can be either a string or a
-            function name.
-        @ param dim: name, or list of names, of DataFrame's columns that act as
-            dimensions (can be used as indexes, from pandas point of view).
-        @ param var: name, or list of names, of DataFrame's columns that we
-            want to be part of the resulting DataFrame. If calculated columns
-            are in this list, also those from which they are evaluated must be
-            present.
+        @ param func: function used to aggregate, can be either a
+        string or a function name.
+        @ param dim: name, or list of names, of DataFrame's columns
+            that act as dimensions (can be used as indexes, from
+            pandas point of view).
+        @ param var: name, or list of names, of DataFrame's columns
+            that we want to be part of the resulting DataFrame. If
+            calculated columns are in this list, also those from which
+            they are evaluated must be present.
         @ return: a new Stark instance with aggregated data
 
         '''
@@ -412,7 +420,8 @@ class Stark(GenericPickler):
         if dim is None:
             dim = self._dim
         if var is None:
-            var = self._num + self._imm + self._elab + self._rate + self._curr
+            var = self._num + self._imm + self._elab + self._rate + \
+                  self._curr
         # var and dim may be single column's name
         if isinstance(var, str) or isinstance(var, unicode):
             var = [var]
@@ -426,8 +435,8 @@ class Stark(GenericPickler):
             df = self._df
         lm = _filter_tree(self._lm, outkeys)
 
-        # Prepare operation dictionary: for each variable set the appropriate
-        # aggregation function based on its type
+        # Prepare operation dictionary: for each variable set the
+        # appropriate aggregation function based on its type
         operations = {}
         for name in self._num + self._curr:
             operations[name] = func
@@ -436,8 +445,8 @@ class Stark(GenericPickler):
         for name in self._rate:
             operations[name] = self._gr_cum
         for name in self._elab:
-            # Some elaboration need to become numeric before the aggregation,
-            # others must be re-evaluated
+            # Some elaboration need to become numeric before the
+            # aggregation, others must be re-evaluated
             if lm[name].get('rlp') and lm[name]['rlp'] == 'N':
                 lm[name]['type'] = 'N'
             # XXX: This is not needed if 'rlp' != 'N', but any other
@@ -451,7 +460,8 @@ class Stark(GenericPickler):
             self._lm = lm
             self._update()
             return
-        return Stark(df, lm=lm, currency=self._currency, currdata=self._currdata)
+        return Stark(df, lm=lm, currency=self._currency,
+                     currdata=self._currdata)
 
     def _find_level(self, key, value):
         ''' Tells to wich level of a dimension a value belongs
@@ -476,15 +486,14 @@ class Stark(GenericPickler):
     def _eval(self, func):
         ''' Evaluate a function with DataFrame columns'es placeholders.
 
-        Without placeholders this function is just a common python eval; when
-        func contains column's names preceded by '$', this will be substituted
-        with actual column's reference before passing the whole string to
-        eval().
+        Without placeholders this function is just a common python
+        eval; when func contains column's names preceded by '$', this
+        will be substituted with actual column's reference before
+        passing the whole string to eval().
 
-
-        @ param func: a string rappresenting a valid python statement; the
-            string can containt DataFrame columns'es placeholders in the form
-            of '$colname'
+        @ param func: a string rappresenting a valid python statement;
+            the string can containt DataFrame columns'es placeholders
+            in the form of '$colname'
         @ return: eval(func) return value
 
         Example:
@@ -503,8 +512,8 @@ class Stark(GenericPickler):
         return eval(templ.substitute(ph_dict), {'self': self, 'np': np})
 
     def _logit(self, var, how='mean', upper=100.0, prec=0.9):
-        ''' This is the real logit implementation, the logit() just repare the
-        Stark for a later evaluation at update time
+        ''' This is the real logit implementation, the logit() just
+        repare the Stark for a later evaluation at update time
         ''' 
         if prec <= 0 or prec >= 1:
             raise ValueError("prec must be in the range (0, 1), %s received instead" %\
@@ -519,7 +528,8 @@ class Stark(GenericPickler):
             distance = np.std(self._df[var])
         elif how == 'median':
             med = self._df[var].median()
-            quant = (self._df[var].quantile(q=0.25), self._df[var].quantile(q=0.75))
+            quant = (self._df[var].quantile(q=0.25), 
+                     self._df[var].quantile(q=0.75))
             distance = min((med - quant[0]), (quant[1] - med))
         else:
             raise ValueError(
@@ -571,7 +581,8 @@ class Stark(GenericPickler):
     def save(self, file_=None):
         ''' Save object as pickle file.
 
-        If a filename is not provided, the one stored in self.cod will be used.
+        If a filename is not provided, the one stored in self.cod will
+        be used.
 
         @ param file_: destination file path
 
@@ -615,7 +626,7 @@ class Stark(GenericPickler):
         '''
         if new_curr not in self._currdata.columns:
             raise ValueError("%s is not a known currency" % new_curr)
-        lm = copy.deepcopy(self._lm)
+        lm = _smartcopy(self._lm)
         columns = self._df.columns
         df = self._df.join(self._currdata, on=ts_col)
         for var in self._curr:
@@ -628,10 +639,12 @@ class Stark(GenericPickler):
         stores it in a new variable called <var>_LOGIT.
 
         @ param var: Name of the Series in the df to avaluate lgistic
-        @ param how: 'mean' or 'median', method used to estimate distribution simmetry
+        @ param how: 'mean' or 'median', method used to estimate
+            distribution simmetry
         @ param upper:  upper asintotic bound
-        @ param prec: precision percent. This is the slice of y value to limit
-                      the evauation to, it must be in the intervall (0, 1)
+        @ param prec: precision percent. This is the slice of y value
+            to limit the evauation to, it must be in the intervall 
+           (0, 1)
         '''
         key = '%s_LOGIT' % var
         # self._df[key] = self._logit(var, how, upper, prec)
@@ -685,8 +698,9 @@ class Stark(GenericPickler):
     def rollup(self, **kwargs):
         """
         """
-        # FIXME: find a way to avoid this copy, perhaphs _aggregate() should be
-        # called inside _rollup() only when it's really needed.
+        # FIXME: find a way to avoid this copy, perhaphs _aggregate()
+        # should be called inside _rollup() only when it's really
+        # needed.
         tmp_df = self._df.copy()
         self._df = self._rollup(self._df, **kwargs)
         ret = self._aggregate()
