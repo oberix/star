@@ -30,10 +30,9 @@ FIGSIZE = { # (w, h) in inches
 
 class Plotters(object):
     ''' Plotter factory.
-
-    This class manage instanciation of concrete implementations of BasePlotter
-    by ensuring that there is at most one instance of each of them.
-
+    This class manage instanciation of concrete implementations of
+    BasePlotter by ensuring that there is at most one instance of each
+    of them.
     '''
 
     def __init__(self, graph):
@@ -94,8 +93,8 @@ class Graph(object):
         self._figure = self.make_graph()
 
     def _make_legend(self, figure, handles, labels):
-        ''' Create legend for the graph, evaluate how the whole figure must be
-        scaled to make room for the legend.
+        ''' Create legend for the graph, evaluate how the whole figure
+        must be scaled to make room for the legend.
 
         @ param figure: Figure object that must contain the legend
         @ param hadles: list of Line an Path objects used to populate the
@@ -125,9 +124,9 @@ class Graph(object):
         return leg
 
     def _unroll_cum(self, lm, val):
-        ''' Visit bag's lm dictionary and make an ordered list of those
-        variables that are cumulative to each other. This list will be used to
-        stack variables in bar and hbar graphs.
+        ''' Visit bag's lm dictionary and make an ordered list of
+        those variables that are cumulative to each other. This list
+        will be used to stack variables in bar and hbar graphs.
 
         @ param lm : an lm dictionary
         @ param val: an lm dictionary entry
@@ -179,8 +178,8 @@ class Graph(object):
         plt.subplots_adjust(hspace=0, bottom=0.13)
 
     def make_graph(self):
-        ''' Create a Figure and plot a graph in it following what was specified
-        in Bag.lm.
+        ''' Create a Figure and plot a graph in it following what was
+        specified in Bag.lm.
 
         @ return: the Figure instance created
 
@@ -211,8 +210,8 @@ class Graph(object):
         return fig
 
     def out(self):
-        ''' You have to extend this class and override this method in order to
-        generate a different report format.
+        ''' You have to extend this class and override this method in
+        order to generate a different report format.
 
         '''
         raise NotImplementedError
@@ -239,7 +238,8 @@ class TexGraph(Graph):
         return super(TexGraph, self)._make_legend(figure, handles, labels)
 
     def out(self):
-        ''' Produce a LaTeX compatible tag to be substituted in the template.
+        ''' Produce a LaTeX compatible tag to be substituted in the
+        template.
         '''
         delete = True
         if self._logger.getEffectiveLevel() <= logging.DEBUG:
