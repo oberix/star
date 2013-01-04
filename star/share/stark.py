@@ -631,7 +631,7 @@ class Stark(GenericPickler):
         for var in self._curr:
             df[var] = df[var] * (df[new_curr] / df[self._currency])
         df = df.reset_index()[columns]
-        return Stark(df, lm=lm)
+        return Stark(df, lm=lm, currency=new_curr, currdata=self._currdata)
 
     def logit(self, var, how='mean', upper=100.0, prec=0.9):
         ''' Calculate the logistic distribution of a DataFrame variable and

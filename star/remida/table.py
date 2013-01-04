@@ -294,13 +294,16 @@ class HTMLTable(Table):
         '''
 
         out = '''<tbody>\n'''
-        records = self._data.df[self._keys].to_records()
-        #self._logger.info("In Make Body %s", records)
-        for line in list(records):
-            out += '''<tr>\n'''
-            for idx, i in enumerate(list(line)[1:]):
-                heading = self._headings[self._keys[idx]]
-                out += '''<td%s>%s</td>''' % (heading.get('td_attrs', ''), i)
+        records = StringIO()
+        self._data.df.to_string(
+            buf=records, float_format=lambda x: '%.3f' % x,
+            columns=self._keys, header=False, index=False)
+        records.seek(0)
+        for record in records.readlines():
+            record = record.split()
+            for idx, field in enumerate(record):
+                heading = self._headings[seld._keys[idx]]
+                out += '''<td%s>%s</td>''' % (heading.get('td_attrs', ''), field)
             out += '''\n</tr>\n'''
         out += '''</tbody>\n'''
         return out
@@ -312,7 +315,7 @@ class HTMLTable(Table):
         ret = str()
         span = self._align
         if self._data.footnore is not None:
-            ret = "<hr/>" + self._data.footnore
+            ret = "<hr/>" + self._data.footnote
         return str().join(ret)
 
     def out(self):
