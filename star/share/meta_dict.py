@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from pandas import DataFrame, Series
+# some validation is already implemented
 from matplotlib import rcsetup
 
 def validate_dict_df(dict_df):
@@ -82,21 +83,21 @@ def _smartcopy(dict_):
 
 
 default_meta = {
-    'munit_vals': [{}, validate_dict_df],
+    'munit_vals': [{}, validate_dict_df], # This looks similar to vars
     # Totals by groups 
     'totals': [DataFrame(), validate_df],
     'vars': [{}, validate_vars],
 }
 
 default_meta_vars = {
-        'type': ['N', validate_elab_type],
-        'vals': [DataFrame(), validate_df],
-        'munit': ['weight.Kg', validate_munit],
-        'elab': [None, validate_elab],
-        # rlp is basically useless, since we can simply assign
-        # a function return value and leave it to Numeric type.
-        'rlp': [None, validate_rlp], # to be removed
-        'label': [u'', unicode],
+    'type': ['N', validate_elab_type],
+    'vals': [DataFrame(), validate_df],
+    'munit': ['weight.Kg', validate_munit],
+    'elab': [None, validate_elab],
+    # rlp is basically useless, since we can simply assign
+    # a function return value and leave it to Numeric type.
+    'rlp': [None, validate_rlp], # to be removed
+    'label': [u'', unicode],
 }
 
 default_meta_graph = {
@@ -105,16 +106,16 @@ default_meta_graph = {
     'title': [u'', unicode],
     'caption': [u'', unicode],
     'legend': [True, bool],
-    'vars': [{}, dict]
+    'vars': [{}, dict],
 }
 
 default_meta_graph_vars = {
-        'type': ['plot', validate_graph_type],
-        'label': [u'', unicode],
-        'ticklabel': [Series(), validate_ticks],
-        'ax': ['sx', validate_ax],
-        'color': ['#34e5ac', rcsetup.validate_color],
-        'cumulate': [None, validate_cumulate],
+    'type': ['plot', validate_graph_type],
+    'label': [u'', unicode],
+    'ticklabel': [Series(), validate_ticks],
+    'ax': ['sx', validate_ax],
+    'color': ['#34e5ac', rcsetup.validate_color],
+    'cumulate': [None, validate_cumulate],
 }
 
 default_meta_table = {
@@ -124,15 +125,15 @@ default_meta_table = {
     # pandas.Series holding fromatting metastrings
     # for rows (like 'bold', 'italics'. 'hsep', etc)
     'formatting': [None, validate_formatting],
-    'vars': [{}, validate_vars]
+    'vars': [{}, validate_vars],
 }
 
 defautl_meta_table_vars = {
-        'order': [0, int],
-        'label': [u'', unicode],
-        'align': ['left', validate_allignment],
-        'vsep': ['both', validate_vsep],
-        'headers': [[u''], validate_headers],
+    'order': [0, int],
+    'label': [u'', unicode],
+    'align': ['left', validate_allignment],
+    'vsep': ['both', validate_vsep],
+    'headers': [[u''], validate_headers],
 }
 
 default_meta_des = {} # TODO: define
@@ -154,9 +155,6 @@ class MetaDict(dict):
     containers (namely DataFrames), for this reason the use of a smart
     copy is mandatory.
     '''
-    # To validate top level attributs
-    validate = dict([ (key, converter) for key, (default, converter) in
-                      default_meta.iteritems() ])
 
     def __setitem__(self, key, val):
         try:
@@ -169,15 +167,25 @@ See metaDict.keys() for a list of valid parameters.' % key)
     def copy(self):
         return _smartcopy(self)
 
-
 class MetaDictGraph(MetaDict):
-    validate = dict([ (key, val) for key, val in
+    validate = dict([ (key, converter) for key, (default, converter) in
                       default_meta_graph.iteritems() ])
 
 class MetaDictTable(MetaDict):
-    validate = dict([ (key, val) for key, val in
+    validate = dict([ (key, converter) for key, (default, converter) in
                       default_meta_table.iteritems() ])
 
 class MetaDictDes(MetaDict):
-    validate = dict([ (key, val) for key, val in
+    validate = dict([ (key, converter) for key, (default, converter) in
                       default_meta_des.iteritems() ])
+
+
+# update default meta with latest classes
+default_meta.update({
+    'table': [MetaDictTable(), MetaDictTable],
+    'graph': [MetaDictGraph(), MetaDictGraph], 
+    'des': [MetaDictDes(), MetaDictDes], 
+})
+
+MetaDict.validate = dict([ (key, converter) for key, (default, converter) in
+                           default_meta.iteritems() ])
