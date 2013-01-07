@@ -599,7 +599,7 @@ class Stark(GenericPickler):
         @ return: a DataFrame
 
         '''
-        lm = copy.deepcopy(self._lm)
+        lm = self.lm
         return Stark(self._df.head(n), lm=lm, currency=self._currency,
                      currdata=self._currdata)
 
@@ -610,10 +610,26 @@ class Stark(GenericPickler):
         @ return: a DataFrame
 
         '''
-        lm = copy.deepcopy(self._lm)
+        lm = self.lm
         return Stark(self._df.tail(n), lm=lm, currency=self._currency,
                      currdata=self._currdata)
 
+    def merge(self, other, how='left', sort=False, lsuffix='_x', rsuffix='_y'):
+        '''
+        '''
+        if not set(other.dim).issubset(self.dim):
+            raise ValueError("other's dimensions must be subset of the cuerrent Stark dimensions")
+
+        self._df.set_index(self.dim, inplace=True)
+        other._df.set_index(other.dim, inplace=True)
+
+        out_df = self._df.join(other._df, how=how, sort=sort, lsuffix=lsuffix, rsuffix=rsuffix).reset_index()
+
+        self._df = self._df.reset_index()
+        other.df = other._df.reset_index()
+
+        return Stark(out_df, lm=self.lm)
+                    
     def changecurr(self, new_curr, ts_col='YEAR'):
         ''' Change currency by appling different change rates according to
         periods.
