@@ -615,7 +615,27 @@ class Stark(GenericPickler):
                      currdata=self._currdata)
 
     def merge(self, other, how='left', sort=False, lsuffix='_x', rsuffix='_y'):
-        '''
+        ''' Merge Stark objects by performing a database-style join
+        operation by dimensions.
+        
+        @ param other: A Stark object wich dimensional variables are a
+            subset of the current Stark.
+        @ param how: {'left', 'right', 'outer', 'inner'}
+            How to handle indexes of the two objects. Default: 'left'
+            for joining on index, None otherwise
+            * left: use calling frame's index
+            * right: use input frame's index
+            * outer: form union of indexes
+            * inner: use intersection of indexes
+        @ param lsuffix: Suffix to use from left frame's overlapping
+            columns.
+        @ param rsuffix: Suffix to use from right frame's overlapping
+            colums.
+        @ param sort: boolean, default False Order result Stark
+            lexicographically by the join key. If False, preserves the
+            index order of the calling (left) Stark
+        @ return: a new Stark instance.
+
         '''
         if not set(other.dim).issubset(self.dim):
             raise ValueError("other's dimensions must be subset of the cuerrent Stark dimensions")
