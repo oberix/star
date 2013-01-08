@@ -619,16 +619,42 @@ class Stark(GenericPickler):
         '''
         if not set(other.dim).issubset(self.dim):
             raise ValueError("other's dimensions must be subset of the cuerrent Stark dimensions")
-
+        # use multi-index to perform a join
         self._df.set_index(self.dim, inplace=True)
         other._df.set_index(other.dim, inplace=True)
-
         out_df = self._df.join(other._df, how=how, sort=sort, lsuffix=lsuffix, rsuffix=rsuffix).reset_index()
 
+        def elab_vars(col, suffix):
+            ''' Substitute elaborate variable with suffixed version in
+            elab string '''
+            expr = re.compile(r'\$[_a-zA-Z0-9]*')        
+            elab = out_lm[col]['elab']
+            matches = re.findall(expr, elab)
+            repl = [match + suffix for match in matches]
+            for idx, r in enumerate(repl):
+                elab = re.sub(r'\%s' % matches[idx], r, elab)
+            out_lm[col]['elab'] = elab
+
+        # prepare output lm
+        out_lm = self.lm
+        for col in out_df.columns:
+            # handle suffixed variables
+            if col.endswith(lsuffix):
+                out_lm[col] = out_lm.pop(col.strip(lsuffix))
+                if out_lm[col]['type'] == 'E':
+                    elab_vars(col, lsuffix)
+            elif col.endswith(rsuffix):
+                out_lm[col] = _smartcopy(other.lm[col.strip(rsuffix)])
+                if out_lm[col]['type'] == 'E':
+                    elab_vars(col, rsuffix)
+            # copy other's variables
+            if col not in out_lm.keys():
+                out_lm[col] = other.lm[col]
+
+        # pack up everything and return
         self._df = self._df.reset_index()
         other.df = other._df.reset_index()
-
-        return Stark(out_df, lm=self.lm)
+        return Stark(out_df, lm=out_lm)
                     
     def changecurr(self, new_curr, ts_col='YEAR'):
         ''' Change currency by appling different change rates according to
