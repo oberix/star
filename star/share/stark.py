@@ -664,7 +664,7 @@ class Stark(GenericPickler):
                 if out_lm[col]['type'] == 'E':
                     elab_vars(col, lsuffix)
             elif col.endswith(rsuffix):
-                out_lm[col] = _smartcopy(other.lm[col.strip(rsuffix)])
+                out_lm[col] = other.lm[col.strip(rsuffix)]
                 if out_lm[col]['type'] == 'E':
                     elab_vars(col, rsuffix)
             # copy other's variables
