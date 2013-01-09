@@ -214,7 +214,12 @@ class Graph(object):
         order to generate a different report format.
 
         '''
-        raise NotImplementedError
+        import cStringIO
+        out = cStringIO.StringIO()
+        self._figure.savefig(out, format='png')
+        out.seek(0)
+        return out
+
 
 class TexGraph(Graph):
     ''' Extends Graph to generate LaTeX rendered graphs; implements out()
@@ -255,10 +260,7 @@ class TexGraph(Graph):
 class HTMLGraph(Graph):
 
     def out(self):
-        buf = cStringIO.StringIO()
-        self._figure.savefig(buf, format='png')
-        buf.seek(0)
+        import base64
+        buf = super(HTMLGraph, self).out()
         png_base64 = base64.b64encode(buf.read())
         return '<img src="data:image/png;base64,%s" />' % png_base64
-
-
