@@ -162,8 +162,8 @@ class Stark(GenericPickler):
         return re.sub(TYPE_PATTERN, unicode(type(self)), ret)
 
     def __add__(self, other):
-        # Add two Stark instances. This operation imply a DataFrame.append()
-        # and a Stark.rollup().
+        # Add two Stark instances. This operation implies a
+        # DataFrame.append() and a Stark.rollup().
         df = self._df.append(other.df, ignore_index=True,
                              verify_integrity=False)
         lm = self.lm

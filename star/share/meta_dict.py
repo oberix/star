@@ -156,13 +156,29 @@ class MetaDict(dict):
     copy is mandatory.
     '''
 
+    def __init__(self, *args, **kwargs):
+        # import ipdb; ipdb.set_trace()
+        if len(args) == 1 and isinstance(args[0], dict):
+            kwargs = args[0]
+            args = ()
+        for key, val in args:
+            # args elements must be tuples
+            self.__setitem__(key, val)
+        for key, val in kwargs.iteritems():
+            self.__setitem__(key, val)
+        for key, val in self.defaults.iteritems():
+            try:
+                self[key]
+            except KeyError:
+                dict.__setitem__(self, key, val)
+
     def __setitem__(self, key, val):
         try:
             cval = self.validate[key](val)
-            dict.__setitem__(self, key, cval)
         except KeyError:
-            raise KeyError('%s is not a valid md parameter.\
-See metaDict.keys() for a list of valid parameters.' % key)
+            raise KeyError("'%s' is not a valid md parameter.\
+See metaDict.keys() for a list of valid parameters." % key)
+        dict.__setitem__(self, key, cval)
 
     def copy(self):
         return _smartcopy(self)
@@ -170,14 +186,30 @@ See metaDict.keys() for a list of valid parameters.' % key)
 class MetaDictGraph(MetaDict):
     validate = dict([ (key, converter) for key, (default, converter) in
                       default_meta_graph.iteritems() ])
+    defaults = dict([ (key, default) for key, (default, converter) in
+                      default_meta_graph.iteritems() ])
+
+    def __init__(self, *args, **kwargs):
+        MetaDict.__init__(self, *args, **kwargs)
 
 class MetaDictTable(MetaDict):
     validate = dict([ (key, converter) for key, (default, converter) in
                       default_meta_table.iteritems() ])
+    defaults = dict([ (key, default) for key, (default, converter) in
+                      default_meta_table.iteritems() ])
+
+    def __init__(self, *args, **kwargs):
+        MetaDict.__init__(self, *args, **kwargs)
+
 
 class MetaDictDes(MetaDict):
     validate = dict([ (key, converter) for key, (default, converter) in
                       default_meta_des.iteritems() ])
+    defaults = dict([ (key, default) for key, (default, converter) in
+                      default_meta_des.iteritems() ])
+
+    def __init__(self, *args, **kwargs):
+        MetaDict.__init__(self, *args, **kwargs)
 
 
 # update default meta with latest classes
@@ -188,4 +220,7 @@ default_meta.update({
 })
 
 MetaDict.validate = dict([ (key, converter) for key, (default, converter) in
+                           default_meta.iteritems() ])
+
+MetaDict.defaults = dict([ (key, default) for key, (default, converter) in
                            default_meta.iteritems() ])
