@@ -22,7 +22,6 @@
 import os
 import re
 import string 
-import copy
 import pandas
 import numpy as np
 
@@ -180,8 +179,17 @@ class Stark(GenericPickler):
         return out_stark
 
     def __getitem__(self, key):
+        if not isinstance(key, list):
+            key = [key]
         df = self._df.__getitem__(key)
         lm = _filter_tree(self._lm, key)
+        for k in key:
+            if lm[k]['type'] == 'E':
+                terms = self._find_elab_vars(k, lm=lm)
+                for term in terms:
+                    if term.strip(r'\$') not in key:
+                        lm[k]['type'] = 'N'
+                        break
         return Stark(df, lm=lm, currency=self._currency, currdata=self._currdata)
 
     def __setitem__(self, key, value):
@@ -482,6 +490,23 @@ class Stark(GenericPickler):
         raise ValueError(
             "Could not find value '%s' for key '%s'" % (value, key))
 
+    def _find_elab_vars(self, col, lm=None):
+        ''' 
+        '''
+        if lm is None:
+            lm = self._lm
+        expr = re.compile(r'\$[_a-zA-Z0-9]*')
+        return re.findall(expr, lm[col]['elab'])
+
+    def _suffix_elab_vars(self, col, suffix, lm=None):
+        if lm is None:
+            lm = self._lm
+        matches = self._find_elab_vars(col, lm=lm)
+        replaces = [''.join([match, suffix]) for match in matches]
+        for idx, repl in enumerate(replaces):
+            lm[col]['elab'] = re.sub(r'\%s' % matches[idx], repl, lm[col]['elab'])
+        return lm 
+        
     def _eval(self, func):
         ''' Evaluate a function with DataFrame columns'es placeholders.
 
@@ -599,7 +624,7 @@ class Stark(GenericPickler):
         @ return: a DataFrame
 
         '''
-        lm = copy.deepcopy(self._lm)
+        lm = self.lm
         return Stark(self._df.head(n), lm=lm, currency=self._currency,
                      currdata=self._currdata)
 
@@ -610,10 +635,63 @@ class Stark(GenericPickler):
         @ return: a DataFrame
 
         '''
-        lm = copy.deepcopy(self._lm)
+        lm = self.lm
         return Stark(self._df.tail(n), lm=lm, currency=self._currency,
                      currdata=self._currdata)
 
+    def merge(self, other, how='left', sort=False, lsuffix='_x', rsuffix='_y'):
+        ''' Merge Stark objects by performing a database-style join
+        operation by dimensions.
+        
+        @ param other: A Stark object wich dimensional variables are a
+            subset of the current Stark.
+        @ param how: {'left', 'right', 'outer', 'inner'}
+            How to handle indexes of the two objects. Default: 'left'
+            for joining on index, None otherwise
+            * left: use calling frame's index
+            * right: use input frame's index
+            * outer: form union of indexes
+            * inner: use intersection of indexes
+        @ param lsuffix: Suffix to use from left frame's overlapping
+            columns.
+        @ param rsuffix: Suffix to use from right frame's overlapping
+            colums.
+        @ param sort: boolean, default False Order result Stark
+            lexicographically by the join key. If False, preserves the
+            index order of the calling (left) Stark
+        @ return: a new Stark instance.
+
+        '''
+        if not set(other.dim).issubset(self.dim):
+            raise ValueError("other's dimensions must be subset of the cuerrent Stark dimensions")
+        # use multi-index to perform a join
+        self._df.set_index(self.dim, inplace=True)
+        other._df.set_index(other.dim, inplace=True)
+        out_df = self._df.join(other._df, how=how, sort=sort, lsuffix=lsuffix, rsuffix=rsuffix).reset_index()
+
+        # prepare output lm
+        out_lm = self.lm
+        for col in out_df.columns:
+            # handle suffixed variables
+            if col.endswith(lsuffix):
+                out_lm[col] = out_lm.pop(col.strip(lsuffix))
+                if out_lm[col]['type'] == 'E':
+                    # elab_vars(col, lsuffix)
+                    self._suffix_elab_vars(col, lsuffix, lm=out_lm)
+            elif col.endswith(rsuffix):
+                out_lm[col] = other.lm[col.strip(rsuffix)]
+                if out_lm[col]['type'] == 'E':
+                    # elab_vars(col, rsuffix)
+                    self._suffix_elab_vars(col, rsuffix, lm=out_lm)
+            # copy other's variables
+            if col not in out_lm.keys():
+                out_lm[col] = other.lm[col]
+
+        # pack up everything and return
+        self._df = self._df.reset_index()
+        other.df = other._df.reset_index()
+        return Stark(out_df, lm=out_lm)
+                    
     def changecurr(self, new_curr, ts_col='YEAR'):
         ''' Change currency by appling different change rates according to
         periods.
@@ -637,7 +715,7 @@ class Stark(GenericPickler):
         ''' Calculate the logistic distribution of a DataFrame variable and
         stores it in a new variable called <var>_LOGIT.
 
-        @ param var: Name of the Series in the df to avaluate lgistic
+        @ param var: Name of the Series in the df to evaluate lgistic
         @ param how: 'mean' or 'median', method used to estimate
             distribution simmetry
         @ param upper:  upper asintotic bound
