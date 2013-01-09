@@ -13,6 +13,9 @@ if __name__ == '__main__' :
     stk2 = Stark.load(os.path.join(base, PKL_PATH))
     stk2['MIO'] = '$X / $K * 1000'
     stk_tot = stk1.merge(stk2)
+
+    stk1[['MIO', 'X', 'K']]
+
     print "ok"
 
 

@@ -22,7 +22,6 @@
 import os
 import re
 import string 
-import copy
 import pandas
 import numpy as np
 
@@ -180,8 +179,17 @@ class Stark(GenericPickler):
         return out_stark
 
     def __getitem__(self, key):
+        if not isinstance(key, list):
+            key = [key]
         df = self._df.__getitem__(key)
         lm = _filter_tree(self._lm, key)
+        for k in key:
+            if lm[k]['type'] == 'E':
+                terms = self._find_elab_vars(k, lm=lm)
+                for term in terms:
+                    if term.strip(r'\$') not in key:
+                        lm[k]['type'] = 'N'
+                        break
         return Stark(df, lm=lm, currency=self._currency, currdata=self._currdata)
 
     def __setitem__(self, key, value):
@@ -482,6 +490,23 @@ class Stark(GenericPickler):
         raise ValueError(
             "Could not find value '%s' for key '%s'" % (value, key))
 
+    def _find_elab_vars(self, col, lm=None):
+        ''' 
+        '''
+        if lm is None:
+            lm = self._lm
+        expr = re.compile(r'\$[_a-zA-Z0-9]*')
+        return re.findall(expr, lm[col]['elab'])
+
+    def _suffix_elab_vars(self, col, suffix, lm=None):
+        if lm is None:
+            lm = self._lm
+        matches = self._find_elab_vars(col, lm=lm)
+        replaces = [''.join([match, suffix]) for match in matches]
+        for idx, repl in enumerate(replaces):
+            lm[col]['elab'] = re.sub(r'\%s' % matches[idx], repl, lm[col]['elab'])
+        return lm 
+        
     def _eval(self, func):
         ''' Evaluate a function with DataFrame columns'es placeholders.
 
@@ -644,17 +669,6 @@ class Stark(GenericPickler):
         other._df.set_index(other.dim, inplace=True)
         out_df = self._df.join(other._df, how=how, sort=sort, lsuffix=lsuffix, rsuffix=rsuffix).reset_index()
 
-        def elab_vars(col, suffix):
-            ''' Substitute elaborate variable with suffixed version in
-            elab string '''
-            expr = re.compile(r'\$[_a-zA-Z0-9]*')        
-            elab = out_lm[col]['elab']
-            matches = re.findall(expr, elab)
-            repl = [match + suffix for match in matches]
-            for idx, r in enumerate(repl):
-                elab = re.sub(r'\%s' % matches[idx], r, elab)
-            out_lm[col]['elab'] = elab
-
         # prepare output lm
         out_lm = self.lm
         for col in out_df.columns:
@@ -662,11 +676,13 @@ class Stark(GenericPickler):
             if col.endswith(lsuffix):
                 out_lm[col] = out_lm.pop(col.strip(lsuffix))
                 if out_lm[col]['type'] == 'E':
-                    elab_vars(col, lsuffix)
+                    # elab_vars(col, lsuffix)
+                    self._suffix_elab_vars(col, lsuffix, lm=out_lm)
             elif col.endswith(rsuffix):
                 out_lm[col] = other.lm[col.strip(rsuffix)]
                 if out_lm[col]['type'] == 'E':
-                    elab_vars(col, rsuffix)
+                    # elab_vars(col, rsuffix)
+                    self._suffix_elab_vars(col, rsuffix, lm=out_lm)
             # copy other's variables
             if col not in out_lm.keys():
                 out_lm[col] = other.lm[col]
@@ -699,7 +715,7 @@ class Stark(GenericPickler):
         ''' Calculate the logistic distribution of a DataFrame variable and
         stores it in a new variable called <var>_LOGIT.
 
-        @ param var: Name of the Series in the df to avaluate lgistic
+        @ param var: Name of the Series in the df to evaluate lgistic
         @ param how: 'mean' or 'median', method used to estimate
             distribution simmetry
         @ param upper:  upper asintotic bound
