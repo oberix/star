@@ -1,3 +1,9 @@
+star (0.2.1-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Marco Bardelli <marco.bardelli@aderit.it>  Tue, 08 Jan 2013 16:57:16 +0100
+
 star (0.2) UNRELEASED; urgency=low
 
   * Initial release. (Closes: #XXXXXX)
