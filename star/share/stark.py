@@ -25,6 +25,8 @@ import string
 import pandas
 import numpy as np
 
+from star.share import utils
+from star.share.meta_dict import MetaDict, MetaDictVars
 from star.share.generic_pickler import GenericPickler
 
 __all__ = ['Stark']
@@ -41,66 +43,6 @@ TYPES = [
 
 TYPE_PATTERN = re.compile("<class \'[a-zA-Z][a-zA-Z0-9.].*\'>")
 
-##########################
-# Misc utility functions #
-##########################
-
-def _unroll(dict_):
-    """ Unroll tree-like nested dictionary in depth-first order,
-    following 'child' keys. Siblings order can be defined with 'ORD'
-    key.
-
-    @ param dict_: python dictionary
-    @ return: ordered list
-
-    """
-    ret = list()
-    # Sort items to preserve order between siblings
-    items = dict_.items()
-    items.sort(key=lambda x: x[1].get('ORD', 0))
-    for key, val in items:
-        ret.append(key)
-        if val.get('child'):
-            ret += _unroll(val['child'])
-    return ret
-
-def _filter_tree(meta, outlist):
-    """ Create a new tree selecting only those elements present in a
-    list and keeping origninal parent-child relastionship, if a parent
-    is missing from the target tree, all of it's childrens are
-    inherited from the parent's parent.
-
-    @ param meta: a dictionary
-    @ param outlist: a list of keys
-    @ return: a new dictionary
-
-    """
-    ret = dict()
-    items = meta.items()
-    for key, val in items:
-        if key in outlist:
-            ret[key] = val.copy()
-            if val.get('child'):
-                ret[key]['child'] = _filter_tree(val['child'], outlist)
-        elif val.get('child'):
-            ret.update(_filter_tree(val['child'], outlist))
-    return ret
-
-def _smartcopy(dict_):
-    ''' Make a copy of a dictionary recursivly copiing any
-    subdictionary or list (deep copy), but just copy the references to
-    any other mutable object (shallow copy).
-
-    @ param dict_: the dictionary to copy
-    @ return: a Python dictionary
-    '''
-    out = {}
-    for key, val in dict_.iteritems():
-        if isinstance(val, (dict, list)):
-            out[key] = _smartcopy(val)
-        else:
-            out[key] = val
-    return out
 
 class Stark(GenericPickler):
     """ This is the artifact that outputs mainly from etl
@@ -143,11 +85,11 @@ class Stark(GenericPickler):
         self.cod = cod
         self._currency = currency
         self._currdata = currdata
-        # if stype not in STYPES:
-        #     raise ValueError("stype must be one of %s" % STYPES)
         self.stype = stype
         if lm is None:
-            lm = {}
+            lm = MetaDict()
+            for col in df.columns:
+                lm['vars'][col] = MetaDictVars()
         self._lm = lm
         self._dim = [] # Dimensions
         self._elab = [] # Elaborated
@@ -168,10 +110,10 @@ class Stark(GenericPickler):
                              verify_integrity=False)
         lm = self.lm
         # Do not sum columns with different measure unit.
-        for key in self._lm.keys():
-            if self._lm[key].get('munit', None) != other.lm[key].get('munit', None):
+        for key in self._lm['vars'].keys():
+            if self._lm['vars'][key].get('munit', None) != other.lm['vars'][key].get('munit', None):
                 df[key] = np.nan
-                lm[key]['munit'] = None
+                lm['vars'][key]['munit'] = None
         # Create a new Stark
         out_stark = Stark(df, lm=lm, cod=self.cod, stype=self.stype,
                           currency=self._currency, currdata=self._currdata)
@@ -182,13 +124,14 @@ class Stark(GenericPickler):
         if not isinstance(key, list):
             key = [key]
         df = self._df.__getitem__(key)
-        lm = _filter_tree(self._lm, key)
+        lm = MetaDict()
+        lm['vars'] = utils.filter_tree(self._lm['vars'], key)
         for k in key:
-            if lm[k]['type'] == 'E':
+            if lm['vars'][k]['type'] == 'E':
                 terms = self._find_elab_vars(k, lm=lm)
                 for term in terms:
                     if term.strip(r'\$') not in key:
-                        lm[k]['type'] = 'N'
+                        lm['vars'][k]['type'] = 'N'
                         break
         return Stark(df, lm=lm, currency=self._currency, currdata=self._currdata)
 
@@ -205,9 +148,9 @@ class Stark(GenericPickler):
 
     def __delitem__(self, key):
         del self._df[key]
-        target = _unroll(self._lm)
+        target = utils.unroll(self._lm)
         target.remove(key)
-        self._lm = _filter_tree(self._lm, target)
+        self._lm = utils.filter_tree(self._lm, target)
 
     def __len__(self):
         return len(self._df)
@@ -219,7 +162,8 @@ class Stark(GenericPickler):
     @property
     def lm(self):
         ''' Return a shallow copy of lm ''' 
-        return _smartcopy(self._lm)
+        # return utils.smartcopy(self._lm)
+        return self._lm.copy()
 
     @lm.setter
     def lm(self, new_lm):
@@ -286,7 +230,7 @@ class Stark(GenericPickler):
 
     @property
     def columns(self):
-        return pandas.Index(self._lm.keys())
+        return pandas.Index(self._lm['vars'].keys())
 
     @property
     def ix(self):
@@ -309,15 +253,15 @@ class Stark(GenericPickler):
         self._imm = []
         self._rate = []
         self._curr = []
-        # Sort VD.items() by 'ORD' to have output lists already ordered.
-        lm_items = self._lm.items()
+        # Sort lm.items() by 'ORD' to have output lists already ordered.
+        lm_items = self._lm['vars'].items()
         # lm_items.sort(key=lambda x: x[1].get('ORD', 0))
         for key, val in lm_items:
             if val['type'] == 'D':
-                self._dim += _unroll({key: val})
+                self._dim += utils.unroll({key: val})
             elif val['type'] == 'E':
                 # (Re)evaluate elab columns
-                self._df[key] = self._eval(self._lm[key]['elab'])
+                self._df[key] = self._eval(self._lm['vars'][key]['elab'])
                 self._elab.append(key)
             elif val['type'] == 'N':
                 # TODO: check that dtypes are really numeric types
@@ -338,7 +282,7 @@ class Stark(GenericPickler):
 
         '''
         # Check key consistency
-        self._lm[key] = entry
+        self._lm['vars'][key] = entry
         self._update()
 
     def _update_df(self, col, series=None, var_type='N', expr=None, rlp='E',
@@ -366,7 +310,7 @@ class Stark(GenericPickler):
 
         '''
         if var_type not in TYPES:
-            raise ValueError("var_type mut be one of [%s]" % \
+            raise ValueError("var_type mut be one of (%s)" % \
                                  '|'.join(TYPES))
         if var_type != 'E':
             self._df[col] = series
@@ -440,7 +384,8 @@ class Stark(GenericPickler):
             df = self._df.copy()
         else:
             df = self._df
-        lm = _filter_tree(self._lm, outkeys)
+        lm = MetaDict()
+        lm['vars'] = utils.filter_tree(self._lm['vars'], outkeys)
 
         # Prepare operation dictionary: for each variable set the
         # appropriate aggregation function based on its type
@@ -454,8 +399,8 @@ class Stark(GenericPickler):
         for name in self._elab:
             # Some elaboration need to become numeric before the
             # aggregation, others must be re-evaluated
-            if lm[name].get('rlp') and lm[name]['rlp'] == 'N':
-                lm[name]['type'] = 'N'
+            if lm['vars'][name].get('rlp') and lm['vars'][name]['rlp'] == 'N':
+                lm['vars'][name]['type'] = 'N'
             # XXX: This is not needed if 'rlp' != 'N', but any other
             # operation seems to introduce a greater overhead to the
             # computation. This should be invesigated further.
@@ -478,7 +423,7 @@ class Stark(GenericPickler):
         @ reutrn: level name
         @ raise: ValueError if value is not found
         '''
-        df = self._lm[key]['vals']
+        df = self._lm['vars'][key]['vals']
         for col in df.columns:
             try:
                 rows = df.ix[df[col] == value]
@@ -496,7 +441,7 @@ class Stark(GenericPickler):
         if lm is None:
             lm = self._lm
         expr = re.compile(r'\$[_a-zA-Z0-9]*')
-        return re.findall(expr, lm[col]['elab'])
+        return re.findall(expr, lm['vars'][col]['elab'])
 
     def _suffix_elab_vars(self, col, suffix, lm=None):
         if lm is None:
@@ -504,7 +449,7 @@ class Stark(GenericPickler):
         matches = self._find_elab_vars(col, lm=lm)
         replaces = [''.join([match, suffix]) for match in matches]
         for idx, repl in enumerate(replaces):
-            lm[col]['elab'] = re.sub(r'\%s' % matches[idx], repl, lm[col]['elab'])
+            lm['vars'][col]['elab'] = re.sub(r'\%s' % matches[idx], repl, lm['vars'][col]['elab'])
         return lm 
         
     def _eval(self, func):
@@ -568,7 +513,7 @@ class Stark(GenericPickler):
         # decide actions
         for key, val in kwargs.iteritems():
             splitted = val.split('.', 1)
-            vals_df = self._lm[key]['vals']
+            vals_df = self._lm['vars'][key]['vals']
             if len(splitted) == 1 or\
                (len(splitted) > 1 and splitted[0] not in vals_df.columns): 
                 if val == 'ALL':
@@ -624,8 +569,7 @@ class Stark(GenericPickler):
         @ return: a DataFrame
 
         '''
-        lm = self.lm
-        return Stark(self._df.head(n), lm=lm, currency=self._currency,
+        return Stark(self._df.head(n), lm=self.lm, currency=self._currency,
                      currdata=self._currdata)
 
     def tail(self, n=5):
@@ -635,8 +579,7 @@ class Stark(GenericPickler):
         @ return: a DataFrame
 
         '''
-        lm = self.lm
-        return Stark(self._df.tail(n), lm=lm, currency=self._currency,
+        return Stark(self._df.tail(n), lm=self.lm, currency=self._currency,
                      currdata=self._currdata)
 
     def merge(self, other, how='left', sort=False, lsuffix='_x', rsuffix='_y'):
@@ -674,18 +617,18 @@ class Stark(GenericPickler):
         for col in out_df.columns:
             # handle suffixed variables
             if col.endswith(lsuffix):
-                out_lm[col] = out_lm.pop(col.strip(lsuffix))
-                if out_lm[col]['type'] == 'E':
+                out_lm['vars'][col] = out_lm['vars'].pop(col.strip(lsuffix))
+                if out_lm['vars'][col]['type'] == 'E':
                     # elab_vars(col, lsuffix)
                     self._suffix_elab_vars(col, lsuffix, lm=out_lm)
             elif col.endswith(rsuffix):
-                out_lm[col] = other.lm[col.strip(rsuffix)]
-                if out_lm[col]['type'] == 'E':
+                out_lm['vars'][col] = other.lm['vars'][col.strip(rsuffix)]
+                if out_lm['vars'][col]['type'] == 'E':
                     # elab_vars(col, rsuffix)
                     self._suffix_elab_vars(col, rsuffix, lm=out_lm)
             # copy other's variables
-            if col not in out_lm.keys():
-                out_lm[col] = other.lm[col]
+            if col not in out_lm['vars'].keys():
+                out_lm['vars'][col] = other.lm['vars'][col]
 
         # pack up everything and return
         self._df = self._df.reset_index()
@@ -703,7 +646,7 @@ class Stark(GenericPickler):
         '''
         if new_curr not in self._currdata.columns:
             raise ValueError("%s is not a known currency" % new_curr)
-        lm = _smartcopy(self._lm)
+        lm = self.lm
         columns = self._df.columns
         df = self._df.join(self._currdata, on=ts_col)
         for var in self._curr:
@@ -770,7 +713,7 @@ class Stark(GenericPickler):
                            #       were more than strings
             'des' : None, # TODO: fill up
         })
-        self._df = self._df.reset_index()[self._lm.keys()]
+        self._df = self._df.reset_index()[self._lm['vars'].keys()]
 
     def rollup(self, **kwargs):
         """

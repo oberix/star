@@ -9,7 +9,6 @@ class MetaDict(dict):
     defaults = {}
 
     def __init__(self, *args, **kwargs):
-        # import ipdb; ipdb.set_trace()
         if len(args) == 1 and isinstance(args[0], dict):
             kwargs = args[0]
             args = ()
@@ -29,11 +28,11 @@ class MetaDict(dict):
             cval = self.validate[key](val)
         except KeyError:
             raise KeyError("'%s' is not a valid md parameter.\
-See metaDict.keys() for a list of valid parameters." % key)
+ See metaDict.keys() for a list of valid parameters." % key)
         dict.__setitem__(self, key, cval)
 
     def copy(self):
-        return utils.smartcopy(self)
+        return MetaDict(utils.smartcopy(self))
 
 # Dummy definitions to populate namespace, more below
 class MetaDictGraph(MetaDict): pass
@@ -46,17 +45,11 @@ class MetaDictVars(MetaDict):
     defaults = dict([ (key, default) for key, (default, converter) in
                       default_meta_vars.iteritems() ])
 
-    def __init__(self, *args, **kwargs):
-        MetaDict.__init__(self, *args, **kwargs)
-
 class MetaDictGraphVars(MetaDict):
     validate = dict([ (key, converter) for key, (default, converter) in
                       default_meta_graph_vars.iteritems() ])
     defaults = dict([ (key, default) for key, (default, converter) in
                       default_meta_graph_vars.iteritems() ])
-
-    def __init__(self, *args, **kwargs):
-        MetaDict.__init__(self, *args, **kwargs)
 
 class MetaDictTableVars(MetaDict):
     validate = dict([ (key, converter) for key, (default, converter) in
@@ -64,17 +57,11 @@ class MetaDictTableVars(MetaDict):
     defaults = dict([ (key, default) for key, (default, converter) in
                       default_meta_table_vars.iteritems() ])
 
-    def __init__(self, *args, **kwargs):
-        MetaDict.__init__(self, *args, **kwargs)
-
 class MetaDictDesVars(MetaDict):
     validate = dict([ (key, converter) for key, (default, converter) in
                       default_meta_des_vars.iteritems() ])
     defaults = dict([ (key, default) for key, (default, converter) in
                       default_meta_des_vars.iteritems() ])
-
-    def __init__(self, *args, **kwargs):
-        MetaDict.__init__(self, *args, **kwargs)
 
 class MetaVars(dict):
     def __setitem__(self, key, val):
@@ -96,7 +83,11 @@ class MetaVarsDes(dict):
         val = MetaDictDesVars(val)
         dict.__setitem__(self, key, val)
 
-
+#
+# Now that every type is defined we can populate them with validation
+# functions and default values, also we can define those defaults and
+# validations that involves types defined here.
+#
 default_meta_graph.update({
     'vars' : [MetaVarsGraph(), MetaVarsGraph],
 })

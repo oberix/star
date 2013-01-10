@@ -3,6 +3,15 @@ from pandas import DataFrame, Series
 # some validation is already implemented
 from matplotlib import rcsetup
 
+ELAB_TYPES = [
+    'D', # Dimensional
+    'I', # Immutable
+    'N', # Numeric
+    'C', # Currency
+    'E', # Elaboration
+    'R', # Rate
+    ]
+
 '''
 Following functions should all return the input parameters or rise a
 ValueError is this is not of the expected type or form.
@@ -13,31 +22,35 @@ def validate_dict_df(dict_df):
     return dict_df
 
 def validate_df(df):
-    # TODO: implement method
+    if not isinstance(df, DataFrame):
+        raise ValueError("Object must be a pandas.DataFrame")
     return df
 
-def validate_vars(variables):
-    # TODO: implement method
-    return variables
-
 def validate_elab_type(elab_type):
-    # TODO: implement method
+    if elab_type not in ELAB_TYPES:
+        raise ValueError("'type' must be one of (%s)" % '|'.join(ELAB_TYPES))
     return elab_type
 
-def validate_munit(munit):
-    # TODO: implement method
-    return munit
+def validate_munit(munit):    
+    # XXX: This could be a consistency check against munit vals
+    return unicode(munit)
 
 def validate_elab(elab):
-    # TODO: implement method
-    return elab
+    # XXX: could be better, but at last this avoid the insertion of
+    # wierd charachters.
+    return str(elab)
 
 def validate_rlp(rlp):
     # TODO: implement method
     return rlp
 
 def validate_graph_type(graph_type):
-    # TODO: implement method
+    from star.remida import plotters
+    avaiables = [plotter for plotter in dir(plotters) 
+                          if not plotter.startswith('_')]
+    if graph_type not in avaiables:
+        raise ValueError("'%s' is not a valid plotter, currenttly \
+aviable plotters are (%s)" % (graph_type, '|'.join(avaiables)))
     return graph_type
 
 def validate_ticks(ticks):
@@ -72,16 +85,14 @@ default_meta = {
     'munit_vals': [{}, validate_dict_df], # This looks similar to vars
     # Totals by groups 
     'totals': [DataFrame(), validate_df],
-#    'vars': [{}, validate_vars],
 }
 
 default_meta_vars = {
     'type': ['N', validate_elab_type],
     'vals': [DataFrame(), validate_df],
+    'des': [u'', unicode],
     'munit': ['weight.Kg', validate_munit],
     'elab': [None, validate_elab],
-    # rlp is basically useless, since we can simply assign
-    # a function return value and leave it to Numeric type.
     'rlp': [None, validate_rlp], # to be removed
     'label': [u'', unicode],
 }
@@ -92,7 +103,6 @@ default_meta_graph = {
     'title': [u'', unicode],
     'caption': [u'', unicode],
     'legend': [True, bool],
-#    'vars': [{}, dict],
 }
 
 default_meta_graph_vars = {
@@ -111,7 +121,6 @@ default_meta_table = {
     # pandas.Series holding fromatting metastrings
     # for rows (like 'bold', 'italics'. 'hsep', etc)
     'formatting': [None, validate_formatting],
-#    'vars': [{}, validate_vars],
 }
 
 default_meta_table_vars = {
