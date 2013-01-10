@@ -96,7 +96,7 @@ def _smartcopy(dict_):
     '''
     out = {}
     for key, val in dict_.iteritems():
-        if isinstance(val, dict) or isinstance(val, list):
+        if isinstance(val, (dict, list)):
             out[key] = _smartcopy(val)
         else:
             out[key] = val
@@ -195,7 +195,7 @@ class Stark(GenericPickler):
     def __setitem__(self, key, value):
         # The purpose of this method is to permit a DataFrame-like syntax when
         # assigning a new column, while keeping the lm consistent.
-        if isinstance(value, str) or isinstance(value, unicode):
+        if isinstance(value, (str, unicode)):
             try:
                 self._update_df(key, expr=value, var_type='E')
             except NameError:
@@ -430,9 +430,9 @@ class Stark(GenericPickler):
             var = self._num + self._imm + self._elab + self._rate + \
                   self._curr
         # var and dim may be single column's name
-        if isinstance(var, str) or isinstance(var, unicode):
+        if isinstance(var, (str, unicode)):
             var = [var]
-        if isinstance(dim, str) or isinstance(dim, unicode):
+        if isinstance(dim, (str, unicode)):
             dim = [dim]
         outkeys = dim + var
 
@@ -524,7 +524,7 @@ class Stark(GenericPickler):
             "$B / $C * 100"
 
         '''
-        if not isinstance(func, str) or isinstance(func, unicode):
+        if not isinstance(func, (str, unicode)):
             raise AttributeError(
                 'func must be a string, %s received instead.' % \
                 type(func).__name__)
