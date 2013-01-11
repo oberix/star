@@ -1,3 +1,9 @@
+star (0.2.2-1) experimental; urgency=low
+
+  * New upstream release
+
+ -- Marco Bardelli <marco.bardelli@aderit.it>  Fri, 11 Jan 2013 19:01:05 +0100
+
 star (0.2.1-1) unstable; urgency=low
 
   * New upstream release
