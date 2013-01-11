@@ -91,7 +91,7 @@ default_meta_vars = {
     'type': ['N', validate_elab_type],
     'vals': [DataFrame(), validate_df],
     'des': [u'', unicode],
-    'munit': ['weight.Kg', validate_munit],
+    'munit': ['', validate_munit],
     'elab': [None, validate_elab],
     'rlp': [None, validate_rlp], # to be removed
     'label': [u'', unicode],
