@@ -82,15 +82,15 @@ class Stark(GenericPickler):
         """
         # TODO: make a Stark form a Stark
         self._df = df
-        self.cod = cod
-        self._currency = currency
-        self._currdata = currdata
+        self.cod = cod 
+        self._currency = currency # must go into md
+        self._currdata = currdata # must go into md
         self.stype = stype
         if lm is None:
             lm = MetaDict()
             for col in df.columns:
                 lm['vars'][col] = MetaDictVars()
-        self._lm = lm
+        self._lm = lm 
         self._dim = [] # Dimensions
         self._elab = [] # Elaborated
         self._num = [] # Numeric

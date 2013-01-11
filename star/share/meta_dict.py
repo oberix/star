@@ -32,7 +32,7 @@ class MetaDict(dict):
         dict.__setitem__(self, key, cval)
 
     def copy(self):
-        return MetaDict(utils.smartcopy(self))
+        return utils.smartcopy(self)
 
 # Dummy definitions to populate namespace, more below
 class MetaDictGraph(MetaDict): pass

@@ -25,12 +25,12 @@ def filter_tree(meta, outlist):
     is missing from the target tree, all of it's childrens are
     inherited from the parent's parent.
 
-    @ param meta: a dictionary
+    @ param meta: a dictionary or dictionary subclass instance
     @ param outlist: a list of keys
     @ return: a new dictionary
 
     """
-    ret = dict()
+    ret = meta.__class__()
     items = meta.items()
     for key, val in items:
         if key in outlist:
@@ -46,10 +46,10 @@ def smartcopy(dict_):
     subdictionary or list (deep copy), but just copy the references to
     any other mutable object (shallow copy).
 
-    @ param dict_: the dictionary to copy
+    @ param dict_: the dictionary to copy (or dictionary subclass)
     @ return: a Python dictionary
     '''
-    out = {}
+    out = dict_.__class__()
     for key, val in dict_.iteritems():
         if isinstance(val, (dict, list)):
             out[key] = smartcopy(val)

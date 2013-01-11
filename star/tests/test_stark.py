@@ -14,16 +14,14 @@ if __name__ == '__main__' :
     stk1._lm['vars'] = old_lm
     stk1['MIO'] = '$X / $K * 1000'
 
-    # stk2 = Stark.load(os.path.join(base, PKL_PATH))
-    # old_lm = stk2.lm
-    # stk2._lm = MetaDict()
-    # stk2._lm['vars'] = old_lm
-    # stk2['MIO'] = '$X / $K * 1000'
+    stk2 = Stark.load(os.path.join(base, PKL_PATH))
+    old_lm = stk2.lm
+    stk2._lm = MetaDict()
+    stk2._lm['vars'] = old_lm
+    stk2['MIO'] = '$X / $K * 1000'
 
-    # stk_tot = stk1.merge(stk2)
+    stk_tot = stk1.merge(stk2)
     
-    stk1.rollup(MER='TOT').head()['MIO']
-
     print "ok"
 
 
