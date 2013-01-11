@@ -21,7 +21,7 @@ Meta
 
 class Meta(dict):
 
-    defaults = {}
+    defaults = {} # Just a temporary placeholder
 
     def __init__(self, *args, **kwargs):
         if len(args) == 1 and isinstance(args[0], dict):

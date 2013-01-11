@@ -51,7 +51,7 @@ def smartcopy(dict_):
     '''
     out = dict_.__class__()
     for key, val in dict_.iteritems():
-        if isinstance(val, (dict, list)):
+        if isinstance(val, dict):
             out[key] = smartcopy(val)
         else:
             out[key] = val

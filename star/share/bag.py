@@ -23,9 +23,9 @@ class Bag(GenericPickler):
         cod: The path where the object will be saved as pickle.
         stype: Tipology, one of ('tab' | 'graph'), tells the reporting engine
             wether it should produce a table or a graph from datas.
-        LM: Dictionary of meta-information; its keys must be a subset of
+        MD: Dictionary of meta-information; its keys must be a subset of
             df.columns. For each key there should be a list giving specific
-            info to the engine. Depending on the value of stype, LM's lists
+            info to the engine. Depending on the value of stype, MD's lists
             assumes different meanings.
             stype == 'graph', list indexes means:
                 0: Role of the column in the graphic, 
@@ -46,7 +46,7 @@ class Bag(GenericPickler):
                 just use a label that starts with '@v'.
 
             example:
-            lm = {
+            md = {
                'DAT_MVL': [0, '|c|', '|@v0|', '|Data|'],
                'COD_CON': [4, 'l|', '|@v0|', ' Codice Conto|'],
                'NAM_CON': [5, '2l|', ' @v2|', ' Conto|'],
@@ -57,13 +57,13 @@ class Bag(GenericPickler):
 
     '''   
     
-    def __init__(self, df, lm=None, cod=None, stype='tab',
+    def __init__(self, df, md=None, cod=None, stype='tab',
                  title=None, footnote=None, 
                  size='square', fontsize=10.0,
                  legend=False, **kwargs):
         self._df = df
         self.cod = cod
-        self._lm = lm
+        self._md = md
         self.stype = stype
         self.title = title
         self.footnote = footnote
@@ -78,29 +78,29 @@ class Bag(GenericPickler):
     ##############
 
     @property
-    def lm(self):
-        ''' Return a shallow copy of lm ''' 
-        # TODO: this isn't neither a shallow nor a deep copy, copy of the lm
+    def md(self):
+        ''' Return a shallow copy of md ''' 
+        # TODO: this isn't neither a shallow nor a deep copy, copy of the md
         # shold be deep while it encounters nested dictionaries, but it should
         # behaves as shallow when it reaches DataFrames, so.. implement a
         # smart_copy() :)
-        return copy.deepcopy(self._lm)
+        return copy.deepcopy(self._md)
 
-    @lm.setter
-    def lm(self, new_lm):
-        ''' lm setter:
-        Just check lm/df consistency before proceding.
+    @md.setter
+    def md(self, new_md):
+        ''' md setter:
+        Just check md/df consistency before proceding.
         '''
-        if not isinstance(new_lm, dict):
-            raise ValueError("lm must be a dictionry '%s' received instead" %\
-                             type(new_lm))
-        self._lm = new_lm
+        if not isinstance(new_md, dict):
+            raise ValueError("md must be a dictionry '%s' received instead" %\
+                             type(new_md))
+        self._md = new_md
         self._update()
 
     @property
     def df(self):
         ''' Return a copy of df selecting just those columns that have some
-        metadata in lm
+        metadata in md
         '''
         return self._df[self.columns]
 
@@ -119,7 +119,7 @@ class Bag(GenericPickler):
 
     @property
     def columns(self):
-        return pandas.Index(self._lm.keys())
+        return pandas.Index(self._md.keys())
 
     @property
     def ix(self):

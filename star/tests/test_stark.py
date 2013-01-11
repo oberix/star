@@ -1,27 +1,41 @@
 # -*- coding: utf-8 -*-
-import os
-import sys
+# pylint: disable=W0212
+import numpy as np
+import pandas
 from star import Stark
-from star.share.meta_dict import Meta, MetaVarsAttr
-
-PKL_PATH = 'data/test_stark.pickle'
 
 if __name__ == '__main__' :
-    base = os.path.dirname(__file__)
-    stk1 = Stark.load(os.path.join(base, PKL_PATH))
-    old_lm = stk1.lm
-    stk1._lm = Meta()
-    stk1._lm['vars'] = old_lm
-    stk1['MIO'] = '$X / $K * 1000'
 
-    stk2 = Stark.load(os.path.join(base, PKL_PATH))
-    old_lm = stk2.lm
-    stk2._lm = Meta()
-    stk2._lm['vars'] = old_lm
-    stk2['MIO'] = '$X / $K * 1000'
+    np.random.seed()
 
-    stk_tot = stk1.merge(stk2)
-    
+    df = pandas.DataFrame({
+        'YEAR': pandas.to_datetime([str(year) for year in np.arange(1995, 2013)]),
+        'XER': ['ITA', 'FRA', 'DEU'] * 6,
+        'X': np.random.randn(18),
+        'K': np.random.randn(18),
+    })
+    stk = Stark(df)
+    stk._md['vars']['YEAR']['type'] = 'D'
+    stk._md['vars']['XER']['type'] = 'D'
+    stk._md['vars']['X']['type'] = 'N'
+    stk._md['vars']['K']['type'] = 'N'
+    stk['OUT'] = '$X / $K * 1000'
+
+    df1 = pandas.DataFrame({
+        'YEAR': pandas.to_datetime([str(year) for year in np.arange(1995, 2013)]),
+        'XER': ['ITA', 'FRA', 'DEU'] * 6,
+        'X': np.random.randn(18),
+        'K': np.random.randn(18),
+    })
+    stk1 = Stark(df1)
+    stk1._md['vars']['YEAR']['type'] = 'D'
+    stk1._md['vars']['XER']['type'] = 'D'
+    stk1._md['vars']['X']['type'] = 'N'
+    stk1._md['vars']['K']['type'] = 'N'
+    stk1['OUT'] = '$X / $K * 1000'
+
+    stk_tot = stk.merge(stk1)
+
     print "ok"
 
 

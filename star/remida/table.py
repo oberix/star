@@ -35,10 +35,10 @@ class Table(object):
         """
         self._logger = logging.getLogger(type(self).__name__)
         self._data = data
-        self.parse_lm(data.lm)
+        self.parse_md(data.md['table']['vars'])
 
-    def parse_lm(self, lm):
-        ''' Parse Bag's LM dictionary and estract the following non-public
+    def parse_md(self, md):
+        ''' Parse Bag's MD dictionary and estract the following non-public
         attrubutes:
 
         _ncols: number of table columns
@@ -47,29 +47,29 @@ class Table(object):
         _heading: list of lists containing headings elements
 
         '''
-        self._ncols = len(lm.keys())
+        self._ncols = len(md.keys())
 
-        # Transpose LM
+        # Transpose MD
         self._align = list() # alignment
 
         # Extract df columns names
-        self._keys = lm.items()
+        self._keys = md.items()
         self._keys.sort(key=lambda x : x[1][0])
         self._keys = [k[0] for k in self._keys]
 
         # Extract heading titles
         self._heading = list() # title lists
-        self._last_heading = len(lm[self._keys[0]]) - 3 # last heading index
+        self._last_heading = len(md[self._keys[0]]) - 3 # last heading index
         for i in xrange(self._last_heading + 1):
             self._heading.append(list())
 
         # Get heading metadata
         for key in iter(self._keys):
-            self._align.append(lm[key][1])
+            self._align.append(md[key][1])
             # First two are not titles (by spec)
-            if len(lm[key]) > 2:
-                for i in xrange(2, len(lm[key])):
-                    self._heading[i-2].append(lm[key][i])
+            if len(md[key]) > 2:
+                for i in xrange(2, len(md[key])):
+                    self._heading[i-2].append(md[key][i])
         self._logger.debug('_ncols = %s', self._ncols)
         self._logger.debug('_align = %s', self._align)
         self._logger.debug('_keys = %s', self._keys)
@@ -86,14 +86,14 @@ class Table(object):
 class TexTable(Table):
     """ Constitute a table that can span over multiple pages """
 
-    def __init__(self, data, tab_type='tab', hsep=False, **kwargs):
+    def __init__(self, data, tab_type='tab', **kwargs):
         """
         @ param data: Transport object
         @ param hsep: True if you want hrizontal lines after every record
         """
         super(TexTable, self).__init__(data, **kwargs)
-        self._hsep = str()
-        self._type = tab_type
+        self._hsep = self._data._md['table']['hsep']
+        self._type = self._data._md['table']['type']
         if hsep:
             self._hsep = "\\tabucline-"
 
@@ -248,9 +248,9 @@ class HTMLTable(Table):
         super(HTMLTable, self).__init__(data, **kwargs)
 
 
-    def parse_lm(self, lm):
+    def parse_md(self, md):
         '''
-        lm have to be dict of dicts.
+        md have to be dict of dicts.
         keys are columns.
         values are dict of form:
         {
@@ -262,16 +262,16 @@ class HTMLTable(Table):
         'td_attrs': <string> putted in `class' attr of unique tr element in tr in tbody,
         }
         '''
-        self._ncols = len(lm.keys())
+        self._ncols = len(md.keys())
 
         # Extract df columns names
-        self._keys = lm.items()
+        self._keys = md.items()
         self._keys.sort(key=lambda x : x[1].get('ord'))
         self._keys = [k[0] for k in self._keys]
 
-        self._headings = dict.fromkeys(lm)
+        self._headings = dict.fromkeys(md)
         for k in self._keys:
-            self._headings[k] = lm[k].copy()
+            self._headings[k] = md[k].copy()
 
     def _make_header(self):
         '''

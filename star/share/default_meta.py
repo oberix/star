@@ -31,6 +31,10 @@ def validate_elab_type(elab_type):
         raise ValueError("'type' must be one of (%s)" % '|'.join(ELAB_TYPES))
     return elab_type
 
+def validate_table_type(table_type):
+    # TODO: implement method
+    return table_type
+
 def validate_munit(munit):    
     # XXX: This could be a consistency check against munit vals
     return unicode(munit)
@@ -117,6 +121,7 @@ default_meta_graph_vars = {
 default_meta_table = {
     'title': [u'', unicode],
     'caption': [u'', unicode],
+    'type': ['tab', validate_table_type],
     'hsep' : [False, bool],
     # pandas.Series holding fromatting metastrings
     # for rows (like 'bold', 'italics'. 'hsep', etc)
