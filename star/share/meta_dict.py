@@ -4,7 +4,22 @@ from star.share.default_meta import default_meta, default_meta_vars,\
     default_meta_graph, default_meta_graph_vars, default_meta_table,\
     default_meta_table_vars, default_meta_des, default_meta_des_vars
 
-class MetaDict(dict):
+'''
+Meta
+    MetaVars
+        MetaVarsAttr
+    MetaGraph
+        MetaVarsGraph
+            MetaVarsAttrGraph
+    MetaTable
+        MetaVarsTable
+            MetaVarsAttrTable
+    MetaDes
+        MetaVarsDes
+            MetaVarsAttrDes
+'''
+
+class Meta(dict):
 
     defaults = {}
 
@@ -27,37 +42,37 @@ class MetaDict(dict):
         try:
             cval = self.validate[key](val)
         except KeyError:
-            raise KeyError("'%s' is not a valid md parameter.\
- See metaDict.keys() for a list of valid parameters." % key)
+            raise KeyError("'%s' is not a valid md parameter. \
+See metaDict.keys() for a list of valid parameters." % key)
         dict.__setitem__(self, key, cval)
 
     def copy(self):
         return utils.smartcopy(self)
 
 # Dummy definitions to populate namespace, more below
-class MetaDictGraph(MetaDict): pass
-class MetaDictTable(MetaDict): pass
-class MetaDictDes(MetaDict): pass
+class MetaGraph(Meta): pass
+class MetaTable(Meta): pass
+class MetaDes(Meta): pass
 
-class MetaDictVars(MetaDict):
+class MetaVarsAttr(Meta):
     validate = dict([ (key, converter) for key, (default, converter) in
                       default_meta_vars.iteritems() ])
     defaults = dict([ (key, default) for key, (default, converter) in
                       default_meta_vars.iteritems() ])
 
-class MetaDictGraphVars(MetaDict):
+class MetaVarsAttrGraph(Meta):
     validate = dict([ (key, converter) for key, (default, converter) in
                       default_meta_graph_vars.iteritems() ])
     defaults = dict([ (key, default) for key, (default, converter) in
                       default_meta_graph_vars.iteritems() ])
 
-class MetaDictTableVars(MetaDict):
+class MetaVarsAttrTable(Meta):
     validate = dict([ (key, converter) for key, (default, converter) in
                       default_meta_table_vars.iteritems() ])
     defaults = dict([ (key, default) for key, (default, converter) in
                       default_meta_table_vars.iteritems() ])
 
-class MetaDictDesVars(MetaDict):
+class MetaVarsAttrDes(Meta):
     validate = dict([ (key, converter) for key, (default, converter) in
                       default_meta_des_vars.iteritems() ])
     defaults = dict([ (key, default) for key, (default, converter) in
@@ -65,27 +80,27 @@ class MetaDictDesVars(MetaDict):
 
 class MetaVars(dict):
     def __setitem__(self, key, val):
-        val = MetaDictVars(val)
+        val = MetaVarsAttr(val)
         dict.__setitem__(self, key, val)
 
 class MetaVarsGraph(dict):
     def __setitem__(self, key, val):
-        val = MetaDictGraphVars(val)
+        val = MetaVarsAttrGraph(val)
         dict.__setitem__(self, key, val)
 
 class MetaVarsTable(dict):
     def __setitem__(self, key, val):
-        val = MetaDictTableVars(val)
+        val = MetaVarsAttrTable(val)
         dict.__setitem__(self, key, val)
 
 class MetaVarsDes(dict):
     def __setitem__(self, key, val):
-        val = MetaDictDesVars(val)
+        val = MetaVarsAttrDes(val)
         dict.__setitem__(self, key, val)
 
 #
 # Now that every type is defined we can populate them with validation
-# functions and default values, also we can define those defaults and
+# functions and de fault values, also we can define those defaults and
 # validations that involves types defined here.
 #
 default_meta_graph.update({
@@ -100,30 +115,30 @@ default_meta_des.update({
     'vars' : [MetaVarsDes(), MetaVarsDes],
 })
 
-MetaDictGraph.validate = dict([ (key, converter) for key, (default, converter) in
+MetaGraph.validate = dict([ (key, converter) for key, (default, converter) in
                                 default_meta_graph.iteritems() ])
-MetaDictGraph.defaults = dict([ (key, default) for key, (default, converter) in
+MetaGraph.defaults = dict([ (key, default) for key, (default, converter) in
                                 default_meta_graph.iteritems() ])
 
-MetaDictTable.validate = dict([ (key, converter) for key, (default, converter) in
+MetaTable.validate = dict([ (key, converter) for key, (default, converter) in
                                 default_meta_table.iteritems() ])
-MetaDictTable.defaults = dict([ (key, default) for key, (default, converter) in
+MetaTable.defaults = dict([ (key, default) for key, (default, converter) in
                                 default_meta_table.iteritems() ])
 
-MetaDictDes.validate = dict([ (key, converter) for key, (default, converter) in
+MetaDes.validate = dict([ (key, converter) for key, (default, converter) in
                               default_meta_des.iteritems() ])
-MetaDictDes.defaults = dict([ (key, default) for key, (default, converter) in
+MetaDes.defaults = dict([ (key, default) for key, (default, converter) in
                               default_meta_des.iteritems() ])
 
 default_meta.update({
-    'table': [MetaDictTable(), MetaDictTable],
-    'graph': [MetaDictGraph(), MetaDictGraph], 
-    'des': [MetaDictDes(), MetaDictDes], 
+    'table': [MetaTable(), MetaTable],
+    'graph': [MetaGraph(), MetaGraph], 
+    'des': [MetaDes(), MetaDes], 
     'vars': [MetaVars(), MetaVars]
 })
 
-MetaDict.validate = dict([ (key, converter) for key, (default, converter) in
+Meta.validate = dict([ (key, converter) for key, (default, converter) in
                            default_meta.iteritems() ])
-MetaDict.defaults = dict([ (key, default) for key, (default, converter) in
+Meta.defaults = dict([ (key, default) for key, (default, converter) in
                            default_meta.iteritems() ])
 

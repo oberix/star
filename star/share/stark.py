@@ -26,21 +26,20 @@ import pandas
 import numpy as np
 
 from star.share import utils
-from star.share.meta_dict import MetaDict, MetaDictVars
+from star.share.meta_dict import Meta, MetaVarsAttr
 from star.share.generic_pickler import GenericPickler
 
 __all__ = ['Stark']
 
 STYPES = ('elab',)
-TYPES = [
-    'D', # Dimensional
-    'I', # Immutable
-    'N', # Numeric
-    'C', # Currency
-    'E', # Elaboration
-    'R', # Rate
-    ]
-
+# TYPES = [
+#     'D', # Dimensional
+#     'I', # Immutable
+#     'N', # Numeric
+#     'C', # Currency
+#     'E', # Elaboration
+#     'R', # Rate
+#     ]
 TYPE_PATTERN = re.compile("<class \'[a-zA-Z][a-zA-Z0-9.].*\'>")
 
 
@@ -87,9 +86,9 @@ class Stark(GenericPickler):
         self._currdata = currdata # must go into md
         self.stype = stype
         if lm is None:
-            lm = MetaDict()
+            lm = Meta()
             for col in df.columns:
-                lm['vars'][col] = MetaDictVars()
+                lm['vars'][col] = MetaVarsAttr()
         self._lm = lm 
         self._dim = [] # Dimensions
         self._elab = [] # Elaborated
@@ -111,7 +110,7 @@ class Stark(GenericPickler):
         lm = self.lm
         # Do not sum columns with different measure unit.
         for key in self._lm['vars'].keys():
-            if self._lm['vars'][key].get('munit', None) != other.lm['vars'][key].get('munit', None):
+            if self._lm['vars'][key]['munit'] != other.lm['vars'][key]['munit']:
                 df[key] = np.nan
                 lm['vars'][key]['munit'] = None
         # Create a new Stark
@@ -124,7 +123,7 @@ class Stark(GenericPickler):
         if not isinstance(key, list):
             key = [key]
         df = self._df.__getitem__(key)
-        lm = MetaDict()
+        lm = Meta()
         lm['vars'] = utils.filter_tree(self._lm['vars'], key)
         for k in key:
             if lm['vars'][k]['type'] == 'E':
@@ -133,11 +132,13 @@ class Stark(GenericPickler):
                     if term.strip(r'\$') not in key:
                         lm['vars'][k]['type'] = 'N'
                         break
-        return Stark(df, lm=lm, currency=self._currency, currdata=self._currdata)
+        return Stark(df, lm=lm, currency=self._currency,
+                     currdata=self._currdata)
 
     def __setitem__(self, key, value):
-        # The purpose of this method is to permit a DataFrame-like syntax when
-        # assigning a new column, while keeping the lm consistent.
+        # The purpose of this method is to permit a DataFrame-like
+        # syntax when assigning a new column, while keeping the lm
+        # consistent.
         if isinstance(value, (str, unicode)):
             try:
                 self._update_df(key, expr=value, var_type='E')
@@ -171,8 +172,9 @@ class Stark(GenericPickler):
         Just check lm/df consistency before proceding.
         '''
         if not isinstance(new_lm, dict):
-            raise ValueError("lm must be a dictionry '%s' received instead" %\
-                             type(new_lm))
+            raise ValueError(
+                "lm must be a dictionry '%s' received instead" %\
+                type(new_lm))
         self._lm = new_lm
         self._update()
 
@@ -309,12 +311,14 @@ class Stark(GenericPickler):
         @ raise ValueError: when parameters are inconsistent
 
         '''
-        if var_type not in TYPES:
-            raise ValueError("var_type mut be one of (%s)" % \
-                                 '|'.join(TYPES))
+        # if var_type not in TYPES:
+        #     raise ValueError("var_type mut be one of (%s)" % \
+        #                          '|'.join(TYPES))
         if var_type != 'E':
             self._df[col] = series
 
+        # TODO: this kind of validation should be responsability of
+        # meta_dict's validators
         if expr is None and var_type == 'E':
             raise ValueError(
                 "You must specify an expression for var_type = 'E'")
@@ -322,8 +326,10 @@ class Stark(GenericPickler):
             raise ValueError(
                 "You must pass a series or list for var_type != 'E'")
 
+        # TODO: Same than before, default values should be handled by
+        # meta_dict
         if vals is None:
-            vals = pandas.DataFrame()
+            vals = pandas.DataFrame() 
 
         self._update_lm(col, {
             'type' : var_type,
@@ -384,7 +390,7 @@ class Stark(GenericPickler):
             df = self._df.copy()
         else:
             df = self._df
-        lm = MetaDict()
+        lm = Meta()
         lm['vars'] = utils.filter_tree(self._lm['vars'], outkeys)
 
         # Prepare operation dictionary: for each variable set the
@@ -399,7 +405,8 @@ class Stark(GenericPickler):
         for name in self._elab:
             # Some elaboration need to become numeric before the
             # aggregation, others must be re-evaluated
-            if lm['vars'][name].get('rlp') and lm['vars'][name]['rlp'] == 'N':
+            if lm['vars'][name].get('rlp') and\
+               lm['vars'][name]['rlp'] == 'N':
                 lm['vars'][name]['type'] = 'N'
             # XXX: This is not needed if 'rlp' != 'N', but any other
             # operation seems to introduce a greater overhead to the
@@ -449,7 +456,8 @@ class Stark(GenericPickler):
         matches = self._find_elab_vars(col, lm=lm)
         replaces = [''.join([match, suffix]) for match in matches]
         for idx, repl in enumerate(replaces):
-            lm['vars'][col]['elab'] = re.sub(r'\%s' % matches[idx], repl, lm['vars'][col]['elab'])
+            lm['vars'][col]['elab'] = re.sub(r'\%s' % matches[idx],
+                                             repl, lm['vars'][col]['elab'])
         return lm 
         
     def _eval(self, func):
@@ -485,11 +493,13 @@ class Stark(GenericPickler):
         repare the Stark for a later evaluation at update time
         ''' 
         if prec <= 0 or prec >= 1:
-            raise ValueError("prec must be in the range (0, 1), %s received instead" %\
-                             prec) 
+            raise ValueError(
+                "prec must be in the range (0, 1), %s received instead" %\
+                prec) 
         if upper <= 0:
-            raise ValueError("upper must be a positive float, %s received instead" %\
-                             upper)
+            raise ValueError(
+                "upper must be a positive float, %s received instead" %\
+                upper)
         med = 0.0
         distance = 0.0
         if how == 'mean':
@@ -502,7 +512,8 @@ class Stark(GenericPickler):
             distance = min((med - quant[0]), (quant[1] - med))
         else:
             raise ValueError(
-                "parameter 'how' can be one of ['mean' | 'median'], '%s' received instead" % how)
+                "parameter 'how' can be one of ['mean' | 'median'], \
+'%s' received instead" % how)
         beta = -np.log(1 / prec - 1) / distance
         alpha = med * (-beta)
         return upper / (1 + np.exp(alpha - beta * self._df[var]))
@@ -520,13 +531,15 @@ class Stark(GenericPickler):
                     continue
                 elif val == 'TOT':
                     idx = df[key].unique()
-                    subs[key] = pandas.Series(['TOT'] * len(idx), index=idx)
+                    subs[key] = pandas.Series(['TOT'] * len(idx),
+                                              index=idx)
                 else:
                     select[key] = val
             elif len(splitted) > 1:
                 curr_level = self._find_level(key, self._df[key].ix[0])
                 subs[key] = vals_df.set_index(
-                    curr_level, verify_integrity=False).to_dict()[splitted[0]]
+                    curr_level,
+                    verify_integrity=False).to_dict()[splitted[0]]
                 select[key] = splitted[1]
             else: # pragma: no cover
                 raise ValueError # be more specific!
@@ -582,7 +595,8 @@ class Stark(GenericPickler):
         return Stark(self._df.tail(n), lm=self.lm, currency=self._currency,
                      currdata=self._currdata)
 
-    def merge(self, other, how='left', sort=False, lsuffix='_x', rsuffix='_y'):
+    def merge(self, other, how='left', sort=False, lsuffix='_x',
+              rsuffix='_y'):
         ''' Merge Stark objects by performing a database-style join
         operation by dimensions.
         
@@ -606,11 +620,14 @@ class Stark(GenericPickler):
 
         '''
         if not set(other.dim).issubset(self.dim):
-            raise ValueError("other's dimensions must be subset of the cuerrent Stark dimensions")
+            raise ValueError("other's dimensions must be subset of the \
+cuerrent Stark dimensions")
         # use multi-index to perform a join
         self._df.set_index(self.dim, inplace=True)
         other._df.set_index(other.dim, inplace=True)
-        out_df = self._df.join(other._df, how=how, sort=sort, lsuffix=lsuffix, rsuffix=rsuffix).reset_index()
+        out_df = self._df.join(other._df, how=how, sort=sort,
+                               lsuffix=lsuffix,
+                               rsuffix=rsuffix).reset_index()
 
         # prepare output lm
         out_lm = self.lm
@@ -705,7 +722,7 @@ class Stark(GenericPickler):
         self._df = pandas.merge(self._df, tmp_df, left_index=True,
                                 right_index=True, how='left',
                                 suffixes=('', '_tmp'))
-        self._df[varname] =  100 * (self._df[var] / self._df['%s_tmp' % var] - 1)
+        self._df[varname] = 100 * (self._df[var] / self._df['%s_tmp' % var] - 1)
         self._update_lm(varname, {
             'type': 'R',
             'vals': pandas.DataFrame(),
