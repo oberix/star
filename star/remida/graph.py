@@ -73,17 +73,17 @@ class Graph(object):
                 'columnspacing': 1,
                 'borderpad': 0,
                 })
-        self._title = data.title
-        self._footnote = data.footnote
+        self._title = data._md['graph']['title']
+        self._footnote = data._md['graph']['footnote']
         self._df = data.df
         self._y_meta = list()
         self._x_meta = list()
-        self._fontsize = data.fontsize
+        self._fontsize = data._md['graph']['fontsize']
         self._lax = None
         try:
             self._size = FIGSIZE[data._md['graph']['size']]
-        except KeyError, e:
-            if isinstance(data._md['graph']['size'], tuple):
+        except (KeyError, TypeError), e:
+            if isinstance(data._md['graph']['size'], (tuple, list)):
                 self._size = data._md['graph']['size']
             else:
                 raise e
@@ -149,6 +149,7 @@ class Graph(object):
         '''
         # TODO: handle line styles
         for key, val in md.iteritems():
+            val = dict(val)
             # TODO: apply translation
             if val['type'] == 'lax':
                 self._lax = self._df[key].map(float)

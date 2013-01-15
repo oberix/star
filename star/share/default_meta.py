@@ -51,7 +51,7 @@ def validate_rlp(rlp):
 def validate_graph_type(graph_type):
     from star.remida import plotters
     avaiables = [plotter for plotter in dir(plotters) 
-                          if not plotter.startswith('_')]
+                          if not plotter.startswith('_')] + ['lax']
     if graph_type not in avaiables:
         raise ValueError("'%s' is not a valid plotter, currenttly \
 aviable plotters are (%s)" % (graph_type, '|'.join(avaiables)))
@@ -102,11 +102,12 @@ default_meta_vars = {
 }
 
 default_meta_graph = {
-    'size' : [(12.0, 42.0), rcsetup.validate_nseq_float(2)],
+    'size' : [(3.2, 2.0), rcsetup.validate_nseq_float(2)],
     'fontsize': [12.0, rcsetup.validate_float],
     'title': [u'', unicode],
     'caption': [u'', unicode],
     'legend': [True, bool],
+    'footnote': [u'', unicode],
 }
 
 default_meta_graph_vars = {

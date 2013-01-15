@@ -40,22 +40,6 @@ class Stark(GenericPickler):
     procedures. It is a collection of meta-information around datas
     inside a pandas DataFrame.
 
-    Stark has the following attributes:
-        df: a pandas DataFrame
-        cod: the path where the object will be saved as pickle
-        stype: type (just 'elab' for now)
-        md: a a dictionary of various info for the user; keys are df columns
-            names, each key contain a dictionary with the following keys:
-            type: data use, one of (D|N|S|R), that stands for:
-                Dimension: can be used in aggregation (like groupby)
-                Numeric: a numeric data type
-                String: a string data type
-                Calculated: (Ricavato in Italian)
-            des: a short description
-            vals: values that the variables can assume
-            munit: unit of measure
-            elab: elaboration that ptocuced the data (if TIP == 'R')
-            dtype: shortcut to np.dtype (?)
     """
 
     ####################

@@ -36,47 +36,49 @@ TEMPLATE = '''
 '''
 
 if __name__ == '__main__':
-    lm_bar = {
-        'a': {'type': 'lax',
-              'label': 'AAA'},
-        'b': {'type': 'bar',
-              'label': 'BBB',
-              'color': 'b',},
-        'c': {'type': 'bar',
-              'ax': 'sx',
-              'label': "CCC",
-              'color': 'g',
-              'cum': 'b'},
-        }
+    lm_bar = {'graph': 
+              {'vars': {
+                  'a': {'type': 'lax',
+                        'label': 'AAA'},
+                  'b': {'type': 'bar',
+                        'label': 'BBB',
+                        'color': 'b',},
+                  'c': {'type': 'bar',
+                        'ax': 'sx',
+                        'label': "CCC",
+                        'color': 'g',
+                        'cumulate': 'b'},
+              }}}
 
-    lm_barh = {
-        'a': {'type': 'lax',
-              'label': 'AAA',
-              'ticklabel': 'd',
-          },
-        'b': {'type': 'barh',
-              'ax': 'sx',
-              'label': 'BBB',
-              'color': 'b'},
-        'c': {'type': 'barh',
-              'ax': 'sx',
-              'label': "CCC",
-              'color': 'g',
-              'cum': 'b'},
-        }
+    lm_barh = {'graph': 
+               {'vars': {
+                   'a': {'type': 'lax',
+                         'label': 'AAA',
+                         'ticklabel': 'd',},
+                   'b': {'type': 'barh',
+                         'ax': 'sx',
+                         'label': 'BBB',
+                         'color': 'b'},
+                   'c': {'type': 'barh',
+                         'ax': 'sx',
+                         'label': "CCC",
+                         'color': 'g',
+                         'cumulate': 'b'},
+               }}}
 
-    lm_plot = {
-        'a': {'type': 'lax',
-              'label': 'AAA'},
-        'b': {'type': 'bar',
-              'ax': 'sx',
-              'label': 'BBB',
-              'color': 'b'},
-        'c': {'type': 'plot',
-              'ax': 'dx',
-              'label': "CCC",
-              'color': 'g',}
-        }
+    lm_plot = {'graph': 
+               {'vars': {
+                   'a': {'type': 'lax',
+                         'label': 'AAA'},
+                   'b': {'type': 'bar',
+                         'ax': 'sx',
+                         'label': 'BBB',
+                         'color': 'b'},
+                   'c': {'type': 'plot',
+                         'ax': 'dx',
+                         'label': "CCC",
+                         'color': 'g',}
+               }}}
 
     df = pandas.DataFrame({
         'a': np.arange(0, 11, 1),
@@ -85,37 +87,26 @@ if __name__ == '__main__':
         'd': ['a','b','c', 'd', 'e', 'f', 'g', 'h', 'i','l', 'm']
     })
 
-    lm_sc = {
-        'a': {'type': 'lax',
-              'ax': 'sx',
-              'label': 'AAA'},
-        'b': {'type': 'scatter',
-              'ax': 'sx',
-              'label': 'BBB',
-              'color': 'b'},
-        }
+    lm_sc = {'graph': 
+             {'vars': {
+                 'a': {'type': 'lax',
+                       'ax': 'sx',
+                       'label': 'AAA'},
+                 'b': {'type': 'scatter',
+                       'ax': 'sx',
+                       'label': 'BBB',
+                       'color': 'b'},
+             }}}
 
     df_sc = pandas.DataFrame({
             'a': [59.9, 46.2, 0],
             'b': [13.6, 7.1, 2],
             })
 
-    bar = Bag(df, lm=lm_bar, stype='graph', title='USRobotics',
-              size='stamp',
-              legend=True,
-              fontsize=10.0)
-    barh = Bag(df, lm=lm_barh, stype='graph', title='USRobotics',
-              size='stamp',
-              legend=True,
-              fontsize=10.0)
-    plot = Bag(df, lm=lm_plot, stype='graph', title='USRobotics',
-              size='stamp',
-              legend=True,
-              fontsize=10.0)
-    scat = Bag(df_sc, lm=lm_sc, stype='graph', title='USRobotics',
-              size='stamp',
-              legend=False,
-              fontsize=10.0)
+    bar = Bag(df, md=lm_bar, stype='graph')
+    barh = Bag(df, md=lm_barh, stype='graph')
+    plot = Bag(df, md=lm_plot, stype='graph')
+    scat = Bag(df_sc, md=lm_sc, stype='graph')
 
     base = '/tmp/test/'
     if not os.path.isdir(base):
@@ -131,6 +122,8 @@ if __name__ == '__main__':
         fd.write(TEMPLATE)
     finally:
         fd.close()
+
+    # # Generate config file (not mandatory)
     # fd = open(os.path.join(base, 'config.cfg'), 'w')
     # try:
     #     fd.write('[paths]\n')
