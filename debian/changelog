@@ -1,3 +1,9 @@
+star (0.2.2-2) experimental; urgency=low
+
+  * added debian/copyright
+
+ -- Marco Bardelli <marco.bardelli@aderit.it>  Mon, 14 Jan 2013 13:44:51 +0100
+
 star (0.2.2-1) experimental; urgency=low
 
   * New upstream release

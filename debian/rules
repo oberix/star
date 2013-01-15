@@ -8,8 +8,5 @@ get-orig-source:
 	tar -cf - $(pn)-$(ov) | gzip -9c > ../$(pn)_$(ov).orig.tar.gz
 	rm -rf $(pn)-$(ov)
 
-override_dh_auto_configure:
-	cp $(CURDIR)/Licence.txt $(CURDIR)/debian/copyright
-
 %:
 	dh $@ --with python2
