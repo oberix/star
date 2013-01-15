@@ -25,11 +25,20 @@ TEMPLATE = '''
 '''
 
 if __name__ == '__main__':
-    lm = {
-        'A': [0, '|c', '|A'],
-        'B': [1, '|c', 'B'],
-        'C': [2, '|c|', 'C|'],
-    }
+    md = {'table': {'vars': {
+        'A': {'order': 0, 
+              'align': 'center', 
+              'vsep': 'left', 
+              'headers' : 'A'},
+        'B': {'order': 1, 
+              'align': 'center', 
+              'vsep': 'left', 
+              'headers' : 'B'},
+        'C': {'order': 2, 
+              'align': 'center', 
+              'vsep': 'right', 
+              'headers' : 'C'},
+    }}}
 
     df = pandas.DataFrame({
         'A': np.random.rand(10) * 100000,
@@ -41,7 +50,7 @@ if __name__ == '__main__':
     if not os.path.isdir(base):
         os.makedirs(base)
 
-    mybag = Bag(df, lm=lm, stype='tab')
+    mybag = Bag(df, md=md, stype='tab')
     mybag.save(os.path.join(base, 'mybag.pickle'))
     fd = open(os.path.join(base, 'main.tex'), 'w')
     try:

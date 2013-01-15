@@ -54,7 +54,7 @@ class Table(object):
 
         # Extract df columns names
         self._keys = md.items()
-        self._keys.sort(key=lambda x : x[1][0])
+        self._keys.sort(key=lambda x : x[1]['order'])
         self._keys = [k[0] for k in self._keys]
 
         # Extract heading titles
@@ -65,11 +65,11 @@ class Table(object):
 
         # Get heading metadata
         for key in iter(self._keys):
-            self._align.append(md[key][1])
+            self._align.append(md[key]['align'])
             # First two are not titles (by spec)
             if len(md[key]) > 2:
                 for i in xrange(2, len(md[key])):
-                    self._heading[i-2].append(md[key][i])
+                    self._heading[i-2].append(md[key]['headers'])
         self._logger.debug('_ncols = %s', self._ncols)
         self._logger.debug('_align = %s', self._align)
         self._logger.debug('_keys = %s', self._keys)
