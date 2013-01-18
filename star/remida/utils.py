@@ -17,14 +17,14 @@ TEX_ESCAPE = [
     (re.compile("~"), "\normaltilde"),
     ]
 
-HTML_ESCAPE = {
-    re.compile("<"): "&lt;",
-    re.compile(">"): "&gt;",
-    re.compile("&"): "&amp;",
-    re.compile("\""): "&quot;",
-    re.compile("'"): "&apos;",
-    re.compile("€"): "&euro;",
-    }
+HTML_ESCAPE = [
+    (re.compile("<"), "&lt;"),
+    (re.compile(">"), "&gt;"),
+    (re.compile("&"), "&amp;"),
+    (re.compile("\""), "&quot;"),
+    (re.compile("'"), "&apos;"),
+    (re.compile("€"), "&euro;"),
+    ]
 
 def unique_list(list_):
     """ Remove all duplicate elements from a list inplace, keeping the order
@@ -53,5 +53,5 @@ def escape(string, patterns=None):
     if patterns is None:
         patterns = TEX_ESCAPE
     for pattern, sub in patterns:
-        string = re.sub(pattern, sub, string)
+        string = pattern.sub(sub, string)
     return string
