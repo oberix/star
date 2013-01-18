@@ -302,7 +302,7 @@ class HTMLTable(Table):
         for record in records.readlines():
             record = record.split()
             for idx, field in enumerate(record):
-                heading = self._headings[seld._keys[idx]]
+                heading = self._headings[self._keys[idx]]
                 out += '''<td%s>%s</td>''' % (heading.get('td_attrs', ''), field)
             out += '''\n</tr>\n'''
         out += '''</tbody>\n'''
