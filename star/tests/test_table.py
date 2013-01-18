@@ -27,17 +27,17 @@ TEMPLATE = '''
 if __name__ == '__main__':
     md = {'table': {'vars': {
         'A': {'order': 0, 
-              'align': 'center', 
+              'align': 'c', 
               'vsep': 'left', 
-              'headers' : 'A'},
+              'headers' : ['AA', 'A']},
         'B': {'order': 1, 
-              'align': 'center', 
+              'align': 'c', 
               'vsep': 'left', 
-              'headers' : 'B'},
+              'headers' : ['@v1', 'B']},
         'C': {'order': 2, 
-              'align': 'center', 
+              'align': 'c', 
               'vsep': 'right', 
-              'headers' : 'C'},
+              'headers' : ['@v1', 'C']},
     }}}
 
     df = pandas.DataFrame({
