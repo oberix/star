@@ -27,16 +27,16 @@ TEMPLATE = '''
 if __name__ == '__main__':
     md = {'table': {'vars': {
         'A': {'order': 0, 
-              'align': 'c', 
-              'vsep': 'left', 
+              'align': 'l', 
+              'vsep': 'l', 
               'headers' : ['AA', 'A']},
         'B': {'order': 1, 
               'align': 'c', 
-              'vsep': 'left', 
+              'vsep': 'b', 
               'headers' : ['@v1', 'B']},
         'C': {'order': 2, 
-              'align': 'c', 
-              'vsep': 'right', 
+              'align': 'r', 
+              'vsep': 'r', 
               'headers' : ['@v1', 'C']},
     }}}
 

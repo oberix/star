@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from copy import copy
+import re
 from StringIO import StringIO
 from star.remida import utils
 
@@ -43,27 +44,23 @@ class Table(object):
         ''' Make a list in which every element is another list
         containing the strings that constitute a row of header.
         '''
-        row = 0
         headers = []
-        keys = copy(self._keys)
-        while len(keys) > 0:
+        num_rows = 0
+        for var in self._vars.itervalues():
+            num_rows = max(num_rows, len(var['headers']))
+        for row in range(num_rows):
             headers.append([])
-            for col, var in enumerate(self._vars):
+            for key in self._keys:
                 try:
-                    headers[row].append(self._vars[var]['headers'][row])
+                    headers[row].append(self._vars[key]['headers'][row])
                 except IndexError:
                     headers[row].append(u'')
-                    try:
-                        keys.pop(col)
-                    except IndexError:
-                        continue
-            row += 1
         return headers
-
+                                              
     def _format_elem(self, idx, elem):
-        format = self._vars[self._keys[idx]]['float_format']
+        form_exp = self._vars[self._keys[idx]]['float_format']
         try:
-            return format.format(elem)
+            return form_exp.format(elem)
         except ValueError:
             return unicode(elem)
     
@@ -153,13 +150,17 @@ class TexTable(Table):
     def _make_header(self, header):
         out = []
         i = 0
+        exp = re.compile('^@v[0-9]*$')
         while i < len(header):
             span = 1
-            while ( (i + span < len(header)) and (header[i + span] == header[i]) ):
+            while ( (i + span < len(header)) and 
+                    (header[i + span] == header[i]) ):
                 span += 1
-            sep = TexTable.SEPARATORS_MAP.get(self._vars[self._keys[i]]['vsep'], ('', ''))
+            sep = TexTable.SEPARATORS_MAP.get(
+                self._vars[self._keys[i]]['vsep'], ('', ''))
             out.append(
-                "\\multicolumn{%s}{%sc%s}{%s}" % (span, sep[0], sep[1], header[i])
+                "\\multicolumn{%s}{%sc%s}{%s}" % 
+                (span, sep[0], sep[1], re.sub(exp, '', header[i]))
             )
             i += span
         out = u" & ".join(out)
@@ -174,6 +175,10 @@ class TexTable(Table):
         for header in self._headers:
             out += self._make_header(header)
         return out
+
+    def footer(self):
+        ''' Render the table footer '''
+        return u'\\tabucline- \n'
 
     def out(self):
         out = u"""\\begin{longtabu} spread \\linewidth"""
