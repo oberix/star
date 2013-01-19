@@ -85,6 +85,11 @@ def validate_headers(headers):
     # TODO: implement method
     return headers
 
+def validate_float_format(format):
+    # TODO: implement method
+    return format
+    
+
 default_meta = {
     'munit_vals': [{}, validate_dict_df], # This looks similar to vars
     # Totals by groups 
@@ -121,7 +126,8 @@ default_meta_graph_vars = {
 
 default_meta_table = {
     'title': [u'', unicode],
-    'caption': [u'', unicode],
+    'footer': [u'', unicode],
+    'just_data': [False, bool],
     'type': ['tab', validate_table_type],
     'hsep' : [False, bool],
     # pandas.Series holding fromatting metastrings
@@ -132,9 +138,10 @@ default_meta_table = {
 default_meta_table_vars = {
     'order': [0, int],
     'label': [u'', unicode],
-    'align': ['left', validate_allignment],
-    'vsep': ['both', validate_vsep],
+    'align': [u'left', validate_allignment],
+    'vsep': [u'both', validate_vsep],
     'headers': [[u''], validate_headers],
+    'float_format': [u'{0:.3f}', validate_float_format],
 }
 
 default_meta_des = {} # TODO: define
