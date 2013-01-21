@@ -196,7 +196,7 @@ class TexTable(Table):
             pass
         records = StringIO()
         self._data.df.to_string(
-            buf=records, float_format=lambda x: '%.3f' % x, 
+            buf=records, float_format=lambda x: '%.3f' % x,
             columns=self._keys, header=False, index=False)
         records.seek(0)
         for record in records.readlines():
@@ -283,7 +283,8 @@ class HTMLTable(Table):
         for k in self._keys:
             out += '''<th%s>%s</th>''' % (
                 self._headings[k].get('th_attrs', ''),
-                self._headings[k]['des'].replace("|",""))
+                utils.escape(self._headings[k]['des'].replace("|",""),
+                             utils.HTML_ESCAPE))
         out += '''</tr>'''
         out += '''</thead>\n'''
         return out
@@ -303,7 +304,9 @@ class HTMLTable(Table):
             record = record.split()
             for idx, field in enumerate(record):
                 heading = self._headings[self._keys[idx]]
-                out += '''<td%s>%s</td>''' % (heading.get('td_attrs', ''), field)
+                out += '''<td%s>%s</td>''' % (heading.get('td_attrs', ''),
+                                              utils.escape(field,
+                                                           utils.HTML_ESCAPE))
             out += '''\n</tr>\n'''
         out += '''</tbody>\n'''
         return out
@@ -322,7 +325,7 @@ class HTMLTable(Table):
         ''' Return a string that contains valid Html code for a table.
         '''
         out = [
-            utils.escape(self._make_header(), utils.HTML_ESCAPE),
+            self._make_header(),
             self._make_body(),
             #self._make_footer(),
             ]
