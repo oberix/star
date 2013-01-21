@@ -73,23 +73,23 @@ class Graph(object):
                 'columnspacing': 1,
                 'borderpad': 0,
                 })
-        self._title = data.title
-        self._footnote = data.footnote
+        self._title = data._md['graph']['title']
+        self._footnote = data._md['graph']['footnote']
         self._df = data.df
         self._y_meta = list()
         self._x_meta = list()
-        self._fontsize = data.fontsize
+        self._fontsize = data._md['graph']['fontsize']
         self._lax = None
         try:
-            self._size = FIGSIZE[data.size]
-        except KeyError, e:
-            if isinstance(data.size, tuple):
-                self._size = data.size
+            self._size = FIGSIZE[data._md['graph']['size']]
+        except (KeyError, TypeError), e:
+            if isinstance(data._md['graph']['size'], (tuple, list)):
+                self._size = data._md['graph']['size']
             else:
                 raise e
-        self._legend = data.legend
+        self._legend = data._md['graph']['legend']
         self._plotters = Plotters(self)
-        self.parse_lm(data.lm)
+        self.parse_md(data.md['graph']['vars'])
         self._figure = self.make_graph()
 
     def _make_legend(self, figure, handles, labels):
@@ -123,23 +123,23 @@ class Graph(object):
 
         return leg
 
-    def _unroll_cum(self, lm, val):
-        ''' Visit bag's lm dictionary and make an ordered list of
+    def _unroll_cum(self, md, val):
+        ''' Visit bag's md dictionary and make an ordered list of
         those variables that are cumulative to each other. This list
         will be used to stack variables in bar and hbar graphs.
 
-        @ param lm : an lm dictionary
-        @ param val: an lm dictionary entry
+        @ param md : an md dictionary
+        @ param val: an md dictionary entry
 
         '''
         ret = list()
         if val.get('cum'):
             ret = [val.get('cum', None)]
-            ret += self._unroll_cum(lm, lm[val['cum']])
+            ret += self._unroll_cum(md, md[val['cum']])
         return ret
 
-    def parse_lm(self, lm):
-        ''' Parse Bag's lm dictionary and estract the following non-public
+    def parse_md(self, md):
+        ''' Parse Bag's md dictionary and estract the following non-public
         attrubutes:
 
         _lax: Series to use as x axes
@@ -148,14 +148,15 @@ class Graph(object):
 
         '''
         # TODO: handle line styles
-        for key, val in lm.iteritems():
+        for key, val in md.iteritems():
+            val = dict(val)
             # TODO: apply translation
             if val['type'] == 'lax':
                 self._lax = self._df[key].map(float)
                 self._x_meta.append(val)
             else:
                 val['key'] = key
-                val['cumulate'] = self._unroll_cum(lm, val)
+                val['cumulate'] = self._unroll_cum(md, val)
                 if val['type'] == 'plot':
                     self._y_meta.insert(0, val)
                 else:
@@ -179,7 +180,7 @@ class Graph(object):
 
     def make_graph(self):
         ''' Create a Figure and plot a graph in it following what was
-        specified in Bag.lm.
+        specified in Bag.md.
 
         @ return: the Figure instance created
 

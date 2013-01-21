@@ -1,333 +1,261 @@
 # -*- coding: utf-8 -*-
-# pylint: disable=W1401
-
 from copy import copy
+import re
 from StringIO import StringIO
-import logging
-
 from star.remida import utils
+from lxml.html import builder as HTML
+from lxml import html
 
-__all__ = ['TexTable', 'HTMLTable']
+__all__ = ['Table', 'TexTable', 'HTMLTable']
 
 OPEN_TEX_TAB = {'tab': """\\begin{tabu} spread \\linewidth""",
                 'ltab': """\\begin{longtabu} spread \\linewidth"""}
 CLOSE_TEX_TAB = {'tab':"""\\end{tabu}""",
                  'ltab':"""\\end{longtabu}"""}
 
-FORMATS = {
-    '@n' : str(),
-    '@g' : "\\rowfont{\\bfseries}\n",
-    '@b' : "\\\ \\tabucline- \n",
-    '@l' : "\\tabucline- \n",
-    '@i' : "\\rowfont{\\itshape} \n",
-    '@bi' : "\\rowfont{\\bfseries \\itshape} \n",
-    '@p' : "\\pagebreak \n",
-}
-
+# FORMATS = {
+#     '@n' : u'',
+#     '@g' : "\\rowfont{\\bfseries}\n",
+#     '@b' : "\\\ \\tabucline- \n",
+#     '@l' : "\\tabucline- \n",
+#     '@i' : "\\rowfont{\\itshape} \n",
+#     '@bi' : "\\rowfont{\\bfseries \\itshape} \n",
+#     '@p' : "\\pagebreak \n",
+# }
 
 class Table(object):
 
-    def __init__(self, data, **kwargs):
-        """
-        @ param data: Transport object
-        @ param hsep: True if you want hrizontal lines after every record
+    def __init__(self, bag):
+        ''' Render data in a tabular form '''
+        # pylint: disable=W0212
+        self._data = bag._df # do not make unnecessary copy
+        self._table = bag.md['table']
+        self._vars = bag.md['table']['vars']
 
-        """
-        self._logger = logging.getLogger(type(self).__name__)
-        self._data = data
-        self.parse_lm(data.lm)
-
-    def parse_lm(self, lm):
-        ''' Parse Bag's LM dictionary and estract the following non-public
-        attrubutes:
-
-        _ncols: number of table columns
-        _align: columns alignment, relative size and separators
-        _keys: DataFrame coluns keys
-        _heading: list of lists containing headings elements
-
-        '''
-        self._ncols = len(lm.keys())
-
-        # Transpose LM
-        self._align = list() # alignment
-
-        # Extract df columns names
-        self._keys = lm.items()
-        self._keys.sort(key=lambda x : x[1][0])
+        # Make a list of keys (table columns) sorting by user defined
+        # order; from now on columns'es order is determined only by
+        # this list, so be carefull not to mess it up.
+        self._keys = self._vars.items()
+        self._keys.sort(key=lambda x: x[1]['order'])
         self._keys = [k[0] for k in self._keys]
 
-        # Extract heading titles
-        self._heading = list() # title lists
-        self._last_heading = len(lm[self._keys[0]]) - 3 # last heading index
-        for i in xrange(self._last_heading + 1):
-            self._heading.append(list())
+        self._headers = self._get_headers()
 
-        # Get heading metadata
-        for key in iter(self._keys):
-            self._align.append(lm[key][1])
-            # First two are not titles (by spec)
-            if len(lm[key]) > 2:
-                for i in xrange(2, len(lm[key])):
-                    self._heading[i-2].append(lm[key][i])
-        self._logger.debug('_ncols = %s', self._ncols)
-        self._logger.debug('_align = %s', self._align)
-        self._logger.debug('_keys = %s', self._keys)
-        self._logger.debug('_heading = %s', self._heading)
-
-    def out(self):
-        ''' You have to extend this class and override this method in order to
-        generate a different report format.
-
+    def _get_headers(self):
+        ''' Make a list in which every element is another list
+        containing the strings that constitute a row of header.
         '''
-        raise NotImplementedError
+        headers = []
+        num_rows = 0
+        for var in self._vars.itervalues():
+            num_rows = max(num_rows, len(var['headers']))
+        for row in range(num_rows):
+            headers.append([])
+            for key in self._keys:
+                try:
+                    headers[row].append(self._vars[key]['headers'][row])
+                except IndexError:
+                    headers[row].append(u'')
+        return headers
+                                              
+    def _format_elem(self, idx, elem):
+        form_exp = self._vars[self._keys[idx]]['float_format']
+        try:
+            return form_exp.format(elem)
+        except ValueError:
+            return unicode(elem)
+    
+    def _body(self, row_sep='''\n''', col_sep='''\t''', escape=None):
+        try:
+            self._data.sort(columns='_OR_', inplace=True)
+        except KeyError:
+            # leave it unsorted
+            pass
+        records = self._data.to_records(index=False)
+        return row_sep.join(
+            [col_sep.join(
+                [utils.escape(self._format_elem(idx, elem), patterns=escape) for idx, elem in enumerate(record)]
+            ) for record in records]) + row_sep
 
+    def body(self):
+        ''' Rendere the table body '''
+        return self._body()
+
+    def header(self):
+        ''' Render the table header '''
+        # TODO: this might return a text only header
+        return u''
+
+    def footer(self):
+        ''' Render the table footer '''
+        # TODO: this might return a text only footer
+        return u''
+        
+    def out(self):
+        ''' Return the final table as a string generated following the
+        in bag's metadata.  
+        '''
+        header = u''
+        footer = u''
+        if not self._table['just_data']:
+            header = self.header()
+            footer = self.footer()
+        body = self.body()
+        out = [
+            header,
+            body,
+            footer,
+        ]
+        return u'\n'.join(out)
 
 class TexTable(Table):
-    """ Constitute a table that can span over multiple pages """
-
-    def __init__(self, data, tab_type='tab', hsep=False, **kwargs):
-        """
-        @ param data: Transport object
-        @ param hsep: True if you want hrizontal lines after every record
-        """
-        super(TexTable, self).__init__(data, **kwargs)
-        self._hsep = str()
-        self._type = tab_type
-        if hsep:
-            self._hsep = "\\tabucline-"
-
-    # Non Public
-
-    def _get_col_format(self, s, span):
-        ''' Evaluate column's parameters from a title string
-        @ param s: the title string
-        @ param span: colspan
-        @ return: a dict suitable for string substitution
-
-        '''
-        # FIXME: check s is a string
-        title = s.strip('|')
-        part = s.partition(title)
-        ret = {'sep1': part[0],
-               'span': span,
-               'title': utils.escape(part[1]),
-               'sep2': part[2],
-               }
-        if title.strip().strip('|').startswith('@v'):
-            ret['title'] = str()
-        # TODO: apply translation
-        return ret
-
-    def _make_header(self, level):
-        ''' Create a single line of latex table header.
-        The main purpose of this method is to evaluate how to group different
-        columns in a single span and define the correct '\multicolumns' for a
-        LaTeX longtable.
-
-        @ param level: a list of columns labels
-        @ return: str
-
-        '''
-        out = str()
-        out_list = list()
-        title_list = copy(level)
-        utils.unique_list(title_list)
-        for title in title_list:
-            # TODO: apply translation
-            colspan = level.count(title)
-            params = self._get_col_format(title, colspan)
-            params['span'] = colspan
-            out_list.append(
-                "\multicolumn{%(span)s}{%(sep1)sc%(sep2)s}{%(title)s}" % \
-                    params)
-        out += """ & """.join(out_list)
-        # end row
-        out += """ \\\ \n"""
-        if level is self._heading[self._last_heading]:
-            # end heading
-#            out += """ \\tabucline- \endhead \n"""
-            out += """ \\tabucline- \n"""
-        return out
+    
+    # XXX: We use long tables by default, but this may cause truble
+    # when nesting tables inside \minipage or \subfigures, or any
+    # other kind of TeX boxing structure.
+    # OPEN_TEX_TAB = {'tab': """\\begin{tabu} spread \\linewidth""",
+    #                 'ltab': """\\begin{longtabu} spread \\linewidth"""}
+    # CLOSE_TEX_TAB = {'tab':"""\\end{tabu}""",
+    #                  'ltab':"""\\end{longtabu}"""}
+    ALIGNMENT_MAP = {
+        'left': 'l',
+        'l': 'l',
+        'right': 'r',
+        'r': 'r',
+        'center': 'c',
+        'c': 'c',
+    }
+    SEPARATORS_MAP = {
+        'left': ('|', ''),
+        'l': ('|', ''),
+        'right': ('', '|'),
+        'r': ('', '|'),
+        'both': ('|', '|'),
+        'b': ('|', '|'),
+        'none': ('', ''), 
+        'n': ('', ''),
+    }
 
     def _make_preamble(self):
-        ''' Prepare preamble for TeX table.
-        Preamble is the outermost, general table structure, which will contain
-        the multicolumn headers.
-
-        @ return: str
-
-        '''
-        # table preamble
-        out = OPEN_TEX_TAB[self._type] + """ {"""
-        for col in self._align:
-            col_format = self._get_col_format(col, 1)
-            out += """%(sep1)sX[%(title)s]%(sep2)s""" % col_format
-        out += """} \\firsthline\n"""
+        out = u""" {"""
+        for idx, key in enumerate(self._keys):
+            align = TexTable.ALIGNMENT_MAP.get(self._vars[key]['align'], 'l')
+            sep = TexTable.SEPARATORS_MAP.get(self._vars[key]['vsep'], ('', ''))
+            out += """%sX[%s]%s""" % (sep[0], align, sep[1])
+        out += "} \\firsthline \n"
         return out
 
-    def _make_footer(self):
-        ''' Prepare footer for TeX table
-        This is pretty simple: just draw a line at the bottom of the table.
-
-        @ return: str
-
-        '''
-        ret = "\\tabucline- \n"
-        span = len(self._align)
-        if self._data.footnote is not None:
-            ret = str().join([
-                    '\multicolumn{%s}{|c|}{'% span,
-                    self._data.footnote,
-                    '} \\\ \\tabucline- \\endfoot \n'])
-        return ret
-
-    def _make_body(self):
-        ''' Prepare data for TeX table
-
-        @ return: str
-
-        '''
-        out = str()
-        try:
-            self._data.df = self._data.df.sort(columns='_OR_')
-        except KeyError:
-            # keep it unsorted
-            pass
-        records = StringIO()
-        self._data.df.to_string(
-            buf=records, float_format=lambda x: '%.3f' % x,
-            columns=self._keys, header=False, index=False)
-        records.seek(0)
-        for record in records.readlines():
-            out += u' & '.join(record.split())
-            out += ' \\\ \n'
+    def _make_header(self, header):
+        out = []
+        i = 0
+        exp = re.compile('^@v[0-9]*$')
+        while i < len(header):
+            span = 1
+            while ( (i + span < len(header)) and 
+                    (header[i + span] == header[i]) ):
+                span += 1
+            sep = TexTable.SEPARATORS_MAP.get(
+                self._vars[self._keys[i]]['vsep'], ('', ''))
+            out.append(
+                "\\multicolumn{%s}{%sc%s}{%s}" % 
+                (span, sep[0], sep[1], re.sub(exp, '', utils.escape(header[i], patterns=utils.TEX_ESCAPE)))
+            )
+            i += span
+        out = u" & ".join(out)
+        out += u" \\\ \\tabucline- \n"
         return out
 
-    # Public
+    def body(self):
+        return self._body(row_sep=u' \\\ \n', col_sep=u' & ', escape=utils.TEX_ESCAPE)
+
+    def header(self):
+        out = self._make_preamble()
+        for header in self._headers:
+            out += self._make_header(header)
+        return out
+
+    def footer(self):
+        ''' Render the table footer '''
+        return u'\\tabucline- \n'
 
     def out(self):
-        """ Return a string that contains valid LaTeX code for a table.
-
-        @ return: str
-
-        """
-        headers = unicode()
-        preamble = unicode()
-        footer = unicode()
-        close_ = unicode()
-
-        if not self._type == 'bodytab':
-            preamble = self._make_preamble()
-            for heading in self._heading:
-                headers += self._make_header(heading)
-            footer = self._make_footer()
-            close_ = CLOSE_TEX_TAB[self._type]
-
-        out = [
-            preamble,
-            headers,
-            self._make_body(),
-            footer,
-            close_
-            ]
-        out = unicode().join(out)
-#        return unicode(out, 'utf-8')
+        out = u"""\\begin{longtabu} spread \\linewidth"""
+        out += super(TexTable, self).out()
+        out += u"""\\end{longtabu}\n"""
         return out
-
 
 class HTMLTable(Table):
 
-    '''
-    for tests
-    python sre.py esempio_html --log-level=debug
-    '''
+    ALIGNMENT_MAP = {
+        'left': 'left',
+        'l': 'left',
+        'right': 'right',
+        'r': 'right',
+        'center': 'center',
+        'c': 'center',
+    }
 
-    def __init__(self, data, hsep=False, **kwargs):
-        self._logger = logging.getLogger(type(self).__name__)
-        super(HTMLTable, self).__init__(data, **kwargs)
-
-
-    def parse_lm(self, lm):
-        '''
-        lm have to be dict of dicts.
-        keys are columns.
-        values are dict of form:
-        {
-        'type':'unused',
-        'ord': <int>,
-        'des': <string> the th content,
-        ### optional
-        'th_attrs': <string> putted in `class' attr of unique tr element in thead,
-        'td_attrs': <string> putted in `class' attr of unique tr element in tr in tbody,
-        }
-        '''
-        self._ncols = len(lm.keys())
-
-        # Extract df columns names
-        self._keys = lm.items()
-        self._keys.sort(key=lambda x : x[1].get('ord'))
-        self._keys = [k[0] for k in self._keys]
-
-        self._headings = dict.fromkeys(lm)
-        for k in self._keys:
-            self._headings[k] = lm[k].copy()
-
-    def _make_header(self):
-        '''
-        sezione che costruisce l'header della tabella: thead
-        '''
-
-        out = '''<thead>'''
-        out += '''<tr>'''
-        for k in self._keys:
-            out += '''<th%s>%s</th>''' % (
-                self._headings[k].get('th_attrs', ''),
-                utils.escape(self._headings[k]['des'].replace("|",""),
-                             utils.HTML_ESCAPE))
-        out += '''</tr>'''
-        out += '''</thead>\n'''
+    def _make_header(self, header):
+        out = []
+        i = 0
+        exp = re.compile('^@v[0-9]*$')
+        while i < len(header):
+            span = 1
+            while ( (i + span < len(header)) and 
+                    (header[i + span] == header[i]) ):
+                span += 1
+            out.append(
+                HTML.TH(re.sub(exp, '', utils.escape(header[i], patterns=utils.HTML_ESCAPE)), 
+                        colspan="%s" % span)
+            )
+            i += span
         return out
 
-    def _make_body(self):
-        '''
-        sezione che costruisce il body della tabella: tbody
-        '''
-
-        out = '''<tbody>\n'''
-        records = StringIO()
-        self._data.df.to_string(
-            buf=records, float_format=lambda x: '%.3f' % x,
-            columns=self._keys, header=False, index=False)
-        records.seek(0)
-        for record in records.readlines():
-            record = record.split()
-            for idx, field in enumerate(record):
-                heading = self._headings[self._keys[idx]]
-                out += '''<td%s>%s</td>''' % (heading.get('td_attrs', ''),
-                                              utils.escape(field,
-                                                           utils.HTML_ESCAPE))
-            out += '''\n</tr>\n'''
-        out += '''</tbody>\n'''
+    def header(self):
+        out = HTML.THEAD(
+                *[HTML.TR(*self._make_header(header)) for header in self._headers]
+        )
         return out
 
-    def _make_footer(self):
-        ''' Prepare footer for Html table
-        This is pretty simple: just draw a line at the bottom of the table.
-        '''
-        ret = str()
-        span = self._align
-        if self._data.footnore is not None:
-            ret = "<hr/>" + self._data.footnote
-        return str().join(ret)
+    def body(self):
+        try:
+            self._data.sort(columns='_OR_', inplace=True)
+        except KeyError:
+            # leave it unsorted
+            pass
+        records = self._data.to_records(index=False)
+        out = HTML.TBODY(
+            *[HTML.TR(
+                *[HTML.TD(
+                    utils.escape(self._format_elem(idx, elem)),
+                    align=self.ALIGNMENT_MAP.get(self._vars[self._keys[idx]]['align'], 'l')
+                ) for idx, elem in enumerate(record)]
+            ) for record in records]
+        )
+        return out
+
+    def footer(self):
+        return HTML.TFOOT(
+            HTML.TR(
+                HTML.TD(
+                    self._table['footer'],
+                    colspan="%s" % len(self._keys),
+                    align='center'
+                )
+            )
+        )
 
     def out(self):
-        ''' Return a string that contains valid Html code for a table.
-        '''
-        out = [
-            self._make_header(),
-            self._make_body(),
-            #self._make_footer(),
-            ]
-        out = unicode(str().join(out))
-        return out
+        header = ''
+        footer = ''
+        if not self._table['just_data']:
+            header = self.header()
+            footer = self.footer()
+        body = self.body()
+        out = HTML.TABLE(
+            header,
+            footer,
+            body,
+            border="1",
+        )
+        return html.tostring(out, pretty_print=True, encoding=unicode)
