@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
-
 from copy import copy
 import re
 from StringIO import StringIO
 from star.remida import utils
+from lxml.html import builder as HTML
+from lxml import html
 
-__all__ = ['TexTable', 'HTMLTable']
+__all__ = ['Table', 'TexTable', 'HTMLTable']
 
 OPEN_TEX_TAB = {'tab': """\\begin{tabu} spread \\linewidth""",
                 'ltab': """\\begin{longtabu} spread \\linewidth"""}
@@ -27,9 +28,9 @@ class Table(object):
     def __init__(self, bag):
         ''' Render data in a tabular form '''
         # pylint: disable=W0212
-        self._data = bag._df
-        self._table = bag._md['table']
-        self._vars = bag._md['table']['vars']
+        self._data = bag._df # do not make unnecessary copy
+        self._table = bag.md['table']
+        self._vars = bag.md['table']['vars']
 
         # Make a list of keys (table columns) sorting by user defined
         # order; from now on columns'es order is determined only by
@@ -64,7 +65,7 @@ class Table(object):
         except ValueError:
             return unicode(elem)
     
-    def _body(self, row_sep='''\n''', col_sep='''\t'''):
+    def _body(self, row_sep='''\n''', col_sep='''\t''', escape=None):
         try:
             self._data.sort(columns='_OR_', inplace=True)
         except KeyError:
@@ -73,7 +74,7 @@ class Table(object):
         records = self._data.to_records(index=False)
         return row_sep.join(
             [col_sep.join(
-                [self._format_elem(idx, elem) for idx, elem in enumerate(record)]
+                [utils.escape(self._format_elem(idx, elem), patterns=escape) for idx, elem in enumerate(record)]
             ) for record in records]) + row_sep
 
     def body(self):
@@ -97,11 +98,8 @@ class Table(object):
         header = u''
         footer = u''
         if not self._table['just_data']:
-            # header = utils.escape(self.header())
-            # footer = utils.escape(self.footer())
             header = self.header()
             footer = self.footer()
-        # body = utils.escape(self.body())
         body = self.body()
         out = [
             header,
@@ -160,7 +158,7 @@ class TexTable(Table):
                 self._vars[self._keys[i]]['vsep'], ('', ''))
             out.append(
                 "\\multicolumn{%s}{%sc%s}{%s}" % 
-                (span, sep[0], sep[1], re.sub(exp, '', header[i]))
+                (span, sep[0], sep[1], re.sub(exp, '', utils.escape(header[i], patterns=utils.TEX_ESCAPE)))
             )
             i += span
         out = u" & ".join(out)
@@ -168,7 +166,7 @@ class TexTable(Table):
         return out
 
     def body(self):
-        return self._body(row_sep=u' \\\ \n', col_sep=u' & ')
+        return self._body(row_sep=u' \\\ \n', col_sep=u' & ', escape=utils.TEX_ESCAPE)
 
     def header(self):
         out = self._make_preamble()
@@ -187,5 +185,77 @@ class TexTable(Table):
         return out
 
 class HTMLTable(Table):
-    pass
 
+    ALIGNMENT_MAP = {
+        'left': 'left',
+        'l': 'left',
+        'right': 'right',
+        'r': 'right',
+        'center': 'center',
+        'c': 'center',
+    }
+
+    def _make_header(self, header):
+        out = []
+        i = 0
+        exp = re.compile('^@v[0-9]*$')
+        while i < len(header):
+            span = 1
+            while ( (i + span < len(header)) and 
+                    (header[i + span] == header[i]) ):
+                span += 1
+            out.append(
+                HTML.TH(re.sub(exp, '', utils.escape(header[i], patterns=utils.HTML_ESCAPE)), 
+                        colspan="%s" % span)
+            )
+            i += span
+        return out
+
+    def header(self):
+        out = HTML.THEAD(
+                *[HTML.TR(*self._make_header(header)) for header in self._headers]
+        )
+        return out
+
+    def body(self):
+        try:
+            self._data.sort(columns='_OR_', inplace=True)
+        except KeyError:
+            # leave it unsorted
+            pass
+        records = self._data.to_records(index=False)
+        out = HTML.TBODY(
+            *[HTML.TR(
+                *[HTML.TD(
+                    utils.escape(self._format_elem(idx, elem)),
+                    align=self.ALIGNMENT_MAP.get(self._vars[self._keys[idx]]['align'], 'l')
+                ) for idx, elem in enumerate(record)]
+            ) for record in records]
+        )
+        return out
+
+    def footer(self):
+        return HTML.TFOOT(
+            HTML.TR(
+                HTML.TD(
+                    self._table['footer'],
+                    colspan="%s" % len(self._keys),
+                    align='center'
+                )
+            )
+        )
+
+    def out(self):
+        header = ''
+        footer = ''
+        if not self._table['just_data']:
+            header = self.header()
+            footer = self.footer()
+        body = self.body()
+        out = HTML.TABLE(
+            header,
+            footer,
+            body,
+            border="1",
+        )
+        return html.tostring(out, pretty_print=True, encoding=unicode)

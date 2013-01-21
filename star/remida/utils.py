@@ -1,30 +1,34 @@
 # -*- coding: utf-8 -*-
 import re
 
-TEX_ESCAPE = [
-    (re.compile("€"), "\\officialeuro"),
-    (re.compile("%"), "\\%"),
-    (re.compile("&"), "\\&"),
-    (re.compile("\$(?!\w+)"), "\\$"),
-    (re.compile(">=(?!\{)"), r"$\\ge$"),
-    (re.compile("<=(?!\{)"), r"$\\le$"),
-    (re.compile(">(?!\{)"), r"$>$"),
-    (re.compile("<(?!\{)"), r"$<$"),
-    (re.compile("\n"), "\\\\"),
-    (re.compile("_"), "\_"),
-    (re.compile("/"), "/\-"),
-    (re.compile("\^"), "\textasciicircum"),
-    (re.compile("~"), "\normaltilde"),
-    ]
+DUMMY_ESCAPE = [
+    # (re.compile("\\"), "\\\\"), 
+]
 
-HTML_ESCAPE = {
-    re.compile("<"): "&lt;",
-    re.compile(">"): "&gt;",
-    re.compile("&"): "&amp;",
-    re.compile("\""): "&quot;",
-    re.compile("'"): "&apos;",
-    re.compile("€"): "&euro;",
-    }
+TEX_ESCAPE = [
+    (re.compile(u"€"), r"\\euro"),
+    (re.compile(u"%"), r"\\%"),
+    (re.compile(u"&"), r"\\&"),
+    (re.compile(u"\$(?!\w+)"), r"\\$"),
+    (re.compile(u">=(?!\{)"), r"$\\ge$"),
+    (re.compile(u"<=(?!\{)"), r"$\\le$"),
+    (re.compile(u">(?!\{)"), r"$>$"),
+    (re.compile(u"<(?!\{)"), r"$<$"),
+    (re.compile(u"\n"), r"\\\\"),
+    (re.compile(u"_"), r"\_"),
+    (re.compile(u"/"), r"/\-"),
+    (re.compile(u"\^"), r"\\textasciicircum"),
+    (re.compile(u"~"), r"\\normaltilde"),
+]
+
+HTML_ESCAPE = [
+    (re.compile(u"<"), "&lt;"),
+    (re.compile(u">"), "&gt;"),
+    (re.compile(u"&"), "&amp;"),
+    (re.compile(u"\""), "&quot;"),
+    (re.compile(u"'"), "&apos;"),
+    (re.compile(u"€"), "&euro;"),
+]
 
 def unique_list(list_):
     """ Remove all duplicate elements from a list inplace, keeping the order
@@ -51,7 +55,7 @@ def escape(string, patterns=None):
 
     '''
     if patterns is None:
-        patterns = TEX_ESCAPE
+        patterns = DUMMY_ESCAPE
     for pattern, sub in patterns:
-        string = re.sub(pattern, sub, string)
+        string = pattern.sub(sub, string)
     return string
