@@ -1,17 +1,12 @@
 # -*- coding: utf-8 -*-
-from copy import copy
+#from copy import copy
 import re
-from StringIO import StringIO
+#from StringIO import StringIO
 from star.remida import utils
 from lxml.html import builder as HTML
 from lxml import html
 
 __all__ = ['Table', 'TexTable', 'HTMLTable']
-
-OPEN_TEX_TAB = {'tab': """\\begin{tabu} spread \\linewidth""",
-                'ltab': """\\begin{longtabu} spread \\linewidth"""}
-CLOSE_TEX_TAB = {'tab':"""\\end{tabu}""",
-                 'ltab':"""\\end{longtabu}"""}
 
 # FORMATS = {
 #     '@n' : u'',
@@ -26,9 +21,12 @@ CLOSE_TEX_TAB = {'tab':"""\\end{tabu}""",
 class Table(object):
 
     def __init__(self, bag):
-        ''' Render data in a tabular form '''
+        ''' Render data in a tabular form 
+
+        @ param bag: a star.Bag instance
+        '''
         # pylint: disable=W0212
-        self._data = bag._df # do not make unnecessary copy
+        self._data = bag._df # do not make unnecessary copies
         self._table = bag.md['table']
         self._vars = bag.md['table']['vars']
 
@@ -59,23 +57,89 @@ class Table(object):
         return headers
                                               
     def _format_elem(self, idx, elem):
+        ''' Apply a format to an element, if the element is a float,
+        the md key 'float_format' will be used.
+        
+        @ param idx, element index
+        @ param elem, the element's value
+        @ return: a uicode string
+        '''
         form_exp = self._vars[self._keys[idx]]['float_format']
         try:
             return form_exp.format(elem)
         except ValueError:
             return unicode(elem)
     
-    def _body(self, row_sep='''\n''', col_sep='''\t''', escape=None):
+    def _make_header_elem(self, span, sep, elem, exp):
+        ''' This is a template method to generate a single header
+        cell. Table subclasses should provide a concrete
+        implementation.
+
+        @ param span: an integer to indicate the colspan of the cell
+        @ param sep: a tuple with two elements containing left and
+            right separators respectivly.
+        @ param elem: the cell value.
+        @ param exp: a compiled regular expression to match void
+            cells.
+        @ return: a list of language specific formatted header
+            elements.
+        '''
+        # TODO: there could be an implementation here
+        raise NotImplementedError
+
+    def _make_header(self, header):
+        ''' Buld one level of table header.
+        @ param header: a list with elements of the header being built.
+        @ return: a list with all the header elements formatted for
+            the specific language.
+        '''
+        out = []
+        i = 0
+        exp = re.compile('^@v[0-9]*$')
+        while i < len(header):
+            span = 1
+            while ( (i + span < len(header)) and 
+                    (header[i + span] == header[i]) ):
+                span += 1
+            sep = TexTable.SEPARATORS_MAP.get(
+                self._vars[self._keys[i]]['vsep'], ('', ''))
+            out.append(self._make_header_elem(span, sep, header[i], exp))
+            i += span
+        return out
+
+    def _to_records(self):
+        ''' Turn data in a list of lists.
+        @ return: A list of lists.
+        '''
         try:
             self._data.sort(columns='_OR_', inplace=True)
         except KeyError:
             # leave it unsorted
             pass
-        records = self._data.to_records(index=False)
-        return row_sep.join(
+        return self._data.to_records(index=False)
+
+    def _body(self, row_sep='''\n''', col_sep='''\t''', escape=None):
+        ''' Buld the table body. 
+
+        This is a template method to let subclasses do the dirty job,
+        while still providing a simple text output. Infact, in most
+        cases, changing this method's parameters is enough to obtain
+        the result.
+
+        @ param row_sep: row separators, what indicates the end of a
+            row (default: '\n')
+        @ param col_sep: column separators, what indicated the end of
+            a column (default: '\t')
+        @ return: a string
+        '''
+        records = self._to_records()
+        ret = row_sep.join(
             [col_sep.join(
-                [utils.escape(self._format_elem(idx, elem), patterns=escape) for idx, elem in enumerate(record)]
+                [utils.escape(self._format_elem(idx, elem),
+                              patterns=escape)
+                 for idx, elem in enumerate(record)]
             ) for record in records]) + row_sep
+        return ret
 
     def body(self):
         ''' Rendere the table body '''
@@ -91,10 +155,7 @@ class Table(object):
         # TODO: this might return a text only footer
         return u''
         
-    def out(self):
-        ''' Return the final table as a string generated following the
-        in bag's metadata.  
-        '''
+    def _out(self):
         header = u''
         footer = u''
         if not self._table['just_data']:
@@ -106,7 +167,13 @@ class Table(object):
             body,
             footer,
         ]
-        return u'\n'.join(out)
+        return out
+
+    def out(self):
+        ''' Return the final table as a string generated following the
+        in bag's metadata.  
+        '''
+        return u'\n'.join(self._out())
 
 class TexTable(Table):
     
@@ -139,39 +206,29 @@ class TexTable(Table):
     def _make_preamble(self):
         out = u""" {"""
         for idx, key in enumerate(self._keys):
-            align = TexTable.ALIGNMENT_MAP.get(self._vars[key]['align'], 'l')
-            sep = TexTable.SEPARATORS_MAP.get(self._vars[key]['vsep'], ('', ''))
+            align = TexTable.ALIGNMENT_MAP.get(
+                self._vars[key]['align'], 'l')
+            sep = TexTable.SEPARATORS_MAP.get(
+                self._vars[key]['vsep'], ('', ''))
             out += """%sX[%s]%s""" % (sep[0], align, sep[1])
         out += "} \\firsthline \n"
         return out
 
-    def _make_header(self, header):
-        out = []
-        i = 0
-        exp = re.compile('^@v[0-9]*$')
-        while i < len(header):
-            span = 1
-            while ( (i + span < len(header)) and 
-                    (header[i + span] == header[i]) ):
-                span += 1
-            sep = TexTable.SEPARATORS_MAP.get(
-                self._vars[self._keys[i]]['vsep'], ('', ''))
-            out.append(
-                "\\multicolumn{%s}{%sc%s}{%s}" % 
-                (span, sep[0], sep[1], re.sub(exp, '', utils.escape(header[i], patterns=utils.TEX_ESCAPE)))
-            )
-            i += span
-        out = u" & ".join(out)
-        out += u" \\\ \\tabucline- \n"
-        return out
+    
+    def _make_header_elem(self, span, sep, elem, exp):
+        return "\\multicolumn{%s}{%sc%s}{%s}" % \
+            (span, sep[0], sep[1], 
+             exp.sub('', utils.escape(elem, patterns=utils.TEX_ESCAPE)))
 
     def body(self):
-        return self._body(row_sep=u' \\\ \n', col_sep=u' & ', escape=utils.TEX_ESCAPE)
+        return self._body(row_sep=u' \\\ \n', col_sep=u' & ',
+                          escape=utils.TEX_ESCAPE)
 
     def header(self):
         out = self._make_preamble()
         for header in self._headers:
-            out += self._make_header(header)
+            out += u" & ".join(self._make_header(header))
+            out += " \\\ \\tabucline- \n"
         return out
 
     def footer(self):
@@ -195,44 +252,25 @@ class HTMLTable(Table):
         'c': 'center',
     }
 
-    def _make_header(self, header):
-        out = []
-        i = 0
-        exp = re.compile('^@v[0-9]*$')
-        while i < len(header):
-            span = 1
-            while ( (i + span < len(header)) and 
-                    (header[i + span] == header[i]) ):
-                span += 1
-            out.append(
-                HTML.TH(re.sub(exp, '', utils.escape(header[i], patterns=utils.HTML_ESCAPE)), 
-                        colspan="%s" % span)
-            )
-            i += span
-        return out
+    def _make_header_elem(self, span, sep, elem, exp):
+        return HTML.TH(
+            exp.sub('', utils.escape(elem, patterns=utils.HTML_ESCAPE)),
+            colspan="%s" % span)
 
     def header(self):
-        out = HTML.THEAD(
-                *[HTML.TR(*self._make_header(header)) for header in self._headers]
-        )
-        return out
+        return HTML.THEAD(*[HTML.TR(*self._make_header(header)) 
+                            for header in self._headers])
 
     def body(self):
-        try:
-            self._data.sort(columns='_OR_', inplace=True)
-        except KeyError:
-            # leave it unsorted
-            pass
-        records = self._data.to_records(index=False)
-        out = HTML.TBODY(
+        records = self._to_records()
+        return HTML.TBODY(
             *[HTML.TR(
                 *[HTML.TD(
                     utils.escape(self._format_elem(idx, elem)),
-                    align=self.ALIGNMENT_MAP.get(self._vars[self._keys[idx]]['align'], 'l')
+                    align=self.ALIGNMENT_MAP.get(
+                        self._vars[self._keys[idx]]['align'], 'l')
                 ) for idx, elem in enumerate(record)]
-            ) for record in records]
-        )
-        return out
+            ) for record in records])
 
     def footer(self):
         return HTML.TFOOT(
@@ -240,22 +278,8 @@ class HTMLTable(Table):
                 HTML.TD(
                     self._table['footer'],
                     colspan="%s" % len(self._keys),
-                    align='center'
-                )
-            )
-        )
+                    align='center')))
 
     def out(self):
-        header = ''
-        footer = ''
-        if not self._table['just_data']:
-            header = self.header()
-            footer = self.footer()
-        body = self.body()
-        out = HTML.TABLE(
-            header,
-            footer,
-            body,
-            border="1",
-        )
-        return html.tostring(out, pretty_print=True, encoding=unicode)
+        return html.tostring(HTML.TABLE(*self._out(), border="1"),
+                             pretty_print=True, encoding=unicode)
