@@ -46,6 +46,26 @@ class Meta(dict):
 See metaDict.keys() for a list of valid parameters." % key)
         dict.__setitem__(self, key, cval)
 
+    def __getattribute__(self, name):
+        try:
+            return super(Meta, self).__getattribute__(name)
+        except AttributeError, err:
+            try:
+                return self.__getitem__(name)
+            except KeyError:
+                raise err
+
+    def __setattr__(self, name, value):
+        self.__setitem__(name, value)
+
+    def __delattr__(self, name):
+        # alias to __delitem__()
+        self.__delitem__(name)
+
+    def __delitem__(self, name):
+        # items can not be deleted, just fallback to default value
+        self.__setitem__(name, self.defaults[name])
+
     def copy(self):
         return utils.smartcopy(self)
 
@@ -78,22 +98,39 @@ class MetaVarsAttrDes(Meta):
     defaults = dict([ (key, default) for key, (default, converter) in
                       default_meta_des_vars.iteritems() ])
 
-class MetaVars(dict):
+#
+# The following classes are a little different because theirs keys can not be
+# validated since they are named after the DataFrame columns. Maybe
+# Stak could do this kind of checking, but it's limiting at this stage
+#
+class MetaVars(Meta):
+    def __init__(self, *args, **kwargs):
+        dict.__init__(self, *args, **kwargs)
+    
     def __setitem__(self, key, val):
         val = MetaVarsAttr(val)
         dict.__setitem__(self, key, val)
 
-class MetaVarsGraph(dict):
+class MetaVarsGraph(Meta):
+    def __init__(self, *args, **kwargs):
+        dict.__init__(self, *args, **kwargs)
+
     def __setitem__(self, key, val):
         val = MetaVarsAttrGraph(val)
         dict.__setitem__(self, key, val)
 
-class MetaVarsTable(dict):
+class MetaVarsTable(Meta):
+    def __init__(self, *args, **kwargs):
+        dict.__init__(self, *args, **kwargs)
+
     def __setitem__(self, key, val):
         val = MetaVarsAttrTable(val)
         dict.__setitem__(self, key, val)
 
-class MetaVarsDes(dict):
+class MetaVarsDes(Meta):
+    def __init__(self, *args, **kwargs):
+        dict.__init__(self, *args, **kwargs)
+
     def __setitem__(self, key, val):
         val = MetaVarsAttrDes(val)
         dict.__setitem__(self, key, val)
