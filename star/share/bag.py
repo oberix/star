@@ -1,160 +1,61 @@
 # -*- coding: utf-8 -*-
-import os
-import logging
 import pandas
-import copy
-
-#from star.share.generic_pickler import GenericPickler
 from star.share.stark import Stark
 
 __all__ = ['Bag']
 
-STYPES = (
-    'tab',
-    'ltab',
-    'bodytab',
-    'graph',
-)
+# stypes are used to determine default action to take when Bag
+# instance is part of a report folder.
+STYPES = ('grap', 'tab', 'des')
 
 class Bag(Stark):
-    ''' This class associates raw data with printing meta-information.
-
-    Bag has the following attributes:
-        df: A pandas DataFrame which contains the data.
-        cod: The path where the object will be saved as pickle.
-        stype: Tipology, one of ('tab' | 'graph'), tells the reporting engine
-            wether it should produce a table or a graph from datas.
-        MD: Dictionary of meta-information; its keys must be a subset of
-            df.columns. For each key there should be a list giving specific
-            info to the engine. Depending on the value of stype, MD's lists
-            assumes different meanings.
-            stype == 'graph', list indexes means:
-                0: Role of the column in the graphic, 
-                   'lax' = use Series as lable for the x axes
-                   'bar' = render Series as a bar plot
-                   'plot' = render Serias as a plot
-                1: Where the axis must be drown ('dx' for right, or 'sx' for
-                   left)
-                2: Variable legend
-            stype == 'tab', list indexes means:
-                0: Column relative order
-                1: Column layout, uses LaTeX tabularx sintax:
-                   [|][<dimensione>]l|c|r[|] 
-                2: Column label
-                Any other element constitures another level in the table
-                header. Different adiacent columns with the same label are
-                considered multicolumn. If you want to leave a blanc column,
-                just use a label that starts with '@v'.
-
-            example:
-            md = {
-               'DAT_MVL': [0, '|c|', '|@v0|', '|Data|'],
-               'COD_CON': [4, 'l|', '|@v0|', ' Codice Conto|'],
-               'NAM_CON': [5, '2l|', ' @v2|', ' Conto|'],
-               'NAM_PAR': [2, '2l|', '|@v0|', ' Partner|'],
-               'DBT_MVL': [6, '0.5r|', ' @v2|', ' Dare|'],
-               'CRT_MVL': [7, '0.5r|', ' @v2|', ' Avere|'],
-               }
-
-    '''   
 
     def __init__(self, df, md=None, cod=None, stype='tab', 
-                 # TODO: remove this two, as soon UoM are well implemented
+                 # TODO: remove currency and currdata, as soon UoM are well implemented
                  currency='USD', currdata=None):
         Stark.__init__(self, df, md, cod, stype, currency, currdata)
-        if self.stype in ('tab', 'ltab', 'bodytab'):
+        # FIXME: keep just tab, different tab flavours are handled via
+        # md
+        # TODO: handle type cast form Stark to Bag...
+        if self.stype in ('tab', 'ltab', 'bodytab'): 
             self._category = 'table'
         elif self.stype == 'graph':
             self._category = 'graph'
         elif self.stype == 'des':
             self._category = 'des'
-        # if self._stype in ['tab', 'ltab', 'bodytab']:
-        #     subtree = 'table'
-        #     default = MetaVarsAttrTable()
-        # elif self._stype == 'graph':
-        #     subtree = 'graph'
-        #     default = MetaVarsAttrGraph()
-        # else:
-        #     raise ValueError()
-        # if len(md[subtree]['vars']) == 0: 
-        #     for col in df.columns:
-        #         md[subtree]['vars'][col] = default
 
     @property
     def columns(self):
         return pandas.Index(self._md[self._category]['vars'].keys())
 
-    # def __init__(self, df, md=None, cod=None, stype='tab',
-    #              title=None, footnote=None, 
-    #              size='square', fontsize=10.0,
-    #              legend=False, **kwargs):
-    #     self._df = df
-    #     self.cod = cod
-    #     self._md = md
-    #     self.stype = stype
-    #     self.title = title
-    #     self.footnote = footnote
-    #     self.size = size
-    #     self.fontsize = fontsize
-    #     self.legend = legend
-    #     for key, val in kwargs:
-    #         setattr(self, key, val)
+    def plot(self, how='pdf'):
+        ''' Wrapper to Graph.out()
+        '''
+        # TODO: implement method
+        raise NotImplementedError
         
-    # ##############
-    # # Properties #
-    # ##############
+    def table(self, how='pdf'):
+        ''' Wrapper to Table.out()
+        ''' 
+        # TODO: implement method
+        raise NotImplementedError
 
-    # @property
-    # def md(self):
-    #     ''' Return a shallow copy of md ''' 
-    #     # TODO: this isn't neither a shallow nor a deep copy, copy of the md
-    #     # shold be deep while it encounters nested dictionaries, but it should
-    #     # behaves as shallow when it reaches DataFrames, so.. implement a
-    #     # smart_copy() :)
-    #     return copy.deepcopy(self._md)
+    def totals(self, dims):
+        ''' Evaluate totals for a dimention. That's like making a
+        groupby(dims).sum(). but results are stored in a separate
+        DataFrame so further elaborations won't be messed up by those
+        values.
+        '''
+        # TODO: implement method
+        raise NotImplementedError
 
-    # @md.setter
-    # def md(self, new_md):
-    #     ''' md setter:
-    #     Just check md/df consistency before proceding.
-    #     '''
-    #     if not isinstance(new_md, dict):
-    #         raise ValueError("md must be a dictionry '%s' received instead" %\
-    #                          type(new_md))
-    #     self._md = new_md
-    #     self._update()
-
-    # @property
-    # def df(self):
-    #     ''' Return a copy of df selecting just those columns that have some
-    #     metadata in md
-    #     '''
-    #     return self._df[self.columns]
-
-    # @df.setter
-    # def df(self, df):
-    #     ''' DF settre:
-    #     Just check VD/DF consistency before proceding.
-    #     '''
-    #     if not isinstance(df, pandas.DataFrame):
-    #         raise TypeError(
-    #             "df must be a pandas.DataFrame object, %s received instead",
-    #             type(df))
-    #     self._df = df
-    #     # df changed, re-evaluate calculated data
-    #     self._update()
-
-    # @property
-    # def columns(self):
-    #     return pandas.Index(self._md.keys())
-
-    # @property
-    # def ix(self):
-    #     return self._df.ix
-
-    # ###########
-    # # Publics #
-    # ###########
+    def set_rows_format(self, modlist):
+        # TODO: implement method. 
+        # Former set_format(), apply an output format for rows. Old
+        # implementation does work, but it may be better to hold
+        # modlist in a separate Series and keep it consistent with
+        # data by Index.
+        raise NotImplementedError
 
     # def set_format(self, modlist):
     #     ''' Insert line style modifiers in the DF.
