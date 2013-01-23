@@ -45,7 +45,8 @@ class Meta(dict):
             cval = self.validate[key](val)
         except KeyError:
             raise KeyError("'%s' is not a valid md parameter. \
-See %s.defaults for a list of valid parameters." % (key, self.__class__.__name__))
+See %s.defaults for a list of valid parameters." % 
+                           (key, self.__class__.__name__))
         dict.__setitem__(self, key, cval)
 
     def __getattribute__(self, name):

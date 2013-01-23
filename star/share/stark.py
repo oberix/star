@@ -147,9 +147,13 @@ class Stark(GenericPickler):
         ''' md setter:
         Just check md/df consistency before proceding.
         '''
-        if not isinstance(new_md, dict):
+        if isinstance(new_md, dict):
+            # A dict with wrong keys or values will raise
+            new_md = Meta(new_md)
+        if not isinstance(new_md, Meta):
+            # A dict or a Meta instance are mandatory
             raise ValueError(
-                "md must be a dictionry '%s' received instead" %\
+                "md must be a Meta instance '%s' received instead" %\
                 type(new_md))
         self._md = new_md
         self._update()
@@ -159,12 +163,12 @@ class Stark(GenericPickler):
         ''' Return a copy of df selecting just those columns that have some
         metadata in md
         '''
-        return self._df[self.columns]
+        return self._df[self.columns] # makes a copy
 
     @df.setter
     def df(self, df):
         ''' DF settre:
-        Just check VD/DF consistency before proceding.
+        Just check MD/DF consistency before proceding.
         '''
         if not isinstance(df, pandas.DataFrame):
             raise TypeError(
