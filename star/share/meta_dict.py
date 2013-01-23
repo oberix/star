@@ -5,6 +5,8 @@ from star.share.default_meta import default_meta, default_meta_vars,\
     default_meta_table_vars, default_meta_des, default_meta_des_vars
 
 '''
+This is the objects composition hierarchy:
+
 Meta
     MetaVars
         MetaVarsAttr
@@ -43,7 +45,7 @@ class Meta(dict):
             cval = self.validate[key](val)
         except KeyError:
             raise KeyError("'%s' is not a valid md parameter. \
-See metaDict.keys() for a list of valid parameters." % key)
+See %s.defaults for a list of valid parameters." % (key, self.__class__.__name__))
         dict.__setitem__(self, key, cval)
 
     def __getattribute__(self, name):
@@ -69,7 +71,7 @@ See metaDict.keys() for a list of valid parameters." % key)
     def copy(self):
         return utils.smartcopy(self)
 
-# Dummy definitions to populate namespace, more below
+# Dummy definitions to populate namespace, more below...
 class MetaGraph(Meta): pass
 class MetaTable(Meta): pass
 class MetaDes(Meta): pass
@@ -104,36 +106,31 @@ class MetaVarsAttrDes(Meta):
 # Stak could do this kind of checking, but it's limiting at this stage
 #
 class MetaVars(Meta):
+    
+    _sublevel = MetaVarsAttr
+
     def __init__(self, *args, **kwargs):
         dict.__init__(self, *args, **kwargs)
     
-    def __setitem__(self, key, val):
-        val = MetaVarsAttr(val)
-        dict.__setitem__(self, key, val)
-
-class MetaVarsGraph(Meta):
-    def __init__(self, *args, **kwargs):
-        dict.__init__(self, *args, **kwargs)
+    def new(self, varname):
+        self.__setitem__(varname, type(self)._sublevel())
 
     def __setitem__(self, key, val):
-        val = MetaVarsAttrGraph(val)
+        val = type(self)._sublevel(val)
         dict.__setitem__(self, key, val)
 
-class MetaVarsTable(Meta):
-    def __init__(self, *args, **kwargs):
-        dict.__init__(self, *args, **kwargs)
+    def __delitem__(self, name):
+        # Elements at this level are custom, so deletion is allowed
+        dict.__delitem__(self, name)
 
-    def __setitem__(self, key, val):
-        val = MetaVarsAttrTable(val)
-        dict.__setitem__(self, key, val)
+class MetaVarsGraph(MetaVars):
+    _sublevel = MetaVarsAttrGraph
 
-class MetaVarsDes(Meta):
-    def __init__(self, *args, **kwargs):
-        dict.__init__(self, *args, **kwargs)
+class MetaVarsTable(MetaVars):
+    _sublevel = MetaVarsAttrTable
 
-    def __setitem__(self, key, val):
-        val = MetaVarsAttrDes(val)
-        dict.__setitem__(self, key, val)
+class MetaVarsDes(MetaVars):
+    _sublevel = MetaVarsAttrDes
 
 #
 # Now that every type is defined we can populate them with validation

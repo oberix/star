@@ -88,7 +88,16 @@ def validate_headers(headers):
 def validate_float_format(format):
     # TODO: implement method
     return format
-    
+
+def validate_bool(var):
+    if isinstance(var, (str, unicode)):
+        var = var.lower()
+    if var in ('t', True, 'true', 1):
+        return True
+    elif var in ('f', False, 'false', 0):
+        return False
+    else:
+        raise ValueError("'%s' is not a valid boolean" % var)
 
 default_meta = {
     'munit_vals': [{}, validate_dict_df], # This looks similar to vars
@@ -111,7 +120,7 @@ default_meta_graph = {
     'fontsize': [12.0, rcsetup.validate_float],
     'title': [u'', unicode],
     'caption': [u'', unicode],
-    'legend': [True, bool],
+    'legend': [True, validate_bool],
     'footnote': [u'', unicode],
 }
 
@@ -127,9 +136,9 @@ default_meta_graph_vars = {
 default_meta_table = {
     'title': [u'', unicode],
     'footer': [u'', unicode],
-    'just_data': [False, bool],
+    'just_data': [False, validate_bool],
     'type': ['tab', validate_table_type],
-    'hsep' : [False, bool],
+    'hsep' : [False, validate_bool],
     # pandas.Series holding fromatting metastrings
     # for rows (like 'bold', 'italics'. 'hsep', etc)
     'formatting': [None, validate_formatting],
