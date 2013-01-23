@@ -83,7 +83,7 @@ class Stark(GenericPickler):
         # DataFrame.append() and a Stark.rollup().
         df = self._df.append(other.df, ignore_index=True,
                              verify_integrity=False)
-        md = self.md
+        md = self.md.copy()
         # Do not sum columns with different measure unit.
         for key in self._md['vars'].keys():
             if self._md['vars'][key]['munit'] != other.md['vars'][key]['munit']:
@@ -140,7 +140,7 @@ class Stark(GenericPickler):
     def md(self):
         ''' Return a shallow copy of md ''' 
         # return utils.smartcopy(self._md)
-        return self._md.copy()
+        return self._md
 
     @md.setter
     def md(self, new_md):
@@ -562,7 +562,7 @@ class Stark(GenericPickler):
         @ return: a DataFrame
 
         '''
-        return Stark(self._df.head(n), md=self.md, currency=self._currency,
+        return Stark(self._df.head(n), md=self.md.copy(), currency=self._currency,
                      currdata=self._currdata)
 
     def tail(self, n=5):
@@ -572,7 +572,7 @@ class Stark(GenericPickler):
         @ return: a DataFrame
 
         '''
-        return Stark(self._df.tail(n), md=self.md, currency=self._currency,
+        return Stark(self._df.tail(n), md=self.md.copy(), currency=self._currency,
                      currdata=self._currdata)
 
     def merge(self, other, how='left', sort=False, lsuffix='_x',
@@ -610,7 +610,7 @@ cuerrent Stark dimensions")
                                rsuffix=rsuffix).reset_index()
 
         # prepare output md
-        out_md = self.md
+        out_md = self.md.copy()
         # pylint: disable=E1103
         for col in out_df.columns:
             # handle suffixed variables
@@ -644,7 +644,7 @@ cuerrent Stark dimensions")
         '''
         if new_curr not in self._currdata.columns:
             raise ValueError("%s is not a known currency" % new_curr)
-        md = self.md
+        md = self.md.copy()
         columns = self._df.columns
         df = self._df.join(self._currdata, on=ts_col)
         for var in self._curr:

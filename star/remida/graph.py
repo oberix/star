@@ -73,21 +73,21 @@ class Graph(object):
                 'columnspacing': 1,
                 'borderpad': 0,
                 })
-        self._title = data._md['graph']['title']
-        self._footnote = data._md['graph']['footnote']
+        self._title = data.md['graph']['title']
+        self._footnote = data.md['graph']['footnote']
         self._df = data.df
         self._y_meta = list()
         self._x_meta = list()
-        self._fontsize = data._md['graph']['fontsize']
+        self._fontsize = data.md['graph']['fontsize']
         self._lax = None
         try:
-            self._size = FIGSIZE[data._md['graph']['size']]
+            self._size = FIGSIZE[data.md['graph']['size']]
         except (KeyError, TypeError), e:
-            if isinstance(data._md['graph']['size'], (tuple, list)):
-                self._size = data._md['graph']['size']
+            if isinstance(data.md['graph']['size'], (tuple, list)):
+                self._size = data.md['graph']['size']
             else:
                 raise e
-        self._legend = data._md['graph']['legend']
+        self._legend = data.md['graph']['legend']
         self._plotters = Plotters(self)
         self.parse_md(data.md['graph']['vars'])
         self._figure = self.make_graph()
