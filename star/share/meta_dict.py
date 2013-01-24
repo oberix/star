@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from copy import copy
 from star.share import utils
 from star.share.default_meta import default_meta, default_meta_vars,\
     default_meta_graph, default_meta_graph_vars, default_meta_table,\
@@ -34,15 +35,15 @@ class Meta(dict):
             self.__setitem__(key, val)
         for key, val in kwargs.iteritems():
             self.__setitem__(key, val)
-        for key, val in self.defaults.iteritems():
+        for key, val in self.__class__.defaults.iteritems():
             try:
                 self[key]
             except KeyError:
-                dict.__setitem__(self, key, val)
+                dict.__setitem__(self, key, copy(val))
 
     def __setitem__(self, key, val):
         try:
-            cval = self.validate[key](val)
+            cval = self.__class__.validate[key](val)
         except KeyError:
             raise KeyError("'%s' is not a valid md parameter. \
 See %s.defaults for a list of valid parameters." % 
@@ -135,7 +136,7 @@ class MetaVarsDes(MetaVars):
 
 #
 # Now that every type is defined we can populate them with validation
-# functions and de fault values, also we can define those defaults and
+# functions and default values, also we can define those defaults and
 # validations that involves types defined here.
 #
 default_meta_graph.update({
