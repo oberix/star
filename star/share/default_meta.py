@@ -99,12 +99,13 @@ def validate_bool(var):
     else:
         raise ValueError("'%s' is not a valid boolean" % var)
 
+# Meta defaults
 default_meta = {
     'munit_vals': [{}, validate_dict_df], # This looks similar to vars
-    # Totals by groups 
-    'totals': [DataFrame(), validate_df],
+    'totals': [DataFrame(), validate_df], # Totals by groups 
 }
 
+# MetaVarsAttr defaults
 default_meta_vars = {
     'type': ['N', validate_elab_type],
     'vals': [DataFrame(), validate_df],
@@ -115,6 +116,7 @@ default_meta_vars = {
     'label': [u'', unicode],
 }
 
+# MetaGraph defaults
 default_meta_graph = {
     'size' : [(3.2, 2.0), rcsetup.validate_nseq_float(2)],
     'fontsize': [12.0, rcsetup.validate_float],
@@ -124,6 +126,7 @@ default_meta_graph = {
     'footnote': [u'', unicode],
 }
 
+# MetaVarsAttrGraph defaults
 default_meta_graph_vars = {
     'type': ['plot', validate_graph_type],
     'label': [u'', unicode],
@@ -133,17 +136,17 @@ default_meta_graph_vars = {
     'cumulate': [None, validate_cumulate],
 }
 
+# MetaTable defaults
 default_meta_table = {
     'title': [u'', unicode],
     'footer': [u'', unicode],
     'just_data': [False, validate_bool],
     'type': ['tab', validate_table_type],
     'hsep' : [False, validate_bool],
-    # pandas.Series holding fromatting metastrings
-    # for rows (like 'bold', 'italics'. 'hsep', etc)
-    'formatting': [None, validate_formatting],
+    'formatting': [None, validate_formatting], # pandas.Series holding fromatting metastrings
 }
 
+# MetaVarsAttrTable defaults
 default_meta_table_vars = {
     'order': [0, int],
     'label': [u'', unicode],
@@ -153,5 +156,10 @@ default_meta_table_vars = {
     'float_format': [u'{0:.3f}', validate_float_format],
 }
 
-default_meta_des = {} # TODO: define
-default_meta_des_vars = {} # TODO: define
+# MetaDes defaults
+default_meta_des = { # TODO: define
+} 
+
+# MetaVarsAttrDes defaults
+default_meta_des_vars = { # TODO: define
+}
