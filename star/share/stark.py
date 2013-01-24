@@ -75,7 +75,7 @@ class Stark(GenericPickler):
         self._update()
 
     def __repr__(self):
-        ret = repr(self._df)
+        ret = repr(self.df)
         return re.sub(TYPE_PATTERN, unicode(type(self)), ret)
 
     def __add__(self, other):
@@ -140,6 +140,7 @@ class Stark(GenericPickler):
     def md(self):
         ''' Return a shallow copy of md ''' 
         # return utils.smartcopy(self._md)
+        self._update()
         return self._md
 
     @md.setter
@@ -163,6 +164,7 @@ class Stark(GenericPickler):
         ''' Return a copy of df selecting just those columns that have some
         metadata in md
         '''
+        self._update()
         return self._df[self.columns] # makes a copy
 
     @df.setter
@@ -182,41 +184,45 @@ class Stark(GenericPickler):
     def currency(self):
         return self._currency
 
-    # @currency.setter
-    # def currency(self, newcur):
-    #     self.changecurr(newcur, inplace=True)
-
     @property
     def dim(self):
+        self._update()
         return self._dim
 
     @property
     def num(self):
+        self._update()
         return self._num
 
     @property
     def elab(self):
+        self._update()
         return self._elab
 
     @property
     def imm(self):
+        self._update()
         return self._imm
 
     @property
     def rate(self):
+        self._update()
         return self._rate
 
     @property
     def curr(self):
+        self._update()
         return self._curr
 
     @property
     def columns(self):
-        return pandas.Index(self._md['vars'].keys())
+        self._update()
+        return pandas.Index(self._dim + self._imm + self._num + self._curr + self._elab + self._rate)
 
     @property
     def ix(self):
-        return self._df.ix
+        self._update()
+        return self.df.ix
 
     ######################
     # Non public methods #
@@ -291,9 +297,6 @@ class Stark(GenericPickler):
         @ raise ValueError: when parameters are inconsistent
 
         '''
-        # if var_type not in TYPES:
-        #     raise ValueError("var_type mut be one of (%s)" % \
-        #                          '|'.join(TYPES))
         if var_type != 'E':
             self._df[col] = series
 
@@ -431,15 +434,19 @@ class Stark(GenericPickler):
         return re.findall(expr, md['vars'][col]['elab'])
 
     def _suffix_elab_vars(self, col, suffix, md=None):
-        if md is None:
-            md = self._md
-        matches = self._find_elab_vars(col, md=md)
-        replaces = [''.join([match, suffix]) for match in matches]
-        for idx, repl in enumerate(replaces):
-            md['vars'][col]['elab'] = re.sub(r'\%s' % matches[idx],
-                                             repl, md['vars'][col]['elab'])
-        return md 
+        out_col = col
         
+        if md is None:
+            md = self._md        
+        if out_col not in md.vars.keys():
+            out_col = ''.join([col, suffix])
+        
+        matches = self._find_elab_vars(out_col, md)
+        for match in matches:
+            if match.strip('$') not in md.vars.keys():
+                md.vars[out_col].elab = md.vars[out_col].elab.replace(
+                    match, ''.join([match, suffix]))
+                    
     def _eval(self, func):
         ''' Evaluate a function with DataFrame columns'es placeholders.
 
@@ -562,8 +569,8 @@ class Stark(GenericPickler):
         @ return: a DataFrame
 
         '''
-        return Stark(self._df.head(n), md=self.md.copy(), currency=self._currency,
-                     currdata=self._currdata)
+        return Stark(self._df.head(n), md=self.md.copy(), 
+                     currency=self._currency, currdata=self._currdata)
 
     def tail(self, n=5):
         ''' Return last n elements of the DataFrame
@@ -572,8 +579,8 @@ class Stark(GenericPickler):
         @ return: a DataFrame
 
         '''
-        return Stark(self._df.tail(n), md=self.md.copy(), currency=self._currency,
-                     currdata=self._currdata)
+        return Stark(self._df.tail(n), md=self.md.copy(), 
+                     currency=self._currency, currdata=self._currdata)
 
     def merge(self, other, how='left', sort=False, lsuffix='_x',
               rsuffix='_y'):
@@ -603,34 +610,43 @@ class Stark(GenericPickler):
             raise ValueError("other's dimensions must be subset of the \
 cuerrent Stark dimensions")
         # use multi-index to perform a join
-        self._df.set_index(self.dim, inplace=True)
+        self._df.set_index(other.dim, inplace=True)
         other._df.set_index(other.dim, inplace=True)
-        out_df = self._df.join(other._df, how=how, sort=sort,
-                               lsuffix=lsuffix,
-                               rsuffix=rsuffix).reset_index()
-
+        try:
+            out_df = self._df.join(other._df, how=how, sort=sort,
+                                   lsuffix=lsuffix,
+                                   rsuffix=rsuffix).reset_index()
+        except:
+            self._df = self._df.reset_index()
+            other._df = other._df.reset_index()
+            raise
+            
         # prepare output md
-        out_md = self.md.copy()
         # pylint: disable=E1103
+        out_md = self.md.copy()
         for col in out_df.columns:
             # handle suffixed variables
             if col.endswith(lsuffix):
                 out_md['vars'][col] = out_md['vars'].pop(col.strip(lsuffix))
-                if out_md['vars'][col]['type'] == 'E':
-                    # elab_vars(col, lsuffix)
-                    self._suffix_elab_vars(col, lsuffix, md=out_md)
             elif col.endswith(rsuffix):
                 out_md['vars'][col] = other.md['vars'][col.strip(rsuffix)]
-                if out_md['vars'][col]['type'] == 'E':
-                    # elab_vars(col, rsuffix)
-                    self._suffix_elab_vars(col, rsuffix, md=out_md)
+                if self.dim != other.dim:
+                    out_md['vars'][col]['type'] = 'I'
             # copy other's variables
             if col not in out_md['vars'].keys():
-                out_md['vars'][col] = other.md['vars'][col]
+                out_md['vars'][col] = other.md['vars'][col].copy()
+                if self.dim != other.dim:
+                    out_md['vars'][col]['type'] = 'I'
 
+        # update elab expressions in out_md
+        for col in self.elab:
+            self._suffix_elab_vars(col, lsuffix, md=out_md)
+        for col in other.elab:
+            self._suffix_elab_vars(col, rsuffix, md=out_md)
+            
         # pack up everything and return
         self._df = self._df.reset_index()
-        other.df = other._df.reset_index()
+        other._df = other._df.reset_index()
         return Stark(out_df, md=out_md)
                     
     def changecurr(self, new_curr, ts_col='YEAR'):
