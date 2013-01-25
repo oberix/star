@@ -589,13 +589,12 @@ class Stark(GenericPickler):
         
         @ param other: A Stark object wich dimensional variables are a
             subset of the current Stark.
-        @ param how: {'left', 'right', 'outer', 'inner'}
-            How to handle indexes of the two objects. Default: 'left'
-            for joining on index, None otherwise
-            * left: use calling frame's index
-            * right: use input frame's index
-            * outer: form union of indexes
-            * inner: use intersection of indexes
+        @ param how: {'left', 'right', 'outer', 'inner'}, default 'inner'
+          * left: use only keys from left frame (SQL: left outer join)
+          * right: use only keys from right frame (SQL: right outer join)
+          * outer: use union of keys from both frames (SQL: full outer join)
+          * inner: use intersection of keys from both frames (SQL:
+            inner join)
         @ param lsuffix: Suffix to use from left frame's overlapping
             columns.
         @ param rsuffix: Suffix to use from right frame's overlapping
@@ -614,9 +613,10 @@ cuerrent Stark dimensions")
         other._df.set_index(other.dim, inplace=True)
         try:
             out_df = self._df.join(other._df, how=how, sort=sort,
-                                   lsuffix=lsuffix,
+                                   lsuffix=lsuffix, 
                                    rsuffix=rsuffix).reset_index()
         except:
+            # restore order in the galaxy
             self._df = self._df.reset_index()
             other._df = other._df.reset_index()
             raise
@@ -706,20 +706,16 @@ cuerrent Stark dimensions")
 
         '''
         varname = '%s_GR' % var
-        tmp_df = self._df[self._dim + [var]]
-        try:
-            tmp_df[ts_col] += 1
-        except TypeError:
-            # FIXME: cludgy! We should use dates instead
-            tmp_df[ts_col] = tmp_df[ts_col].map(int)
-            tmp_df[ts_col] += 1
-            tmp_df[ts_col] = tmp_df[ts_col].map(str)
-        tmp_df.set_index(self.dim, inplace=True)
+        other_dim = list( set(self.dim) - set([ts_col]) )
+        tmp_df = self._df.set_index(self.dim, drop=False).\
+                 groupby(other_dim).agg({var: 'shift'})
+
         self._df.set_index(self.dim, inplace=True)
         self._df = pandas.merge(self._df, tmp_df, left_index=True,
                                 right_index=True, how='left',
                                 suffixes=('', '_tmp'))
-        self._df[varname] = 100 * (self._df[var] / self._df['%s_tmp' % var] - 1)
+        self._df[varname] = 100 * (self._df[var] / 
+                                   self._df['%s_tmp' % var] - 1)
         self._update_md(varname, {
             'type': 'R',
             'vals': pandas.DataFrame(),
