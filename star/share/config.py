@@ -25,6 +25,8 @@ import logging
 import os
 import sys
 
+from star.share.log import configure_logging
+
 # Dirr path to configuration file(s)
 # CONFIG_PATH = os.path.abspath(
 #     os.path.join(
@@ -128,5 +130,11 @@ class Config(object):
         self._read_config()
         for key in ar:
             self.options[key] = opts.ensure_value(key, False)
+
         self.options['logLevel'] = LOGLEVELS[opts.logLevel]
-        logging.basicConfig(level = LOGLEVELS[opts.logLevel])
+        ### configure logging in an equivalent way, using dictConfig
+        ### also allow logging configuration via config.cfg
+        #logging.basicConfig(level = LOGLEVELS[opts.logLevel])
+        logging_dict = {'root': {'level': self.options['logLevel']}}
+        configure_logging(logging_dict=logging_dict,
+                          config_filename=self.config_file)
