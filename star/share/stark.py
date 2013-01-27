@@ -164,7 +164,6 @@ class Stark(GenericPickler):
         ''' Return a copy of df selecting just those columns that have some
         metadata in md
         '''
-        self._update()
         return self._df[self.columns] # makes a copy
 
     @df.setter
