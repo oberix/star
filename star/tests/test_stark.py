@@ -24,6 +24,7 @@ if __name__ == '__main__' :
 
     stk.cagr('X')
     stk.cagr('OUT')
+    stk.logit('K')
 
     df1 = pandas.DataFrame({
         'XER': ['ITA', 'FRA', 'ESP'],

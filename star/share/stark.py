@@ -486,15 +486,21 @@ class Stark(GenericPickler):
             raise ValueError(
                 "upper must be a positive float, %s received instead" %\
                 upper)
+        if isinstance(var, (str, unicode)):
+            series = self._df[var]
+        elif isinstance(var, (pandas.Series)):
+            series = var
+        else:
+            raise ValueError
         med = 0.0
         distance = 0.0
         if how == 'mean':
-            med = self._df[var].mean()
-            distance = np.std(self._df[var])
+            med = series.mean()
+            distance = np.std(series)
         elif how == 'median':
-            med = self._df[var].median()
-            quant = (self._df[var].quantile(q=0.25), 
-                     self._df[var].quantile(q=0.75))
+            med = series.median()
+            quant = (series.quantile(q=0.25), 
+                     series.quantile(q=0.75))
             distance = min((med - quant[0]), (quant[1] - med))
         else:
             raise ValueError(
@@ -502,7 +508,7 @@ class Stark(GenericPickler):
 '%s' received instead" % how)
         beta = -np.log(1 / prec - 1) / distance
         alpha = med * (-beta)
-        return upper / (1 + np.exp(alpha - beta * self._df[var]))
+        return upper / (1 + np.exp(alpha - beta * series))
 
     def _rollup(self, df, **kwargs):
         select = {}
@@ -686,7 +692,7 @@ cuerrent Stark dimensions")
             entry={
                 'type': 'E',
                 'rlp': 'E',
-                'elab': "self._logit('%s', how='%s', upper= %s, prec=%s)" %\
+                'elab': "self._logit($%s, how='%s', upper= %s, prec=%s)" %\
                 (var, how, upper, prec),
             })
 
