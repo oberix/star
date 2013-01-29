@@ -112,18 +112,18 @@ if __name__ == '__main__':
             'b': [13.6, 7.1, 2],
             })
 
+    plot = Bag(df, md=lm_plot, stype='graph')
     bar = Bag(df, md=lm_bar, stype='graph')
     barh = Bag(df, md=lm_barh, stype='graph')
-    plot = Bag(df, md=lm_plot, stype='graph')
     scat = Bag(df_sc, md=lm_sc, stype='graph')
 
     base = '/tmp/test/'
     if not os.path.isdir(base):
         os.makedirs(base)
 
+    plot.save(os.path.join(base, "plot.pickle"))
     bar.save(os.path.join(base, "bar.pickle"))
     barh.save(os.path.join(base, "barh.pickle"))
-    plot.save(os.path.join(base, "plot.pickle"))
     scat.save(os.path.join(base, "scatter.pickle"))
 
     fd = open(os.path.join(base, 'main.tex'), 'w')

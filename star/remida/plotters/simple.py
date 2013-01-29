@@ -8,13 +8,25 @@ class Plot(BasePlotter):
     Implement a line plot.
     ''' 
 
-    def plot(self, ax, col):
-        yvals = self._graph._df[col['key']]
-        if col.get('ax') == 'dx':
-            ax = ax.twinx()
-        ret = ax.plot(self._graph._lax, yvals, color=col.get('color', None), zorder=10)
-        self._logger.debug('ret = %s', [l.get_zorder() for l in ret])
-        self._graph._set_x_ax(ax)
+    # def plot(self, ax, col):
+    #     yvals = self._graph._df[col['key']]
+    #     if col.get('ax') == 'dx':
+    #         ax = ax.twinx()
+    #     ret = ax.plot(self._graph._lax, yvals, color=col.get('color', None), zorder=10)
+    #     self._logger.debug('ret = %s', [l.get_zorder() for l in ret])
+    #     self._graph._set_x_ax(ax)
+    #     return ret
+
+    def plot(self, ax, cols):
+        ret = []
+        for col in cols:
+            yvals = self._graph._df[col['key']]
+            if col.get('ax') == 'dx':
+                ax = ax.twinx()
+            ret.append(
+                ax.plot(self._graph._lax, yvals, color=col.get('color', None), zorder=10))
+            # self._logger.debug('ret = %s', [l.get_zorder() for l in ret])
+            self._graph._set_x_ax(ax)
         return ret
 
 class AbstractBar(BasePlotter):
@@ -32,25 +44,27 @@ class AbstractBar(BasePlotter):
         '''
         raise NotImplementedError
     
-    def plot(self, ax, col):
+    def plot(self, ax, cols):
         ''' Plotting function.
         '''
-        bottom = None
-        # set cumulative data start
-        if col.get('cumulate'):
-            bottom = np.array([0.0]*len(self._graph._lax))
-            for key in col['cumulate']:
-                bottom += self._graph._df[key]
+        ret = []
+        for col in cols:
+            bottom = None
+            # set cumulative data start
+            if col.get('cumulate'):
+                bottom = np.array([0.0]*len(self._graph._lax))
+                for key in col['cumulate']:
+                    bottom += self._graph._df[key]
 
-        # compute margins
-        width = (self._graph._lax.max() - self._graph._lax.min()) / len(self._graph._lax)
-        margin = (0.2 * width)
-        dim = width - margin
-        border = dim + margin
+            # compute margins
+            width = (self._graph._lax.max() - self._graph._lax.min()) / len(self._graph._lax)
+            margin = (0.2 * width)
+            dim = width - margin
+            border = dim + margin
 
-        # Generate graph calling template method.
-        ret = self._plot(ax, col, color=col.get('color', None), align='center',
-                         bottom=bottom, dim=dim, border=border)
+            # Generate graph calling template method.
+            ret.append(self._plot(ax, col, color=col.get('color', None), align='center',
+                                  bottom=bottom, dim=dim, border=border))
         return ret
 
 class Bar(AbstractBar):

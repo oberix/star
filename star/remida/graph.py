@@ -5,11 +5,8 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib import rc
-import numpy as np
 import logging
 from tempfile import NamedTemporaryFile
-import base64
-import cStringIO
 
 import star.remida.plotters as plotters
 from star.remida import utils
@@ -76,7 +73,7 @@ class Graph(object):
         self._title = data.md.graph.title
         self._footnote = data.md.graph.footnote
         self._df = data.df
-        self._y_meta = list()
+        self._y_meta = {}
         self._x_meta = list()
         self._fontsize = data.md.graph.fontsize
         self._lax = None
@@ -147,20 +144,25 @@ class Graph(object):
         _x_meta: metadata for x ax series
 
         '''
-        # TODO: handle line styles
+        # TODO: instead of keeping every variable's meta in a single
+        # list, separete them by polotter's type; this way we'll be
+        # able to apply transformation on similar variable's
+        # graph. Ex: a bar graph with many vars
         for key, val in md.iteritems():
             val = dict(val)
-            # TODO: apply translation
             if val['type'] == 'lax':
                 self._lax = self._df[key].map(float)
                 self._x_meta.append(val)
             else:
                 val['key'] = key
                 val['cumulate'] = self._unroll_cum(md, val)
-                if val['type'] == 'plot':
-                    self._y_meta.insert(0, val)
-                else:
-                    self._y_meta.append(val)
+                var_list = self._y_meta.get(val['type'], [])
+                var_list.append(val)
+                self._y_meta[val['type']] = var_list
+                # if val['type'] == 'plot':
+                #     self._y_meta.insert(0, val)
+                # else:
+                #     self._y_meta.append(val)
 
     def _set_x_ax(self, ax):
         ticks = []
@@ -191,19 +193,21 @@ class Graph(object):
         ax.grid(True)
         lines = []
         labels = []
-        for idx, col in enumerate(self._y_meta):
+        for graph_type, cols in self._y_meta.iteritems():
+        # for idx, col in enumerate(self._y_meta):
             try:
-                line = self._plotters[col['type']].plot(ax, col)
+                line = self._plotters[graph_type].plot(ax, cols)
             except KeyError, err:
                 if err.args[0].startswith("Unhandled graph type"):
                     self._logger.warning(
                         "Unhandled graph type '%s', I will ignore entry '%s'",
-                        col['type'], col['key'])
+                        graph_type, [col['key'] for col in cols])
                     continue
                 else:
                     raise err
-            lines.append(line)
-            labels.append(col['label'])
+            # lines.append(line)
+            lines.extend(line)
+            labels.extend([col['label'] for col in cols])
 
         if self._legend:
             handles = [line[0] for line in lines]
