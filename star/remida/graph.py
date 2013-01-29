@@ -73,23 +73,23 @@ class Graph(object):
                 'columnspacing': 1,
                 'borderpad': 0,
                 })
-        self._title = data.md['graph']['title']
-        self._footnote = data.md['graph']['footnote']
+        self._title = data.md.graph.title
+        self._footnote = data.md.graph.footnote
         self._df = data.df
         self._y_meta = list()
         self._x_meta = list()
-        self._fontsize = data.md['graph']['fontsize']
+        self._fontsize = data.md.graph.fontsize
         self._lax = None
         try:
-            self._size = FIGSIZE[data.md['graph']['size']]
+            self._size = FIGSIZE[data.md.graph.size]
         except (KeyError, TypeError), e:
-            if isinstance(data.md['graph']['size'], (tuple, list)):
-                self._size = data.md['graph']['size']
+            if isinstance(data.md.graph.size, (tuple, list)):
+                self._size = data.md.graph.size
             else:
                 raise e
-        self._legend = data.md['graph']['legend']
+        self._legend = data.md.graph.legend
         self._plotters = Plotters(self)
-        self.parse_md(data.md['graph']['vars'])
+        self.parse_md(data.md.graph.vars)
         self._figure = self.make_graph()
 
     def _make_legend(self, figure, handles, labels):
@@ -133,9 +133,9 @@ class Graph(object):
 
         '''
         ret = list()
-        if val.get('cum'):
-            ret = [val.get('cum', None)]
-            ret += self._unroll_cum(md, md[val['cum']])
+        if val.get('cumulate'):
+            ret = [val.get('cumulate', None)]
+            ret += self._unroll_cum(md, md[val['cumulate']])
         return ret
 
     def parse_md(self, md):

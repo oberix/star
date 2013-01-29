@@ -36,6 +36,7 @@ TEMPLATE = '''
 '''
 
 if __name__ == '__main__':
+
     lm_bar = {'graph': 
               {'vars': {
                   'a': {'type': 'lax',
@@ -80,12 +81,20 @@ if __name__ == '__main__':
                          'color': 'g',}
                }}}
 
+    # df = pandas.DataFrame({
+    #     'a': np.arange(0, 11, 1),
+    #     'b': np.arange(5, 16, 1),
+    #     'c': np.arange(0, 5.5, 0.5),
+    #     'd': ['a','b','c', 'd', 'e', 'f', 'g', 'h', 'i','l', 'm']
+    # })
+
     df = pandas.DataFrame({
-        'a': np.arange(0, 11, 1),
-        'b': np.arange(5, 16, 1),
-        'c': np.arange(0, 5.5, 0.5),
-        'd': ['a','b','c', 'd', 'e', 'f', 'g', 'h', 'i','l', 'm']
+        'a': np.arange(0, 10, 1),
+        'b': np.random.rand(10),
+        'c': np.random.rand(10),
+        'd': np.random.rand(10),
     })
+
 
     lm_sc = {'graph': 
              {'vars': {
