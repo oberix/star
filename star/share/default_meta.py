@@ -130,7 +130,7 @@ default_meta_graph = {
 default_meta_graph_vars = {
     'type': ['plot', validate_graph_type],
     'label': [u'', unicode],
-    'ticklabel': [Series(), validate_ticks],
+    'ticklabels': [Series(), validate_ticks],
     'ax': ['sx', validate_ax],
     'color': ['#34e5ac', rcsetup.validate_color],
     'cumulate': [None, validate_cumulate],

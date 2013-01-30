@@ -30,6 +30,14 @@ TEMPLATE = '''
   \\begin{subfigure}[cm]{0.5\\linewidth}    
       \\SRE{scatter}
   \\end{subfigure}
+  \\\\
+  \\begin{subfigure}[cm]{\\linewidth}    
+      \\SRE{sidebar}
+  \\end{subfigure}
+  \\\\
+  \\begin{subfigure}[cm]{\\linewidth}    
+      \\SRE{sidebarh}
+  \\end{subfigure}
 \\end{figure}
 
 \\end{document}
@@ -55,7 +63,8 @@ if __name__ == '__main__':
                {'vars': {
                    'a': {'type': 'lax',
                          'label': 'AAA',
-                         'ticklabel': 'd',},
+                         'ticklabels': [unichr(c) for c in xrange(ord('a'), ord('a') + 10)],
+                     },
                    'b': {'type': 'barh',
                          'ax': 'sx',
                          'label': 'BBB',
@@ -65,7 +74,72 @@ if __name__ == '__main__':
                          'label': "CCC",
                          'color': 'g',
                          'cumulate': 'b'},
+                   'd': {'type': 'barh',
+                         'ax': 'sx',
+                         'label': "DDD",
+                         'color': 'r',
+                         'cumulate': 'c'},
                }}}
+
+    lm_sidebar = {'graph': 
+                  {
+                      'fontsize': 9,
+                      'size': (5, 3),
+                      'vars': {
+                      'a': {'type': 'lax',
+                            'label': 'AAA',
+                            'ticklabels': [unichr(c) for c in xrange(ord('a'), ord('a') + 10)],
+                        },
+                      'b': {'type': 'bar',
+                            'label': 'BBB',
+                            'color': 'b',},
+                      'c': {'type': 'bar',
+                            'ax': 'sx',
+                            'label': "CCC",
+                            'color': 'g',
+                        },
+                      'd': {'type': 'bar',
+                            'ax': 'sx',
+                            'label': "DDD",
+                            'color': 'r',
+                            'cumulate': 'c',
+                        },
+                      'e': {'type': 'bar',
+                            'ax': 'sx',
+                            'label': "EEE",
+                            'color': 'y',
+                            'cumulate': 'b'
+                        },
+                      'f': {'type': 'bar',
+                            'ax': 'sx',
+                            'label': "FFF",
+                            'color': '#007777',
+                            'cumulate': 'd',
+                        },
+                      'g': {'type': 'bar',
+                            'ax': 'sx',
+                            'label': "GGG",
+                            'color': '#770077',
+                            'cumulate': 'e'
+                        },
+                  }}}
+
+    lm_sidebarh = {'graph': 
+               {'vars': {
+                   'a': {'type': 'lax',
+                         'label': 'AAA',
+                         'ticklabels': [unichr(c) for c in xrange(ord('a'), ord('a') + 10)],
+                     },
+                   'b': {'type': 'barh',
+                         'ax': 'sx',
+                         'label': 'BBB',
+                         'color': 'b'},
+                   'c': {'type': 'barh',
+                         'ax': 'sx',
+                         'label': "CCC",
+                         'color': 'g',},
+               }}}
+
 
     lm_plot = {'graph': 
                {'vars': {
@@ -81,20 +155,15 @@ if __name__ == '__main__':
                          'color': 'g',}
                }}}
 
-    # df = pandas.DataFrame({
-    #     'a': np.arange(0, 11, 1),
-    #     'b': np.arange(5, 16, 1),
-    #     'c': np.arange(0, 5.5, 0.5),
-    #     'd': ['a','b','c', 'd', 'e', 'f', 'g', 'h', 'i','l', 'm']
-    # })
-
     df = pandas.DataFrame({
         'a': np.arange(0, 10, 1),
         'b': np.random.rand(10),
         'c': np.random.rand(10),
         'd': np.random.rand(10),
+        'e': np.random.rand(10),
+        'f': np.random.rand(10),
+        'g': np.random.rand(10),
     })
-
 
     lm_sc = {'graph': 
              {'vars': {
@@ -114,7 +183,9 @@ if __name__ == '__main__':
 
     plot = Bag(df, md=lm_plot, stype='graph')
     bar = Bag(df, md=lm_bar, stype='graph')
-    barh = Bag(df, md=lm_barh, stype='graph')
+    sidebarh = Bag(df, md=lm_barh, stype='graph')
+    sidebar = Bag(df, md=lm_sidebar, stype='graph')
+    barh = Bag(df, md=lm_sidebarh, stype='graph')
     scat = Bag(df_sc, md=lm_sc, stype='graph')
 
     base = '/tmp/test/'
@@ -124,6 +195,8 @@ if __name__ == '__main__':
     plot.save(os.path.join(base, "plot.pickle"))
     bar.save(os.path.join(base, "bar.pickle"))
     barh.save(os.path.join(base, "barh.pickle"))
+    sidebar.save(os.path.join(base, "sidebar.pickle"))
+    sidebarh.save(os.path.join(base, "sidebarh.pickle"))
     scat.save(os.path.join(base, "scatter.pickle"))
 
     fd = open(os.path.join(base, 'main.tex'), 'w')
