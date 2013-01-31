@@ -13,9 +13,14 @@ class Plot(BasePlotter):
             yvals = self._graph._df[col['key']]
             if col.get('ax') == 'dx':
                 ax = ax.twinx()
+                ax.relim()
             ret.append(
                 ax.plot(self._graph._lax, yvals, color=col.get('color', None), zorder=10))
-#            self._graph._set_x_ax(ax)
+        xticklabels = self._graph._x_meta[0]['ticklabels']
+        if len(xticklabels) != len(self._graph._lax):
+            xticklabels = self._graph._lax
+        ax.set_xticklabels(xticklabels)
+
         return ret
 
 class AbstractBar(BasePlotter):
@@ -28,9 +33,8 @@ class AbstractBar(BasePlotter):
     def _set_ticks(self, ind, ax, width, sided):
         raise NotImplementedError
 
-    # def _twin_ax(self, ax, col):
-    #     if col.get('ax') == 'dx':
-    #         ax = ax.twinx()
+    def _twin_ax(self, ax, col):
+        raise NotImplementedError
 
     def plot(self, ax, cols):
         ret = []
@@ -38,6 +42,7 @@ class AbstractBar(BasePlotter):
         length = len(self._graph._lax)
         cols.sort(key=lambda x: x['cumulate'])
         for col in cols:
+            self._twin_ax(ax, col)
             if bool(col['cumulate']):
                 sided[col['cumulate'][-1]].append(col)
             else:
@@ -76,6 +81,11 @@ class Bar(AbstractBar):
             xticklabels = self._graph._lax
         ax.set_xticklabels(xticklabels)
 
+    def _twin_ax(self, ax, col):
+        if col.get('ax') == 'dx':
+            ax = ax.twinx()
+            ax.relim()
+
 class Barh(AbstractBar):
     
     def _plot(self, ax, left, height, width, bottom, **kwargs):
@@ -89,10 +99,17 @@ class Barh(AbstractBar):
             yticklabels = self._graph._lax
         ax.set_yticklabels(yticklabels)
 
+    def _twin_ax(self, ax, col):
+        if col.get('ax') == 'dx':
+            ax = ax.twiny()
+            ax.relim()
+
 class ErrBar(Bar):
+
     def _plot(self, ax, left, height, width, bottom, **kwargs):
         return ax.bar(left, height, width, bottom=bottom, yerr=np.std(height), **kwargs)
 
 class ErrBarh(Barh):
+
     def _plot(self, ax, left, height, width, bottom, **kwargs):
         return ax.barh(left, height, height=width, left=bottom, xerr=np.std(height), **kwargs)

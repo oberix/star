@@ -13,7 +13,7 @@ from star.remida import utils
 
 __all__ = ['TexGraph', 'HTMLGraph']
 
-TICK_LABEL_LIMIT = 999. # xticks labels length limit
+TICK_LABEL_LIMIT = 3. # xticks labels length limit
 TICK_STEP = 2  # Draw an xtick every n values
 
 FIGSIZE = { # (w, h) in inches
@@ -158,21 +158,15 @@ class Graph(object):
                 var_list.append(val)
                 self._y_meta[val['type']] = var_list
 
-    def _set_x_ax(self, ax):
-        ticks = []
-        rotation = 0
-        delta = (max(self._lax) - min(self._lax)) / len(self._lax)
-        # Draw only even ticks
-        for idx, elem in enumerate(self._lax):
-            if idx % TICK_STEP == 0:
-                ticks.append(self._lax[idx])
-            if elem > TICK_LABEL_LIMIT:
-                rotation = 30
-        ax.set_xticks(ticks)
-        ax.set_xlim(min(self._lax) - delta,
-                    max(self._lax) + delta)
-        plt.setp(plt.xticks()[1], rotation=rotation)
-        plt.subplots_adjust(hspace=0, bottom=0.13)
+    def _rotate_ticklabels(self, ax):
+        ''' Rotate labels on x axes of 30° if they are longer than
+        TICK_LABEL_LIMIT
+        '''
+        for label in ax.get_xticklabels():
+            if len(label.get_text()) > TICK_LABEL_LIMIT:
+                ax.set_xticklabels([label.get_text() for label in ax.get_xticklabels()], 
+                                   rotation=30)
+                break
 
     def make_graph(self):
         ''' Create a Figure and plot a graph in it following what was
@@ -188,7 +182,6 @@ class Graph(object):
         lines = []
         labels = []
         for graph_type, cols in self._y_meta.iteritems():
-        # for idx, col in enumerate(self._y_meta):
             try:
                 line = self._plotters[graph_type].plot(ax, cols)
             except KeyError, err:
@@ -203,6 +196,7 @@ class Graph(object):
             lines.extend(line)
             labels.extend([col['label'] for col in cols])
 
+        self._rotate_ticklabels(ax)
         if self._legend:
             handles = [line[0] for line in lines]
             self._make_legend(fig, handles, labels)
