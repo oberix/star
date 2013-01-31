@@ -124,6 +124,8 @@ class Graph(object):
         ''' Visit bag's md dictionary and make an ordered list of
         those variables that are cumulative to each other. This list
         will be used to stack variables in bar and hbar graphs.
+        Orger is top to bottom, so the last value is the one that goes
+        to the base.
 
         @ param md : an md dictionary
         @ param val: an md dictionary entry
@@ -144,10 +146,6 @@ class Graph(object):
         _x_meta: metadata for x ax series
 
         '''
-        # TODO: instead of keeping every variable's meta in a single
-        # list, separete them by polotter's type; this way we'll be
-        # able to apply transformation on similar variable's
-        # graph. Ex: a bar graph with many vars
         for key, val in md.iteritems():
             val = dict(val)
             if val['type'] == 'lax':
@@ -159,27 +157,22 @@ class Graph(object):
                 var_list = self._y_meta.get(val['type'], [])
                 var_list.append(val)
                 self._y_meta[val['type']] = var_list
-                # if val['type'] == 'plot':
-                #     self._y_meta.insert(0, val)
-                # else:
-                #     self._y_meta.append(val)
 
     def _set_x_ax(self, ax):
-        # ticks = []
-        # rotation = 0
-        # delta = (max(self._lax) - min(self._lax)) / len(self._lax)
-        # # Draw only even ticks
-        # for idx, elem in enumerate(self._lax):
-        #     if idx % TICK_STEP == 0:
-        #         ticks.append(self._lax[idx])
-        #     if elem > TICK_LABEL_LIMIT:
-        #         rotation = 30
-        # ax.set_xticks(ticks)
-        # ax.set_xlim(min(self._lax) - delta,
-        #             max(self._lax) + delta)
-        # plt.setp(plt.xticks()[1], rotation=rotation)
-        # plt.subplots_adjust(hspace=0, bottom=0.13)
-        pass
+        ticks = []
+        rotation = 0
+        delta = (max(self._lax) - min(self._lax)) / len(self._lax)
+        # Draw only even ticks
+        for idx, elem in enumerate(self._lax):
+            if idx % TICK_STEP == 0:
+                ticks.append(self._lax[idx])
+            if elem > TICK_LABEL_LIMIT:
+                rotation = 30
+        ax.set_xticks(ticks)
+        ax.set_xlim(min(self._lax) - delta,
+                    max(self._lax) + delta)
+        plt.setp(plt.xticks()[1], rotation=rotation)
+        plt.subplots_adjust(hspace=0, bottom=0.13)
 
     def make_graph(self):
         ''' Create a Figure and plot a graph in it following what was

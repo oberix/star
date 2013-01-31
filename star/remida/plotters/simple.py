@@ -15,56 +15,26 @@ class Plot(BasePlotter):
                 ax = ax.twinx()
             ret.append(
                 ax.plot(self._graph._lax, yvals, color=col.get('color', None), zorder=10))
-            self._graph._set_x_ax(ax)
+#            self._graph._set_x_ax(ax)
         return ret
 
 class AbstractBar(BasePlotter):
-    ''' Abstract class implementing those procedures that are commont both to
-    Bar an Horizonta bar (Barh) graphics
-    '''
-    
-    def __init__(self, graph):
-        super(AbstractBar, self).__init__(graph)
-        self._bottom = 0
 
-    def _plot(self, ax, col, **kwargs):
-        ''' Template method: must be overridden by subclasses to make the real
-        plotting.
-        '''
-        raise NotImplementedError
-    
-    def plot(self, ax, cols):
-        ''' Plotting function.
-        '''
-        ret = []
-        for col in cols:
-            bottom = None
-            # set cumulative data start
-            if col.get('cumulate'):
-                bottom = np.array([0.0]*len(self._graph._lax))
-                for key in col['cumulate']:
-                    bottom += self._graph._df[key]
-
-            # compute margins
-            width = (self._graph._lax.max() - self._graph._lax.min()) / len(self._graph._lax)
-            margin = (0.2 * width)
-            dim = width - margin
-            border = dim + margin
-
-            # Generate graph calling template method.
-            ret.append(self._plot(ax, col, color=col.get('color', None), align='center',
-                                  bottom=bottom, dim=dim, border=border))
-        return ret
-
-class Bar(BasePlotter):
-    
     WIDTH_FACTOR = 0.9
 
+    def _plot(self, ax, left, height, width, bottom, **kwargs):
+        raise NotImplementedError
+
+    def _set_ticks(self, ind, ax, width, sided):
+        raise NotImplementedError
+
+    # def _twin_ax(self, ax, col):
+    #     if col.get('ax') == 'dx':
+    #         ax = ax.twinx()
+
     def plot(self, ax, cols):
         ret = []
-        # need to separate cumulated from sided columns
         sided = {}
-        # cumulated = []
         length = len(self._graph._lax)
         cols.sort(key=lambda x: x['cumulate'])
         for col in cols:
@@ -87,9 +57,18 @@ class Bar(BasePlotter):
                 for base in lst[0:j]:
                     bottom += self._graph._df[base['key']]
                 ret.append(
-                    ax.bar(ind+(i*width), vals, width, bottom=bottom, color=col['color'])
+                    self._plot(ax, ind+(i*width), vals, width,
+                               bottom=bottom, color=col['color'])
                 )
+        self._set_ticks(ax, ind, width, sided)
+        return ret
 
+class Bar(AbstractBar):
+    
+    def _plot(self, ax, left, height, width, bottom, **kwargs):
+        return ax.bar(left, height, width, bottom=bottom, **kwargs)
+
+    def _set_ticks(self, ax, ind, width, sided):
         # x ticks & labels
         ax.set_xticks(ind + (width * len(sided) / 2.0))
         xticklabels = self._graph._x_meta[0]['ticklabels']
@@ -97,43 +76,23 @@ class Bar(BasePlotter):
             xticklabels = self._graph._lax
         ax.set_xticklabels(xticklabels)
 
-        return ret
-
-class Barh(BasePlotter):
+class Barh(AbstractBar):
     
-    WIDTH_FACTOR = 0.9
+    def _plot(self, ax, left, height, width, bottom, **kwargs):
+        return ax.barh(left, height, height=width, left=bottom, **kwargs)
 
-    def plot(self, ax, cols):
-        ret = []
-        sided = {}
-        length = len(self._graph._lax)
-        cols.sort(key=lambda x: x['cumulate'])
-        for col in cols:
-            if bool(col['cumulate']):
-                sided[col['cumulate'][-1]].append(col)
-            else:
-                sided[col['key']] = [col]
-        # bar width
-        width = (self._graph._lax.max() - self._graph._lax.min()) /\
-                len(self._graph._lax) * self.WIDTH_FACTOR
-        if len(sided) > 0:
-            width /= len(sided)
-        # build the bars
-        ind = np.arange(length)
-        for i, lst in enumerate(sided.values()):
-            for j, col in enumerate(lst): 
-                vals = self._graph._df[col['key']]
-                bottom = np.array([0.0]*len(self._graph._lax))
-                for base in lst[0:j]:
-                    bottom += self._graph._df[base['key']]
-                ret.append(
-                    ax.barh(ind+(i*width), vals, height=width, left=bottom, color=col['color'])
-                )
-        # x ticks & labels
+    def _set_ticks(self, ax, ind, width, sided):
+        # y ticks & labels
         ax.set_yticks(ind + (width * len(sided) / 2.0))
         yticklabels = self._graph._x_meta[0]['ticklabels']
         if len(yticklabels) != len(self._graph._lax):
             yticklabels = self._graph._lax
         ax.set_yticklabels(yticklabels)
 
-        return ret
+class ErrBar(Bar):
+    def _plot(self, ax, left, height, width, bottom, **kwargs):
+        return ax.bar(left, height, width, bottom=bottom, yerr=np.std(height), **kwargs)
+
+class ErrBarh(Barh):
+    def _plot(self, ax, left, height, width, bottom, **kwargs):
+        return ax.barh(left, height, height=width, left=bottom, xerr=np.std(height), **kwargs)

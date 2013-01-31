@@ -23,3 +23,6 @@ from star.remida.plotters.simple import Plot as plot
 from star.remida.plotters.simple import Bar as bar
 from star.remida.plotters.simple import Barh as barh
 from star.remida.plotters.scatter import Scatter as scatter
+
+from star.remida.plotters.simple import ErrBar as errbar
+from star.remida.plotters.simple import ErrBarh as errbarh
