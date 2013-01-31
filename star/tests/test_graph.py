@@ -179,11 +179,11 @@ if __name__ == '__main__':
                    'vars': {
                    'a': {'type': 'lax',
                          'label': 'AAA'},
-                   'b': {'type': 'bar',
+                   'b': {'type': 'plot',
                          'ax': 'sx',
                          'label': 'BBB',
                          'color': 'b'},
-                   'c': {'type': 'plot',
+                   'c': {'type': 'bar',
                          'ax': 'dx',
                          'label': "CCC",
                          'color': 'g',}
@@ -203,6 +203,7 @@ if __name__ == '__main__':
              {
                  'fontsize': 9,
                  'size': (5, 3),
+                 'legend': False,
                  'vars': {
                  'a': {'type': 'lax',
                        'ax': 'sx',

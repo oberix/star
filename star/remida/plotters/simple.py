@@ -15,7 +15,9 @@ class Plot(BasePlotter):
                 ax = ax.twinx()
                 ax.relim()
             ret.append(
-                ax.plot(self._graph._lax, yvals, color=col.get('color', None), zorder=10))
+                ax.plot(self._graph._lax, yvals, color=col.get('color', None))
+            )
+            
         xticklabels = self._graph._x_meta[0]['ticklabels']
         if len(xticklabels) != len(self._graph._lax):
             xticklabels = self._graph._lax
@@ -40,6 +42,7 @@ class AbstractBar(BasePlotter):
         ret = []
         sided = {}
         length = len(self._graph._lax)
+        # Organize columns by relative positions
         cols.sort(key=lambda x: x['cumulate'])
         for col in cols:
             self._twin_ax(ax, col)
@@ -53,10 +56,10 @@ class AbstractBar(BasePlotter):
         if len(sided) > 0:
             width /= len(sided)
                         
-        # build the bars
+        # Build the bars
         ind = np.arange(length)
-        for i, lst in enumerate(sided.values()):
-            for j, col in enumerate(lst): 
+        for i, lst in enumerate(sided.values()): # each sided
+            for j, col in enumerate(lst): # each cumulated
                 vals = self._graph._df[col['key']]
                 bottom = np.array([0.0]*len(self._graph._lax))
                 for base in lst[0:j]:

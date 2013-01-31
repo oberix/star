@@ -4,6 +4,6 @@
 
   It's build upon Python Pandas (http://pandas.pydata.org) and matplotlib
   (http://matplotlib.otg) with the intent to provide an easy and reusable way
-  to define BI models and data rappresentation.
+  to define BI models and data representation.
 
 

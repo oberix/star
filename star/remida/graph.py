@@ -181,7 +181,7 @@ class Graph(object):
         ax.grid(True)
         lines = []
         labels = []
-        for graph_type, cols in self._y_meta.iteritems():
+        for graph_type, cols in self._y_meta.items():
             try:
                 line = self._plotters[graph_type].plot(ax, cols)
             except KeyError, err:
@@ -192,7 +192,6 @@ class Graph(object):
                     continue
                 else:
                     raise 
-            # lines.append(line)
             lines.extend(line)
             labels.extend([col['label'] for col in cols])
 
