@@ -56,24 +56,6 @@ class AbstractBar(BasePlotter):
                                   bottom=bottom, dim=dim, border=border))
         return ret
 
-# class Bar(AbstractBar):
-#     ''' Simple Bar graph, it support cumulative data.
-#     ''' 
-
-#     def _plot(self, ax, col, **kwargs):
-#         yvals = self._graph._df[col['key']]
-
-#         if col.get('ax') == 'dx':
-#             ax = ax.twinx()
-#         ret = ax.bar(self._graph._lax, yvals,
-#                      color=kwargs.get('color', None), align=kwargs['align'],
-#                      bottom=kwargs['bottom'], width=kwargs['dim'],
-#                      zorder=0, rasterized=True, alpha=0.8)
-#         # ax.relim()
-#         # ax.autoscale_view(tight=False, scalex=True, scaley=True)
-#         self._graph._set_x_ax(ax)
-#         return ret
-
 class Barh(AbstractBar):
     ''' Horizontal Bar graph, it support cumulative data.
     ''' 
@@ -100,8 +82,8 @@ class Bar(BasePlotter):
         length = len(self._graph._lax)
         cols.sort(key=lambda x: x['cumulate'])
         for col in cols:
-            if not bool(col['cumulate']):
-                sided[col['key']].append(col)
+            if bool(col['cumulate']):
+                sided[col['cumulate'][-1]].append(col)
             else:
                 sided[col['key']] = [col]
         # bar width
@@ -121,16 +103,6 @@ class Bar(BasePlotter):
                 ret.append(
                     ax.bar(ind+(i*width), vals, width, bottom=bottom, color=col['color'])
                 )
-            
-        # for idx, col in enumerate(cumulated):
-        #     bottom = np.array([0.0]*len(self._graph._lax))
-        #     for key in col['cumulate']:
-        #         bottom += self._graph._df[key]
-        #     vals = self._graph._df[col['key']]
-        #     ret.append(
-        #         ax.bar(ind+(idx*width), vals, width, bottom=bottom, color=col['color'])
-        #     )
-
 
         # x ticks & labels
         ax.set_xticks(ind + (width * len(sided) / 2.0))

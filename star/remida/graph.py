@@ -155,7 +155,7 @@ class Graph(object):
                 self._x_meta.append(val)
             else:
                 val['key'] = key
-                # val['cumulate'] = self._unroll_cum(md, val)
+                val['cumulate'] = self._unroll_cum(md, val)
                 var_list = self._y_meta.get(val['type'], [])
                 var_list.append(val)
                 self._y_meta[val['type']] = var_list
