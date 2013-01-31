@@ -56,20 +56,6 @@ class AbstractBar(BasePlotter):
                                   bottom=bottom, dim=dim, border=border))
         return ret
 
-class Barh(AbstractBar):
-    ''' Horizontal Bar graph, it support cumulative data.
-    ''' 
-
-    def _plot(self, ax, col, **kwargs):
-        yvals = self._graph._df[col['key']]
-        if col.get('ax') == 'dx':
-            ax = ax.twinx()
-        ret = ax.barh(self._graph._lax, self._graph._df[col['key']],
-                       color=kwargs.get('color', None), align=kwargs.get('align', None),
-                       left=kwargs.get('bottom', None), height=kwargs.get('dim', None),
-                       zorder=1)
-        return ret
-
 class Bar(BasePlotter):
     
     WIDTH_FACTOR = 0.9
@@ -110,5 +96,44 @@ class Bar(BasePlotter):
         if len(xticklabels) != len(self._graph._lax):
             xticklabels = self._graph._lax
         ax.set_xticklabels(xticklabels)
+
+        return ret
+
+class Barh(BasePlotter):
+    
+    WIDTH_FACTOR = 0.9
+
+    def plot(self, ax, cols):
+        ret = []
+        sided = {}
+        length = len(self._graph._lax)
+        cols.sort(key=lambda x: x['cumulate'])
+        for col in cols:
+            if bool(col['cumulate']):
+                sided[col['cumulate'][-1]].append(col)
+            else:
+                sided[col['key']] = [col]
+        # bar width
+        width = (self._graph._lax.max() - self._graph._lax.min()) /\
+                len(self._graph._lax) * self.WIDTH_FACTOR
+        if len(sided) > 0:
+            width /= len(sided)
+        # build the bars
+        ind = np.arange(length)
+        for i, lst in enumerate(sided.values()):
+            for j, col in enumerate(lst): 
+                vals = self._graph._df[col['key']]
+                bottom = np.array([0.0]*len(self._graph._lax))
+                for base in lst[0:j]:
+                    bottom += self._graph._df[base['key']]
+                ret.append(
+                    ax.barh(ind+(i*width), vals, height=width, left=bottom, color=col['color'])
+                )
+        # x ticks & labels
+        ax.set_yticks(ind + (width * len(sided) / 2.0))
+        yticklabels = self._graph._x_meta[0]['ticklabels']
+        if len(yticklabels) != len(self._graph._lax):
+            yticklabels = self._graph._lax
+        ax.set_yticklabels(yticklabels)
 
         return ret
