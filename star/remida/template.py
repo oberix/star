@@ -7,10 +7,10 @@ import os
 import string
 import logging
 
-# import sre
 from star.share.bag import Bag
 from star.remida.table import TexTable, HTMLTable
 from star.remida.graph import TexGraph, HTMLGraph
+from star.remida.des import TexDes, HTMLDes
 
 __all__ = ['HTMLSreTemplate', 'TexSreTemplate']
 
@@ -33,16 +33,19 @@ class AbstractSreTemplate(string.Template):
                 'dest_path': self._src_path,
             }
         self._fds = list() # list of opened file descriptors
-	# load template
-        self._templ_path = templ_path
-        self._load_template(self._templ_path)
-	# load Bags
-        try:
-            bag_path = config['bags']
+        # load template
+        try: 
+            self._templ_path = config["template"]
         except KeyError:
-            bag_path = self._src_path
-        self.bags = self._load_bags(bag_path)
-	# other paths
+            self._templ_path = templ_path
+        self._load_template(self._templ_path)
+        # load Bags
+        try:
+            self._bag_path = config['bags']
+        except KeyError:
+            self._bag_path = self._src_path
+        self.bags = self._load_bags(self._bag_path)
+        # other paths
         try:
             self._dest_path = config['dest_path']
         except KeyError:
@@ -112,6 +115,8 @@ class AbstractSreTemplate(string.Template):
             elif bags[base].stype == 'graph':
                 ret[base], fd = self._make_graph(bags[base], **kwargs).out()
                 self._fds.append(fd)
+            elif bags[base].stype == 'desc':
+                ret[base] = self._make_des(bags[base], **kwargs).out()
             else: # TODO: handle other types
                 self._logger.debug('bags = %s', bags)
                 self._logger.warning(
@@ -140,6 +145,15 @@ class AbstractSreTemplate(string.Template):
         implementation.
 
         @return: a Graph object
+        '''
+        raise NotImplementedError
+
+    def _make_des(self, data, **kwargs):
+        ''' Create a table from the given DataFrame.
+        This is a virtual method and must be overriden by subclass
+        implementation.
+
+        @return: a Des object
         '''
         raise NotImplementedError
 
@@ -185,13 +199,13 @@ class TexSreTemplate(AbstractSreTemplate):
 
     delimiter = '\SRE'
     idpattern = '[_a-z][_a-z0-9.]*'
-    comment = "%.*"
+    comment = "(?:^%|\s%).*"
     _suffix = '.tex'
     _suffix_out = '_out.tex'
     # regexps to match LaTeX imports
     input_re = [
-        re.compile("^\\import{.*}$"),
-        re.compile("^\\input{.*}$"),
+        re.compile("\\import{.+}", re.MULTILINE | re.UNICODE),
+        re.compile("\\input{.+}", re.MULTILINE | re.UNICODE),
     ]
 
     def _substitute_includes(self):
@@ -225,17 +239,20 @@ class TexSreTemplate(AbstractSreTemplate):
     def _make_graph(self, data, **kwargs):
         return  TexGraph(data, **kwargs)
 
+    def _make_des(self, data, **kwargs):
+        return  TexDes(data, **kwargs)
+
     def report(self, **kwargs):
         input_files = self._substitute_includes()
         for file_ in input_files:
             # FIXME: this is redundant with __init__
             config = {
                 'template': file_,
-                'bags': self._src_path,
-                'dest_path': self._src_path,
+                'bags': self._bag_path,
+                'dest_path': self._dest_path,
             }
-            filename, fds = TexSreTemplate(
-                file_, config=config).report(**kwargs)
+            filename, fds = TexSreTemplate(file_, 
+                                           config=config).report(**kwargs)
             self._fds.extend(fds)
         return super(TexSreTemplate, self).report(**kwargs)
 
@@ -268,3 +285,6 @@ class HTMLSreTemplate(AbstractSreTemplate):
     def _make_graph(self, data, **kwargs):
         return  HTMLGraph(data, **kwargs)
 
+    def _make_des(self, data, **kwargs):
+        return  HTMLDes(data, **kwargs)
+    
