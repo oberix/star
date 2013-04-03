@@ -15,13 +15,13 @@ CLOSE_TEX_TAB = {'tab':"""\\end{tabu}""",
                  'ltab':"""\\end{longtabu}"""}
 
 FORMATS = {
-    '@n' : str(),
-    '@g' : "\\rowfont{\\bfseries}\n",
-    '@b' : "\\\ \\tabucline- \n",
-    '@l' : "\\tabucline- \n",
-    '@i' : "\\rowfont{\\itshape} \n",
-    '@bi' : "\\rowfont{\\bfseries \\itshape} \n",
-    '@p' : "\\pagebreak \n",
+    '@n' : u"",
+    '@g' : u"\\rowfont{\\bfseries}\n",
+    '@b' : u"\\\ \\tabucline- \n",
+    '@l' : u"\\tabucline- \n",
+    '@i' : u"\\rowfont{\\itshape} \n",
+    '@bi' : u"\\rowfont{\\bfseries \\itshape} \n",
+    '@p' : u"\\pagebreak \n",
 }
 
 FORMATS_BT = {
@@ -338,13 +338,13 @@ class HTMLTable(Table):
         '''
         sezione che costruisce l'header della tabella: thead
         '''
-
         out = '''<thead>'''
         out += '''<tr>'''
         for k in self._keys:
             out += '''<th%s>%s</th>''' % (
                 self._headings[k].get('th_attrs', ''),
-                self._headings[k]['des'].replace("|",""))
+                utils.escape(self._headings[k]['des'].replace("|",""),
+                             utils.HTML_ESCAPE))
         out += '''</tr>'''
         out += '''</thead>\n'''
         return out
@@ -383,7 +383,7 @@ class HTMLTable(Table):
         ''' Return a string that contains valid Html code for a table.
         '''
         out = [
-            utils.escape(self._make_header(), utils.HTML_ESCAPE),
+            self._make_header(),
             self._make_body(),
             #self._make_footer(),
             ]
