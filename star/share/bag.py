@@ -13,6 +13,7 @@ STYPES = (
     'ltab',
     'bodytab',
     'graph',
+    'desc'
 )
 
 class Bag(GenericPickler):

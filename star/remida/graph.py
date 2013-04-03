@@ -5,7 +5,6 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib import rc
-import numpy as np
 import logging
 from tempfile import NamedTemporaryFile
 import base64
@@ -51,11 +50,13 @@ class Plotters(object):
         try:
             return self._plotters[key]
         except KeyError:
-            try:
-                self._plotters[key] = plotters.__getattribute__(key)(self._graph)
-            except AttributeError:
-                raise KeyError("Unhandled graph type '%s'" % key)
-            return self._plotters[key]
+            pass
+        
+        try:
+            self._plotters[key] = plotters.__getattribute__(key)(self._graph)
+            return self._plotters[key]                              
+        except AttributeError:
+            raise KeyError("Unhandled graph type '%s'" % key)
 
     def __setitem__(self, key, value):
         ''' Item assignment not allowed.
@@ -168,7 +169,7 @@ class Graph(object):
         # Draw only even ticks
         for idx, elem in enumerate(self._lax):
             if idx % TICK_STEP == 0:
-                ticks.append(self._lax[idx])
+                ticks.append(elem)
             if elem > TICK_LABEL_LIMIT:
                 rotation = 30
         ax.set_xticks(ticks)
@@ -176,7 +177,7 @@ class Graph(object):
                     max(self._lax) + delta)
         plt.setp(plt.xticks()[1], rotation=rotation)
         plt.subplots_adjust(hspace=0, bottom=0.13)
-
+        
     def make_graph(self):
         ''' Create a Figure and plot a graph in it following what was
         specified in Bag.lm.
@@ -214,7 +215,6 @@ class Graph(object):
         order to generate a different report format.
 
         '''
-        import cStringIO
         out = cStringIO.StringIO()
         self._figure.savefig(out, format='png')
         out.seek(0)
@@ -260,7 +260,6 @@ class TexGraph(Graph):
 class HTMLGraph(Graph):
 
     def out(self):
-        import base64
         buf = super(HTMLGraph, self).out()
         png_base64 = base64.b64encode(buf.read())
         return '<img src="data:image/png;base64,%s" />' % png_base64

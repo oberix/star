@@ -487,6 +487,7 @@ class Stark(GenericPickler):
                 continue
             if len(rows) > 0:
                 return col
+        print(col)
         raise ValueError(
             "Could not find value '%s' for key '%s'" % (value, key))
 
@@ -569,33 +570,41 @@ class Stark(GenericPickler):
         for key, val in kwargs.iteritems():
             splitted = val.split('.', 1)
             vals_df = self._lm[key]['vals']
-            if len(splitted) == 1 or\
-               (len(splitted) > 1 and splitted[0] not in vals_df.columns): 
+            if len(splitted) == 1 or (len(splitted) > 1 and 
+                                      splitted[0] not in vals_df.columns): 
                 if val == 'ALL':
                     continue
                 elif val == 'TOT':
                     idx = df[key].unique()
                     subs[key] = pandas.Series(['TOT'] * len(idx), index=idx)
                 else:
+                    curr_level = self._find_level(key, self._df[key].ix[0])
+                    next_level = self._find_level(key, val)
+                    if curr_level != next_level:
+                        subs[key] = vals_df.set_index(curr_level, 
+                                                      verify_integrity=False)\
+                                .to_dict()[next_level]
                     select[key] = val
             elif len(splitted) > 1:
+                val = splitted[1]
                 curr_level = self._find_level(key, self._df[key].ix[0])
-                subs[key] = vals_df.set_index(
-                    curr_level, verify_integrity=False).to_dict()[splitted[0]]
-                select[key] = splitted[1]
+                next_level = splitted[0]
+                if curr_level != next_level:
+                    subs[key] = vals_df.set_index(curr_level, 
+                                                  verify_integrity=False)\
+                            .to_dict()[next_level]
+                select[key] = val
             else: # pragma: no cover
                 raise ValueError # be more specific!
         
         # substitute
         for key, val in subs.iteritems():
             df[key] = df[key].map(val)
-
         # select
         conditions = [(df[key] == val) for key, val in select.iteritems()]
         mask = pandas.Series([True] * len(df))
         for condition in conditions:
             mask &= condition
-
         return df[mask]
 
     ##################

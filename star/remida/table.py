@@ -24,6 +24,15 @@ FORMATS = {
     '@p' : "\\pagebreak \n",
 }
 
+FORMATS_BT = {
+    '@n' : u"{0}",
+    '@g' : u"\\textbf{{{0}}}",
+    '@b' : u"{0}",
+    '@l' : u"{0}",
+    '@i' : u"\\textit{{{0}}}",
+    '@bi' : u"\\textbf{{\\textit{{{0}}}}}",
+    '@p' : u"\\pagebreak \n",
+}
 
 class Table(object):
 
@@ -188,20 +197,69 @@ class TexTable(Table):
         @ return: str
 
         '''
-        out = str()
+        out = u""
         try:
-            self._data.df = self._data.df.sort(columns='_OR_')
+            self._data._df = self._data._df.sort(columns=['_OR_'])
         except KeyError:
             # keep it unsorted
             pass
-        records = StringIO()
-        self._data.df.to_string(
-            buf=records, float_format=lambda x: '%.3f' % x,
-            columns=self._keys, header=False, index=False)
-        records.seek(0)
-        for record in records.readlines():
-            out += u' & '.join(record.split())
-            out += ' \\\ \n'
+        
+        # if fornat column _FR_ isn't present add a default format column
+        if not "_FR_" in self._data._df.columns:
+            self._data._df["_FR_"] = "@n"
+        fr = list(self._data._df["_FR_"])
+        
+        records = self._data.df[self._keys].to_records(index=False)
+        for i, record in enumerate(records):
+            def to_utf8(r):
+                try:
+                    return unicode(str(r), 'utf8')
+                except:
+                    return r
+                
+            record = [to_utf8(r) for r in record]
+            
+            out += FORMATS.get(fr[i], "")
+            out += u' & '.join(record)          
+            out += u' \\\ \n'
+        return out
+
+    def _make_bodytab(self):
+        ''' Prepare data for TeX table
+
+        @ return: str
+
+        '''
+        out = u""
+        try:
+            self._data._df = self._data._df.sort(columns=['_OR_'])
+        except KeyError:
+            # keep it unsorted
+            pass
+        
+        # if fornat column _FR_ isn't present add a default format column
+        if not "_FR_" in self._data._df.columns:
+            self._data._df["_FR_"] = "@n"
+        fr = list(self._data._df["_FR_"])
+        records = self._data.df[self._keys].to_records(index=False)
+        for i, record in enumerate(records):
+            def to_utf8(r):
+                try:
+                    return unicode(str(r), 'utf8')
+                except:
+                    return r
+                
+            record = [FORMATS_BT.get(fr[i], "{0}").format(to_utf8(r)) 
+                      for r in record]
+            
+            # add an empty line
+            if fr[i] == "@b":
+                out += u' & '.join(["" for r in record])
+                out += u' \\\ \n'
+            elif fr[i] == "@l":
+                out += u'\\hline \n'
+            out += u' & '.join(record)          
+            out += u' \\\ \n'
         return out
 
     # Public
@@ -223,11 +281,14 @@ class TexTable(Table):
                 headers += self._make_header(heading)
             footer = self._make_footer()
             close_ = CLOSE_TEX_TAB[self._type]
-
+            body = self._make_body()
+        else:
+            body = self._make_bodytab()
+            
         out = [
             preamble,
             headers,
-            self._make_body(),
+            body,
             footer,
             close_
             ]
@@ -283,8 +344,7 @@ class HTMLTable(Table):
         for k in self._keys:
             out += '''<th%s>%s</th>''' % (
                 self._headings[k].get('th_attrs', ''),
-                utils.escape(self._headings[k]['des'].replace("|",""),
-                             utils.HTML_ESCAPE))
+                self._headings[k]['des'].replace("|",""))
         out += '''</tr>'''
         out += '''</thead>\n'''
         return out
@@ -304,9 +364,7 @@ class HTMLTable(Table):
             record = record.split()
             for idx, field in enumerate(record):
                 heading = self._headings[self._keys[idx]]
-                out += '''<td%s>%s</td>''' % (heading.get('td_attrs', ''),
-                                              utils.escape(field,
-                                                           utils.HTML_ESCAPE))
+                out += '''<td%s>%s</td>''' % (heading.get('td_attrs', ''), field)
             out += '''\n</tr>\n'''
         out += '''</tbody>\n'''
         return out
@@ -325,7 +383,7 @@ class HTMLTable(Table):
         ''' Return a string that contains valid Html code for a table.
         '''
         out = [
-            self._make_header(),
+            utils.escape(self._make_header(), utils.HTML_ESCAPE),
             self._make_body(),
             #self._make_footer(),
             ]
