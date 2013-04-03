@@ -391,7 +391,7 @@ class Stark(GenericPickler):
         })
 
     def _set_unique(self, series):
-        test = pandas.unique(series)
+        test = series.unique()
         if len(test) > 1:
             return pandas.np.nan
         return test[0]
@@ -479,6 +479,8 @@ class Stark(GenericPickler):
         @ raise: ValueError if value is not found
         '''
         df = self._lm[key]['vals']
+        if df.empty:
+            return None
         for col in df.columns:
             try:
                 rows = df.ix[df[col] == value]
@@ -487,9 +489,8 @@ class Stark(GenericPickler):
                 continue
             if len(rows) > 0:
                 return col
-        print(col)
-        raise ValueError(
-            "Could not find value '%s' for key '%s'" % (value, key))
+        raise ValueError("Could not find value '{0}' for key '{1}'"
+                         "".format(value, key))
 
     def _find_elab_vars(self, col, lm=None):
         ''' 
@@ -580,7 +581,7 @@ class Stark(GenericPickler):
                 else:
                     curr_level = self._find_level(key, self._df[key].ix[0])
                     next_level = self._find_level(key, val)
-                    if curr_level != next_level:
+                    if curr_level and next_level and curr_level != next_level:
                         subs[key] = vals_df.set_index(curr_level, 
                                                       verify_integrity=False)\
                                 .to_dict()[next_level]
@@ -589,7 +590,7 @@ class Stark(GenericPickler):
                 val = splitted[1]
                 curr_level = self._find_level(key, self._df[key].ix[0])
                 next_level = splitted[0]
-                if curr_level != next_level:
+                if curr_level and next_level and curr_level != next_level:
                     subs[key] = vals_df.set_index(curr_level, 
                                                   verify_integrity=False)\
                             .to_dict()[next_level]
