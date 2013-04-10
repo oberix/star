@@ -36,9 +36,10 @@ def save(obj, path, compress=True):
 
     Parameters
     ----------
-    obj : any object
-    path : string
+    obj: any object
+    path: string
         File path
+    compress: if True (default) compress with gzip
     """
     if compress:
         f = gzip.open(path, 'wb', 1)
@@ -75,7 +76,7 @@ def load(path):
         ret = pickle.loads(buffer_)
         f.close()
         return ret
-    except:
+    except IOError:
         f.close()
 
     f = open(path, "rb")

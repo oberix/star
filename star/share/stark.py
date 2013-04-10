@@ -604,17 +604,13 @@ class Stark(GenericPickler):
                 raise ValueError  # be more specific!
 
         # substitute
-        print(subs)
         for key, val in subs.iteritems():
             df[key] = df[key].map(val)
         # select
         conditions = [(df[key] == val) for key, val in select.iteritems()]
         mask = pandas.Series([True] * len(df))
-        print("0: {0}".format(df))
         for condition in conditions:
             mask &= condition
-        print(mask)
-        print("1: {0}".format(df[mask]))
         return df[mask]
 
     ##################
