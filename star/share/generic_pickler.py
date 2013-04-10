@@ -31,7 +31,7 @@ __version__ = '0.1'
 __all__ = ['GenericPickler']
 
 
-def save(obj, path):
+def save(obj, path, compress=True):
     """
     Pickle (serialize) object to input file path
 
@@ -41,7 +41,10 @@ def save(obj, path):
     path : string
         File path
     """
-    f = gzip.open(path, 'wb', 1)
+    if compress:
+        f = gzip.open(path, 'wb', 1)
+    else:
+        f = open(path, 'wb')
     try:
         pickle.dump(obj, f, protocol=pickle.HIGHEST_PROTOCOL)
     finally:
@@ -63,45 +66,25 @@ def load(path):
     unpickled : type of object stored in file
     """
     try:
-        f = open(path, "rb")
-        ret = pickle.load(f)
-        f.close()
-    finally:
-        f.close()
-    return ret
-
-
-def load_gz(path):
-    """
-    Load pickled pandas object (or any other pickled object) from the specified
-    file path
-
-    Parameters
-    ----------
-    path : string
-        File path
-
-    Returns
-    -------
-    unpickled : type of object stored in file
-    """
-    try:
         f = gzip.open(path, 'rb')
         buffer_ = ""
         while True:
             data = f.read()
             if data == "":
-                    break
+                break
             buffer_ += data
         ret = pickle.loads(buffer_)
         f.close()
+        return ret
     except:
+        f.close()
+    try:
         f = open(path, "rb")
         ret = pickle.load(f)
         f.close()
+        return ret
     finally:
         f.close()
-    return ret
 
 
 class GenericPickler(object):
@@ -109,16 +92,11 @@ class GenericPickler(object):
     Every class that need to be saved as a pickle should subclass this.
     """
 
-    def save(self, file_):
+    def save(self, file_, compress=True):
         """ Save objet as a pickle """
-        save(self, file_)
+        save(self, file_, compress)
 
     @staticmethod
     def load(file_):
         """ Load object from a pickle """
         return load(file_)
-
-    @staticmethod
-    def load_gz(file_):
-        """ Load object from a pickle """
-        return load_gz(file_)

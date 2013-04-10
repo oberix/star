@@ -621,7 +621,7 @@ class Stark(GenericPickler):
     # Public methods #
     ##################
 
-    def save(self, file_=None):
+    def save(self, file_=None, compress=True):
         ''' Save object as pickle file.
 
         If a filename is not provided, the one stored in self.cod will
@@ -635,19 +635,7 @@ class Stark(GenericPickler):
         if not os.path.exists(os.path.dirname(file_)):
             os.makedirs(os.path.dirname(file_))
 
-#        self._df = self._df.set_index(self.dim).to_sparse()
-        super(Stark, self).save(file_)
-#        self._df = self._df.to_dense().reset_index()
-
-#    @classmethod
-#    def load(self, file_):
-#        return super(Stark, self).load(file_)
-#        ret = super(Stark, self).load(file_)
-#        try:
-#            ret._df = ret._df.to_dense().reset_index()
-#        except:
-#            pass
-#        return ret
+        super(Stark, self).save(file_, compress)
 
     def head(self, n=5):
         ''' Return first n elements of the DataFrame
