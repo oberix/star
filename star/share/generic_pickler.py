@@ -15,7 +15,7 @@
 #    GNU Affero General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
 
@@ -24,7 +24,6 @@ try:
 except ImportError:
     import pickle
 import gzip
-import os
 
 __author__ = 'Marco Pattaro (<marco.pattaro@servabit.it>)'
 __version__ = '0.1'
@@ -65,8 +64,8 @@ def load(path):
     -------
     unpickled : type of object stored in file
     """
+    f = gzip.open(path, 'rb')
     try:
-        f = gzip.open(path, 'rb')
         buffer_ = ""
         while True:
             data = f.read()
@@ -78,8 +77,9 @@ def load(path):
         return ret
     except:
         f.close()
+
+    f = open(path, "rb")
     try:
-        f = open(path, "rb")
         ret = pickle.load(f)
         f.close()
         return ret
