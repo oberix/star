@@ -23,10 +23,13 @@ try:
     import cPickle as pickle
 except ImportError:
     import pickle
+import gzip
+import os
 
 __author__ = 'Marco Pattaro (<marco.pattaro@servabit.it>)'
 __version__ = '0.1'
 __all__ = ['GenericPickler']
+
 
 def save(obj, path):
     """
@@ -38,11 +41,12 @@ def save(obj, path):
     path : string
         File path
     """
-    f = open(path, 'wb')
-    try:        
+    f = gzip.open(path, 'wb', 1)
+    try:
         pickle.dump(obj, f, protocol=pickle.HIGHEST_PROTOCOL)
     finally:
         f.close()
+
 
 def load(path):
     """
@@ -58,17 +62,53 @@ def load(path):
     -------
     unpickled : type of object stored in file
     """
-    f = open(path, 'rb')
     try:
-        return pickle.load(f)
+        f = open(path, "rb")
+        ret = pickle.load(f)
+        f.close()
     finally:
         f.close()
+    return ret
+
+
+def load_gz(path):
+    """
+    Load pickled pandas object (or any other pickled object) from the specified
+    file path
+
+    Parameters
+    ----------
+    path : string
+        File path
+
+    Returns
+    -------
+    unpickled : type of object stored in file
+    """
+    try:
+        f = gzip.open(path, 'rb')
+        buffer_ = ""
+        while True:
+            data = f.read()
+            if data == "":
+                    break
+            buffer_ += data
+        ret = pickle.loads(buffer_)
+        f.close()
+    except:
+        f = open(path, "rb")
+        ret = pickle.load(f)
+        f.close()
+    finally:
+        f.close()
+    return ret
+
 
 class GenericPickler(object):
     """ Simple common interface to hadle pickling and unpickling.
     Every class that need to be saved as a pickle should subclass this.
     """
-    
+
     def save(self, file_):
         """ Save objet as a pickle """
         save(self, file_)
@@ -77,3 +117,8 @@ class GenericPickler(object):
     def load(file_):
         """ Load object from a pickle """
         return load(file_)
+
+    @staticmethod
+    def load_gz(file_):
+        """ Load object from a pickle """
+        return load_gz(file_)

@@ -11,28 +11,29 @@ __all__ = ['TexTable', 'HTMLTable']
 
 OPEN_TEX_TAB = {'tab': """\\begin{tabu} spread \\linewidth""",
                 'ltab': """\\begin{longtabu} spread \\linewidth"""}
-CLOSE_TEX_TAB = {'tab':"""\\end{tabu}""",
-                 'ltab':"""\\end{longtabu}"""}
+CLOSE_TEX_TAB = {'tab': """\\end{tabu}""",
+                 'ltab': """\\end{longtabu}"""}
 
 FORMATS = {
-    '@n' : u"",
-    '@g' : u"\\rowfont{\\bfseries}\n",
-    '@b' : u"\\\ \\tabucline- \n",
-    '@l' : u"\\tabucline- \n",
-    '@i' : u"\\rowfont{\\itshape} \n",
-    '@bi' : u"\\rowfont{\\bfseries \\itshape} \n",
-    '@p' : u"\\pagebreak \n",
+    '@n': u"",
+    '@g': u"\\rowfont{\\bfseries}\n",
+    '@b': u"\\\ \\tabucline- \n",
+    '@l': u"\\tabucline- \n",
+    '@i': u"\\rowfont{\\itshape} \n",
+    '@bi': u"\\rowfont{\\bfseries \\itshape} \n",
+    '@p': u"\\pagebreak \n",
 }
 
 FORMATS_BT = {
-    '@n' : u"{0}",
-    '@g' : u"\\textbf{{{0}}}",
-    '@b' : u"{0}",
-    '@l' : u"{0}",
-    '@i' : u"\\textit{{{0}}}",
-    '@bi' : u"\\textbf{{\\textit{{{0}}}}}",
-    '@p' : u"\\pagebreak \n",
+    '@n': u"{0}",
+    '@g': u"\\textbf{{{0}}}",
+    '@b': u"{0}",
+    '@l': u"{0}",
+    '@i': u"\\textit{{{0}}}",
+    '@bi': u"\\textbf{{\\textit{{{0}}}}}",
+    '@p': u"\\pagebreak \n",
 }
+
 
 class Table(object):
 
@@ -59,16 +60,16 @@ class Table(object):
         self._ncols = len(lm.keys())
 
         # Transpose LM
-        self._align = list() # alignment
+        self._align = list()  # alignment
 
         # Extract df columns names
         self._keys = lm.items()
-        self._keys.sort(key=lambda x : x[1][0])
+        self._keys.sort(key=lambda x: x[1][0])
         self._keys = [k[0] for k in self._keys]
 
         # Extract heading titles
-        self._heading = list() # title lists
-        self._last_heading = len(lm[self._keys[0]]) - 3 # last heading index
+        self._heading = list()  # title lists
+        self._last_heading = len(lm[self._keys[0]]) - 3  # last heading index
         for i in xrange(self._last_heading + 1):
             self._heading.append(list())
 
@@ -78,7 +79,7 @@ class Table(object):
             # First two are not titles (by spec)
             if len(lm[key]) > 2:
                 for i in xrange(2, len(lm[key])):
-                    self._heading[i-2].append(lm[key][i])
+                    self._heading[i - 2].append(lm[key][i])
         self._logger.debug('_ncols = %s', self._ncols)
         self._logger.debug('_align = %s', self._align)
         self._logger.debug('_keys = %s', self._keys)
@@ -185,10 +186,9 @@ class TexTable(Table):
         ret = "\\tabucline- \n"
         span = len(self._align)
         if self._data.footnote is not None:
-            ret = str().join([
-                    '\multicolumn{%s}{|c|}{'% span,
-                    self._data.footnote,
-                    '} \\\ \\tabucline- \\endfoot \n'])
+            ret = str().join(['\multicolumn{%s}{|c|}{' % span,
+                              self._data.footnote,
+                              '} \\\ \\tabucline- \\endfoot \n'])
         return ret
 
     def _make_body(self):
@@ -203,12 +203,12 @@ class TexTable(Table):
         except KeyError:
             # keep it unsorted
             pass
-        
+
         # if fornat column _FR_ isn't present add a default format column
         if not "_FR_" in self._data._df.columns:
             self._data._df["_FR_"] = "@n"
         fr = list(self._data._df["_FR_"])
-        
+
         records = self._data.df[self._keys].to_records(index=False)
         for i, record in enumerate(records):
             def to_utf8(r):
@@ -216,11 +216,11 @@ class TexTable(Table):
                     return unicode(str(r), 'utf8')
                 except:
                     return r
-                
+
             record = [to_utf8(r) for r in record]
-            
+
             out += FORMATS.get(fr[i], "")
-            out += u' & '.join(record)          
+            out += u' & '.join(record)
             out += u' \\\ \n'
         return out
 
@@ -236,7 +236,7 @@ class TexTable(Table):
         except KeyError:
             # keep it unsorted
             pass
-        
+
         # if fornat column _FR_ isn't present add a default format column
         if not "_FR_" in self._data._df.columns:
             self._data._df["_FR_"] = "@n"
@@ -248,17 +248,17 @@ class TexTable(Table):
                     return unicode(str(r), 'utf8')
                 except:
                     return r
-                
-            record = [FORMATS_BT.get(fr[i], "{0}").format(to_utf8(r)) 
+
+            record = [FORMATS_BT.get(fr[i], "{0}").format(to_utf8(r))
                       for r in record]
-            
+
             # add an empty line
             if fr[i] == "@b":
                 out += u' & '.join(["" for r in record])
                 out += u' \\\ \n'
             elif fr[i] == "@l":
                 out += u'\\hline \n'
-            out += u' & '.join(record)          
+            out += u' & '.join(record)
             out += u' \\\ \n'
         return out
 
@@ -284,7 +284,7 @@ class TexTable(Table):
             body = self._make_body()
         else:
             body = self._make_bodytab()
-            
+
         out = [
             preamble,
             headers,
@@ -308,7 +308,6 @@ class HTMLTable(Table):
         self._logger = logging.getLogger(type(self).__name__)
         super(HTMLTable, self).__init__(data, **kwargs)
 
-
     def parse_lm(self, lm):
         '''
         lm have to be dict of dicts.
@@ -319,15 +318,17 @@ class HTMLTable(Table):
         'ord': <int>,
         'des': <string> the th content,
         ### optional
-        'th_attrs': <string> putted in `class' attr of unique tr element in thead,
-        'td_attrs': <string> putted in `class' attr of unique tr element in tr in tbody,
+        'th_attrs': <string> putted in `class' attr of unique tr element in
+        thead,
+        'td_attrs': <string> putted in `class' attr of unique tr element in tr
+        in tbody,
         }
         '''
         self._ncols = len(lm.keys())
 
         # Extract df columns names
         self._keys = lm.items()
-        self._keys.sort(key=lambda x : x[1].get('ord'))
+        self._keys.sort(key=lambda x: x[1].get('ord'))
         self._keys = [k[0] for k in self._keys]
 
         self._headings = dict.fromkeys(lm)
@@ -343,7 +344,7 @@ class HTMLTable(Table):
         for k in self._keys:
             out += '''<th%s>%s</th>''' % (
                 self._headings[k].get('th_attrs', ''),
-                utils.escape(self._headings[k]['des'].replace("|",""),
+                utils.escape(self._headings[k]['des'].replace("|", ""),
                              utils.HTML_ESCAPE))
         out += '''</tr>'''
         out += '''</thead>\n'''
@@ -364,7 +365,8 @@ class HTMLTable(Table):
             record = record.split()
             for idx, field in enumerate(record):
                 heading = self._headings[self._keys[idx]]
-                out += '''<td%s>%s</td>''' % (heading.get('td_attrs', ''), field)
+                out += '''<td%s>%s</td>''' % (heading.get('td_attrs', ''),
+                                              field)
             out += '''\n</tr>\n'''
         out += '''</tbody>\n'''
         return out

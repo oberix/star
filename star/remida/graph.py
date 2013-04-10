@@ -15,11 +15,11 @@ from star.remida import utils
 
 __all__ = ['TexGraph', 'HTMLGraph']
 
-TICK_LABEL_LIMIT = 999. # xticks labels length limit
+TICK_LABEL_LIMIT = 999.  # xticks labels length limit
 TICK_STEP = 2  # Draw an xtick every n values
 
-FIGSIZE = { # (w, h) in inches
-    'stamp': (3.200, 2.0), # (3.180, 2.380)
+FIGSIZE = {  # (w, h) in inches
+    'stamp': (3.200, 2.0),  # (3.180, 2.380)
     'dinamic': (6.360, 2.380),
     'square': (6.360, 6.360),
     'flag': (3.180, 9.52),
@@ -51,10 +51,10 @@ class Plotters(object):
             return self._plotters[key]
         except KeyError:
             pass
-        
+
         try:
             self._plotters[key] = plotters.__getattribute__(key)(self._graph)
-            return self._plotters[key]                              
+            return self._plotters[key]
         except AttributeError:
             raise KeyError("Unhandled graph type '%s'" % key)
 
@@ -63,6 +63,7 @@ class Plotters(object):
         '''
         raise TypeError("'%s' object does not support item assignment" %
                         type(self).__name__)
+
 
 class Graph(object):
 
@@ -111,11 +112,11 @@ class Graph(object):
         elif len(handles) < 5:
             ncol = 2
         # Estimate new hight needed for the legend
-        dheight = ((len(handles)/ncol) + 1) * self._fontsize * 0.01
+        dheight = ((len(handles) / ncol) + 1) * self._fontsize * 0.01
         dheight_perc = dheight / figure.get_figheight()
         # Scale figure and adjust subplot
         figure.set_figheight(figure.get_figheight() + dheight)
-        figure.subplots_adjust(top=(0.9-dheight_perc))
+        figure.subplots_adjust(top=(0.9 - dheight_perc))
         # Make legend
         leg = figure.legend(handles, labels, ncol=ncol, loc='upper left',
                             bbox_to_anchor=(0.10, 1.0))
@@ -177,7 +178,7 @@ class Graph(object):
                     max(self._lax) + delta)
         plt.setp(plt.xticks()[1], rotation=rotation)
         plt.subplots_adjust(hspace=0, bottom=0.13)
-        
+
     def make_graph(self):
         ''' Create a Figure and plot a graph in it following what was
         specified in Bag.lm.
@@ -234,8 +235,8 @@ class TexGraph(Graph):
         # Tell matplotlib to use LaTeX to render text
         rc('font', **{
                 'family': 'serif',
-                'serif':['Computer Modern Roman'],
-                'size':self._fontsize})
+                'serif': ['Computer Modern Roman'],
+                'size': self._fontsize})
         rc('text', usetex=True)
 
     def _make_legend(self, figure, handles, labels):
@@ -252,10 +253,12 @@ class TexGraph(Graph):
         fd = NamedTemporaryFile(suffix='.pdf', delete=delete)
         self._figure.savefig(fd, format='pdf')
         # TODO: convert inches to cm
-        ret = "\\includegraphics[width=%sin, height=%sin, keepaspectratio=True]{%s}" %\
-              (self._size[0], self._size[1], fd.name)
+        ret = ("\\includegraphics[width=%sin, height=%sin, "
+               "keepaspectratio=True]{%s}" %\
+              (self._size[0], self._size[1], fd.name))
         self._logger.debug("graph file name is '%s'", fd.name)
         return ret, fd
+
 
 class HTMLGraph(Graph):
 
