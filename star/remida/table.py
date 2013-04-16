@@ -34,6 +34,15 @@ FORMATS_BT = {
     '@p': u"\\pagebreak \n",
 }
 
+HTML_ALIGNMENT_MAP = {
+    'left': u'textleft',
+    'l': u'textleft',
+    'right': u'textright',
+    'r': u'textright',
+    'center': u'textcenter',
+    'c': u'textcenter',
+}
+
 
 class Table(object):
 
@@ -303,7 +312,7 @@ class HTMLTable(Table):
     for tests
     python sre.py esempio_html --log-level=debug
     '''
-
+    
     def __init__(self, data, hsep=False, **kwargs):
         self._logger = logging.getLogger(type(self).__name__)
         super(HTMLTable, self).__init__(data, **kwargs)
@@ -339,15 +348,21 @@ class HTMLTable(Table):
         '''
         sezione che costruisce l'header della tabella: thead
         '''
-        out = '''<thead>'''
-        out += '''<tr>'''
+        out = u"<thead><tr>"
         for k in self._keys:
-            out += '''<th%s>%s</th>''' % (
-                self._headings[k].get('th_attrs', ''),
-                utils.escape(self._headings[k]['des'].replace("|", ""),
-                             utils.HTML_ESCAPE))
-        out += '''</tr>'''
-        out += '''</thead>\n'''
+            try:
+                title = unicode(self._headings[k].get('th_attrs', ''), "utf8")
+            except:
+                title = self._headings[k].get('th_attrs', '')
+            try:
+                des = unicode(self._headings[k]['des'].replace("|", ""), 
+                              "utf8")
+            except:
+                des = self._headings[k]['des'].replace("|", "")
+            out += (u"<th title='{0}'>{1}</th>"
+                    "".format(utils.escape(title, utils.HTML_ESCAPE),
+                              utils.escape(des, utils.HTML_ESCAPE)))                                       
+        out += u"</thead>\n"
         return out
 
     def _make_body(self):
@@ -355,20 +370,23 @@ class HTMLTable(Table):
         sezione che costruisce il body della tabella: tbody
         '''
 
-        out = '''<tbody>\n'''
+        out = u"<tbody>\n"
         records = StringIO()
         self._data.df.to_string(
-            buf=records, float_format=lambda x: '%.3f' % x,
-            columns=self._keys, header=False, index=False)
+            buf=records, float_format=lambda x: "{0:.1f}".format(x),
+            columns=self._keys, header=False, index=False, force_unicode=True)
         records.seek(0)
         for record in records.readlines():
             record = record.split()
             for idx, field in enumerate(record):
                 heading = self._headings[self._keys[idx]]
-                out += '''<td%s>%s</td>''' % (heading.get('td_attrs', ''),
-                                              field)
-            out += '''\n</tr>\n'''
-        out += '''</tbody>\n'''
+                alignment_map = self.HTML_ALIGNMENT_MAP.get(\
+                        heading.get('align', ''), '')
+                field = utils.escape(field, utils.HTML_ESCAPE)
+                out += (u"<td class='{0}'>{1}</td>".format(alignment_map, 
+                                                           field))
+            out += u"\n</tr>\n"
+        out += u"</tbody>\n"
         return out
 
     def _make_footer(self):
@@ -378,7 +396,7 @@ class HTMLTable(Table):
         ret = str()
         span = self._align
         if self._data.footnore is not None:
-            ret = "<hr/>" + self._data.footnote
+            ret = u"<hr/>" + self._data.footnote
         return str().join(ret)
 
     def out(self):
@@ -389,5 +407,5 @@ class HTMLTable(Table):
             self._make_body(),
             #self._make_footer(),
             ]
-        out = unicode(str().join(out))
+        out = unicode(u"".join(out))
         return out
