@@ -369,7 +369,6 @@ class HTMLTable(Table):
         '''
         sezione che costruisce il body della tabella: tbody
         '''
-
         out = u"<tbody>\n"
         records = StringIO()
         self._data.df.to_string(
