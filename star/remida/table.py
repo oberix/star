@@ -379,8 +379,8 @@ class HTMLTable(Table):
             record = record.split()
             for idx, field in enumerate(record):
                 heading = self._headings[self._keys[idx]]
-                alignment_map = self.HTML_ALIGNMENT_MAP.get(\
-                        heading.get('align', ''), '')
+                alignment_map = HTML_ALIGNMENT_MAP\
+                        .get(heading.get('align', ''), '')
                 field = utils.escape(field, utils.HTML_ESCAPE)
                 out += (u"<td class='{0}'>{1}</td>".format(alignment_map, 
                                                            field))
