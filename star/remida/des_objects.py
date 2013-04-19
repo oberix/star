@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-################################################################################
+###############################################################################
 #
 #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
 #    Author: Luigi Curzi <tremst@gmail.com>
@@ -18,7 +18,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-################################################################################
+###############################################################################
 import des_filters as dfi
 import decimal as dc
 import re
@@ -34,22 +34,31 @@ pattern_check_par = r"""
 pattern_check_par = re.compile(pattern_check_par, re.IGNORECASE | 
                                re.VERBOSE | re.MULTILINE | re.DOTALL | 
                                re.UNICODE)
-                           
+
 
 def parse_parameter(string_in):
     par = pp.Forward()
-    arg = (par | pp.QuotedString("'") | pp.QuotedString('"') | 
-           pp.Word(pp.alphanums + "_ -+"))
+    # parsing: argomento
+    arg = (par | 
+           pp.QuotedString("'", unquoteResults=False) | 
+           pp.QuotedString('"', unquoteResults=False) | 
+           pp.Word(pp.nums))
+    # parsing: argomenti
     args = arg + pp.ZeroOrMore(pp.Suppress(",") + arg)
+    # parsing: filtro senza argomenti
     filter_w = pp.Word("|", pp.alphanums + "_")
+    # parsing: filtro con argomenti
     filter_wo = pp.Combine(pp.Word("|", pp.alphanums + "_") + 
                                    pp.Literal(":")) + pp.Group(args)
+    # parsing: filtri in generale (con e senza argomenti)                               
     filters = (filter_w ^filter_wo).setParseAction()
-
+    
+    # parsing: variabili da df
     s_par = (pp.Group(pp.Suppress("{{") + 
                       pp.Word(pp.alphas, pp.alphanums + "_ ")\
                         .setParseAction(lambda token: "{{" + token[0] + "}}") + 
                       pp.ZeroOrMore(filters) + pp.Suppress("}}")))
+    # parsing: variabili "locali"
     l_par = (pp.Group(pp.Suppress("{") + pp.Word(pp.nums)\
                         .setParseAction(lambda token: "{" + token[0] + "}") + 
                       pp.ZeroOrMore(filters) + 
@@ -57,12 +66,14 @@ def parse_parameter(string_in):
                      
     par << (s_par ^l_par)
     expr = par + pp.ZeroOrMore(filters)
-    if not type(string_in) is unicode:
+    try:
         string_in = unicode(string_in, "utf8")
+    except TypeError:
+        pass
     try: 
         parsed_list = expr.parseString(string_in).asList()
     except:
-        parsed_list = string_in
+        parsed_list = [string_in]
     return parsed_list
 
 
@@ -116,11 +127,11 @@ def evaluate_test_values(string_in, df=None, lp=[]):
 
 def evaluate_parameter(p_parsed, df=None, lp=[]):
     res = u""
-    if not type(p_parsed) is list:
-        return p_parsed  
+    if not isinstance(p_parsed, (list, tuple)):
+        p_parsed = [p_parsed]
     while p_parsed:
         e = p_parsed.pop(0)
-        if type(e) is list:
+        if isinstance(e, (list,tuple)):
             res = evaluate_parameter(e, df, lp)
         elif e.startswith("|"):
             if e.endswith(":"):
@@ -128,7 +139,8 @@ def evaluate_parameter(p_parsed, df=None, lp=[]):
                 args = []
                 args_list = p_parsed.pop(0)
                 for arg in args_list:
-                    args.append(evaluate_parameter(arg, df, lp))
+                    a = evaluate_parameter(arg, df, lp)
+                    args.append(a)
             else:
                 filter_name = e[1:]
                 args = []
@@ -136,13 +148,25 @@ def evaluate_parameter(p_parsed, df=None, lp=[]):
             res = des_filter(res, *args)
         else:
             if e.startswith("{{") and e.endswith("}}"):
-                res = df[e[2:-2]][0]
+                res = df[e[2:-2]]
             elif e.startswith("{") and e.endswith("}"):
                 res = lp[int(e[1:-1])]
+            elif ((e.startswith("\"") and e.endswith("\"")) or
+                (e.startswith("'") and e.endswith("'"))):
+                try:
+                    res = unicode(e[1: -1], "utf8")
+                except:
+                    res = e[1: -1]
             else:
-                res = e
-    if type(res) is str:
+                try:
+                    e = e.decode("utf8")
+                except:
+                    e = str(e)
+                res = dc.Decimal(e)
+    try:
         res = unicode(res, "utf8")
+    except TypeError:
+        pass
     return res
 
     
@@ -150,10 +174,10 @@ def propagate_local_parameters(obj, df, lpars):
     if obj.type == "choice":
         try:
             lpars = [evaluate_parameter(parse_parameter(p), df, lpars) 
-                     for p in lpars]
+                     for p in obj.lparameters]
         except:
-            logging.warning(u"choice '{0}': problema determinazione 'lparameters'"
-                            "".format(self))
+            logging.warning(u"choice '{0}': problema determinazione "
+                            "'lparameters'".format(obj))
             lpars = []
         obj.lparameters = lpars
     else:
@@ -164,6 +188,20 @@ def propagate_local_parameters(obj, df, lpars):
     except:
         pass
         
+
+def out_to_string(out):
+    if not isinstance(out, (list, tuple)):
+        return unicode(out, "utf8") if not isinstance(out, unicode) else out
+    e_last = out[-1]
+    e_lst = out[:-1]
+    out_str = u", ".join([unicode(str(e), "utf8") 
+                        if not isinstance(e, unicode) else e for e in e_lst])
+    if out_str and len(out) > 1:
+        out_str += u" e "
+    out_str += u"{0}".format(unicode(str(e_last), "utf8") 
+                             if not isinstance(e_last, unicode) else e_last)
+    return out_str
+
         
 class Token(object):
     def __init__(self, text, children):
@@ -173,29 +211,19 @@ class Token(object):
         self.children = children
         self.type = "token"
     
-    def to_string(self):#, df):
+    def substitute(self):
         args = []
         for child in self.children:
-            if not child:    
-                args.append("")
-            else:    
-                args.append(child.to_string())
+#             if not child:    
+#                 args.append(u"")
+#             else:
+            try:
+                args.append(out_to_string(child.substitute()))
+            except:
+                logging.warning(u"{0}".format(trb.format_exc()))
+                logging.warning(u"child: {0}, type: {1}: problema "
+                                "sostituzione".format(child, child.type))
         try:
-            args_ = []
-            for arg in args:
-                if  arg and type(arg) is list or type(arg) is tuple:
-                    last = arg[-1]
-                    arg_lst = arg[:-1]
-                    arg_str = u", ".join([unicode(str(a), "utf8") 
-                                          if not type(a) is unicode else a 
-                                          for a in arg_lst])
-                    if arg_str and len(arg) > 1:
-                        arg_str += u" e "
-                    arg_str += u"{0}".format(unicode(str(last), "utf8") 
-                                             if not type(last) is unicode 
-                                             else last)
-                    arg = arg_str
-                args_.append(arg)
             return self.text.format(*args)
         except:
             # FIXME: raise a warning
@@ -227,8 +255,8 @@ class Rule(object):
         try:
             test_values = evaluate_test_values(self.values, df, lparameters)
         except:
-            logging.warning(u"rule '{0}': problema determinazione 'test_values'"
-                            "".format(self))
+            logging.warning(u"rule '{0}': problema determinazione "
+                            "'test_values'".format(self))
             test_values = u""
         if len(test_values) == 2:
             value_min = test_values[0][0]
@@ -246,9 +274,10 @@ class Rule(object):
                 value_max = str(value_max)
                 parameter = str(parameter)
             limits = (value_min_limit, value_max_limit)
-            logging.debug(u"rule '{0}': parametro='{1}' / vmin='{2}' / vmax='{3}' / "
-                          "criteri='{4}".format(self, parameter, value_min, 
-                                                value_max, limits))
+            logging.debug(u"rule '{0}': parametro='{1}' / vmin='{2}' / "
+                          "vmax='{3}' / criteri='{4}"
+                          "".format(self, parameter, value_min, value_max, 
+                                    limits))
             if limits == (0,0) and value_min < parameter < value_max:
                 logging.debug(u"rule '{0}': verificata".format(self))
                 return True
@@ -272,7 +301,8 @@ class Rule(object):
                 value = str(value)
                 parameter = str(parameter)    
             limit = test_values[0][1]
-            logging.debug(u"rule '{0}': parametro='{1}' / valore='{2}' / criterio='{3}"
+            logging.debug(u"rule '{0}': parametro='{1}' / valore='{2}' / "
+                          "criterio='{3}"
                           "".format(self, parameter, value, limit))
             if limit == 1 and value == parameter:
                 logging.debug(u"rule '{0}': verificata".format(self))
@@ -303,8 +333,8 @@ class Option(object):
         logging.debug(u"option '{0}': verificata".format(self))
         return True
 
-    def to_string(self):
-        return self.token.to_string()
+    def substitute(self):
+        return self.token.substitute()
 
 
 class Choice(object):
@@ -315,14 +345,14 @@ class Choice(object):
         self.dataframe = df
         self.type = "choice"
         
-    def to_string(self):
+    def substitute(self):
         logging.debug(u"choice '{0}': inizio sostituzione".format(self))
         if self.lparameters:
             propagate_local_parameters(self, self.dataframe, self.lparameters)
         res = ""
         for opt in self.options:
             if opt.check(self.dataframe):
-                res = opt.to_string()
+                res = opt.substitute()
                 break
         logging.debug(u"choice '{0}': fine sostituzione".format(self))
         return res
@@ -335,12 +365,13 @@ class Placeholder(object):
         self.dataframe = df
         self.type = "placeholder"
         
-    def to_string(self):
+    def substitute(self):
         logging.debug(u"placeholder '{0}': inizio sostituzione".format(self))
         lparameters = self.lparameters
         parameter_parsed = parse_parameter(self.parameter)
         try:
-            arg = evaluate_parameter(parameter_parsed, self.dataframe, lparameters)
+            arg = evaluate_parameter(parameter_parsed, self.dataframe, 
+                                     lparameters)
         except:
             logging.warning(u"placeholder '{0}': problema determinazione 'arg'"
                             "".format(self))            
@@ -366,7 +397,7 @@ class FormattedText(object):
     TAGS = ("bold", "italic", "underline", "sub", "sup", "newline", "title", 
             "uppercase", "plain")
     
-    def __init__(self, tag="plain", text="", children=[], parent=None):
+    def __init__(self, tag="plain", text="", children=[]):
         if not tag in self.TAGS:
             # FIXME: raise a warning
             tag = "plain"
@@ -405,38 +436,23 @@ class FormattedText(object):
     def set_plain(self, string_in):
         return string_in
     
-    def to_string(self):
+    def substitute(self):
         logging.debug(u"formattedtext '{0}': inizio sostituzione".format(self))
+        set_format = getattr(self, "set_{0}".format(self.tag))
         args = []
-        
         for child in self.children:
             if not child:    
-                args.append("")
-            else:
-                args.append(child.to_string())
-        set_format = getattr(self, "set_{0}".format(self.tag))
+                args.append(u"")
+            else:    
+                args.append(out_to_string(child.substitute()))
         try:
-            args_ = []
-            for arg in args:
-                if  arg and type(arg) is list or type(arg) is tuple:
-                    last = arg[-1]
-                    arg_lst = arg[:-1]
-                    arg_str = u", ".join([unicode(str(a), "utf8") 
-                                          if not type(a) is unicode else a 
-                                          for a in arg_lst])
-                    if arg_str and len(arg) > 1:
-                        arg_str += u" e "
-                    arg_str += u"{0}".format(unicode(str(last), "utf8") 
-                                             if not type(last) is unicode 
-                                             else last)
-                    arg = arg_str
-                args_.append(arg)
             res = set_format(self.text.format(*args))
-            logging.debug(u"formattedtext '{0}': fine sostituzione".format(self))
+            logging.debug(u"formattedtext '{0}': fine sostituzione"
+                          "".format(self))
         except:
             # FIXME: raise a warning
             logging.debug(u"{0}".format(trb.format_exc()))
             res = set_format(self.text)
-            logging.debug(u"formattedtext '{0}': fine sostituzione".format(self))
+            logging.debug(u"formattedtext '{0}': fine sostituzione"
+                          "".format(self))
         return res
-

@@ -12,7 +12,8 @@ class Plot(BasePlotter):
         yvals = self._graph._df[col['key']]
         if col.get('ax') == 'dx':
             ax = ax.twinx()
-        ret = ax.plot(self._graph._lax, yvals, color=col.get('color', None), zorder=10)
+        ret = ax.plot(self._graph._lax, yvals, color=col.get('color', None), 
+                      zorder=10)
         self._logger.debug('ret = %s', [l.get_zorder() for l in ret])
         self._graph._set_x_ax(ax)
         return ret
@@ -43,7 +44,8 @@ class AbstractBar(BasePlotter):
                 bottom += self._graph._df[key]
 
         # compute margins
-        width = (self._graph._lax.max() - self._graph._lax.min()) / len(self._graph._lax)
+        width = ((self._graph._lax.max() - self._graph._lax.min()) / 
+                 len(self._graph._lax))
         margin = (0.2 * width)
         dim = width - margin
         border = dim + margin
@@ -80,8 +82,11 @@ class Barh(AbstractBar):
         yvals = self._graph._df[col['key']]
         if col.get('ax') == 'dx':
             ax = ax.twinx()
-        ret = ax.barh(self._graph._lax, self._graph._df[col['key']],
-                       color=kwargs.get('color', None), align=kwargs.get('align', None),
-                       left=kwargs.get('bottom', None), height=kwargs.get('dim', None),
-                       zorder=1)
+        ret = ax.barh(self._graph._lax, 
+                      self._graph._df[col['key']], 
+                      color=kwargs.get('color', None), 
+                      align=kwargs.get('align', None),
+                      left=kwargs.get('bottom', None), 
+                      height=kwargs.get('dim', None),
+                      zorder=1)
         return ret

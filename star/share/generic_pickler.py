@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-##############################################################################
-#    
+###############################################################################
+#
 #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
 #    Author: Marco Pattaro (<marco.pattaro@servabit.it>)
 #
@@ -17,7 +17,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-##############################################################################
+###############################################################################
 
 try:
     import cPickle as pickle

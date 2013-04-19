@@ -433,7 +433,8 @@ class Stark(GenericPickler):
         if dim is None:
             dim = self._dim
         if var is None:
-            var = (self._num + self._imm + self._elab + self._rate + self._curr)
+            var = (self._num + self._imm + self._elab + self._rate +
+                   self._curr)
         # var and dim may be single column's name
         if isinstance(var, str) or isinstance(var, unicode):
             var = [var]
@@ -679,8 +680,8 @@ class Stark(GenericPickler):
 
         '''
         if not set(other.dim).issubset(self.dim):
-            raise ValueError("other's dimensions must be subset of the current "
-                             "Stark dimensions")
+            raise ValueError("other's dimensions must be subset of the "
+                             "current Stark dimensions")
         # use multi-index to perform a join
         self._df.set_index(self.dim, inplace=True)
         other._df.set_index(other.dim, inplace=True)
