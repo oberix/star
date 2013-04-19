@@ -123,7 +123,7 @@ def sre(src_path, config=None, **kwargs):
         templ = template.TexSreTemplate(os.path.join(templ_path, templ_file), 
                                         config=config)
         report, fd_list = templ.report()
-        if not (isinstance(report, (str, unicode)):
+        if not isinstance(report, (str, unicode)):
             # Error, return errno
             return report
         return _compile_tex(templ_file.replace('.tex', '_out.tex'), templ_file,

@@ -10,7 +10,7 @@ Package: python-star
 Section: python
 Architecture: all
 Priority: optional
-Depends: ${misc:Depends}, python (>= 2.6), python-pandas (>= 0.7.3)
+Depends: ${misc:Depends}, python (>= 2.6), python-pandas (>= 0.8.0)
 Suggests: texlive-latex-recommended
 Description: Servabit daTa Analisys and Reporting
  Tools for data analisys by Servabit

@@ -1,12 +1,4 @@
 #!/usr/bin/make -f
-pn=$(shell dpkg-parsechangelog | grep ^Source | cut -d' ' -f2)
-ov=$(shell dpkg-parsechangelog | grep ^Version | cut -d' ' -f2 | cut -d'-' -f1)
-
-get-orig-source:
-	git archive --prefix=$(pn)-$(ov)/ HEAD | tar -xf -
-	rm -rf $(pn)-$(ov)/debian
-	tar -cf - $(pn)-$(ov) | gzip -9c > ../$(pn)_$(ov).orig.tar.gz
-	rm -rf $(pn)-$(ov)
 
 %:
-	dh $@ --with python2
+	dh $@ --buildsystem=python_distutils
