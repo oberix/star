@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
 
 import os
@@ -58,9 +59,9 @@ def _compile_tex(file_, template, dest, fds):
         "--pdf",
         "--batch",
         "--clean",
-        "-o", os.path.join(dest, pdf_out), # output file
-        "-I", os.path.dirname(template), # input path (where other files resides)
-        file_, # main input file
+        "-o", os.path.join(dest, pdf_out),  # output file
+        "-I", os.path.dirname(template),  # input path (where other files resides)
+        file_,  # main input file
         ]
     _logger.info("Compiling into PDF.")
     _logger.debug(" ".join(command))
@@ -78,7 +79,8 @@ def _compile_tex(file_, template, dest, fds):
         fd.close()
     if ret > 0:
         _logger.warning(
-            "texi2pdf exited with bad exit status, you can inspect what went wrong in %s",
+            "texi2pdf exited with bad exit status, you can inspect what went "
+            "wrong in %s",
             os.path.join(dest, file_.replace('.tex', '.log')))
         return ret
     _logger.info("Done.")
@@ -118,9 +120,10 @@ def sre(src_path, config=None, **kwargs):
 
     # Identify type just from filename suffix
     if templ_file.endswith('.tex'):
-        templ = template.TexSreTemplate(os.path.join(templ_path, templ_file), config=config)
+        templ = template.TexSreTemplate(os.path.join(templ_path, templ_file), 
+                                        config=config)
         report, fd_list = templ.report()
-        if not (isinstance(report, str) or isinstance(report, unicode)):
+        if not (isinstance(report, (str, unicode)):
             # Error, return errno
             return report
         return _compile_tex(templ_file.replace('.tex', '_out.tex'), templ_file,
@@ -137,3 +140,13 @@ def sre(src_path, config=None, **kwargs):
         _logger.error("Could not find a valid template, exiting.")
         return 1
     return 0
+    
+if __name__ == "__main__":
+    ''' Procedure when executing file. A directory path is needed as first
+    argument.
+    '''
+    if len(sys.argv) < 2:
+        logging.error("Specify a path containing report files")
+        sys.exit(1)
+    sys.exit(sre(sys.argv.pop(1)))
+
