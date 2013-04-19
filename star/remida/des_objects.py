@@ -42,25 +42,25 @@ def parse_parameter(string_in):
     arg = (par | 
            pp.QuotedString("'", unquoteResults=False) | 
            pp.QuotedString('"', unquoteResults=False) | 
-           pp.Word(pp.nums))
+           pp.Word("-" + pp.nums, pp.nums))
     # parsing: argomenti
     args = arg + pp.ZeroOrMore(pp.Suppress(",") + arg)
     # parsing: filtro senza argomenti
-    filter_w = pp.Word("|", pp.alphanums + "_")
+    filter_wo = pp.Word("|", pp.alphanums + "_")
     # parsing: filtro con argomenti
-    filter_wo = pp.Combine(pp.Word("|", pp.alphanums + "_") + 
+    filter_w = pp.Combine(pp.Word("|", pp.alphanums + "_") + 
                                    pp.Literal(":")) + pp.Group(args)
     # parsing: filtri in generale (con e senza argomenti)                               
-    filters = (filter_w ^filter_wo).setParseAction()
+    filters = (filter_wo ^filter_w)#.setParseAction()
     
     # parsing: variabili da df
     s_par = (pp.Group(pp.Suppress("{{") + 
                       pp.Word(pp.alphas, pp.alphanums + "_ ")\
-                        .setParseAction(lambda token: "{{" + token[0] + "}}") + 
+                        .setParseAction(lambda s,l,t: "{{" + t[0] + "}}") + 
                       pp.ZeroOrMore(filters) + pp.Suppress("}}")))
     # parsing: variabili "locali"
     l_par = (pp.Group(pp.Suppress("{") + pp.Word(pp.nums)\
-                        .setParseAction(lambda token: "{" + token[0] + "}") + 
+                        .setParseAction(lambda s,l,t: "{" + t[0] + "}") + 
                       pp.ZeroOrMore(filters) + 
                       pp.Suppress("}")))
                      
@@ -170,23 +170,23 @@ def evaluate_parameter(p_parsed, df=None, lp=[]):
     return res
 
     
-def propagate_local_parameters(obj, df, lpars):
+def propagate_local_parameters(obj, df, lparameters):
     if obj.type == "choice":
         try:
-            lpars = [evaluate_parameter(parse_parameter(p), df, lpars) 
-                     for p in obj.lparameters]
+            lparameters = [evaluate_parameter(lp, df, lparameters) 
+                           for lp in obj.lparameters]
         except:
             logging.warning(u"choice '{0}': problema determinazione "
                             "'lparameters'".format(obj))
-            lpars = []
-        obj.lparameters = lpars
+            lparameters = []
+        obj.lparameters = lparameters
     else:
-        obj.lparameters = lpars
-    try:
-        for child in obj.children:
+        obj.lparameters = lparameters     
+    for child in obj.children:
+        try:
             propagate_local_parameters(child, df, obj.lparameters)
-    except:
-        pass
+        except:
+            pass
         
 
 def out_to_string(out):
@@ -214,9 +214,6 @@ class Token(object):
     def substitute(self):
         args = []
         for child in self.children:
-#             if not child:    
-#                 args.append(u"")
-#             else:
             try:
                 args.append(out_to_string(child.substitute()))
             except:
@@ -341,14 +338,12 @@ class Choice(object):
     def __init__(self, options, df, lparameters=[]):
         self.options = options
         self.children = [o for o in self.options if o]
-        self.lparameters = lparameters
+        self.lparameters = [parse_parameter(lp) for lp in lparameters]
         self.dataframe = df
         self.type = "choice"
         
     def substitute(self):
         logging.debug(u"choice '{0}': inizio sostituzione".format(self))
-        if self.lparameters:
-            propagate_local_parameters(self, self.dataframe, self.lparameters)
         res = ""
         for opt in self.options:
             if opt.check(self.dataframe):
@@ -393,20 +388,21 @@ class Placeholder(object):
         return res
 
 
-class FormattedText(object):
+class FormattedText(Token):
     TAGS = ("bold", "italic", "underline", "sub", "sup", "newline", "title", 
             "uppercase", "plain")
     
     def __init__(self, tag="plain", text="", children=[]):
+        Token.__init__(self, text, children)
         if not tag in self.TAGS:
             # FIXME: raise a warning
             tag = "plain"
         self.tag = tag
-        if not type(text) is unicode:
-            text = unicode(text, "utf8")
-        self.text = text
-        self.children = children
-        self.lparameters = []
+#         if not type(text) is unicode:
+#             text = unicode(text, "utf8")
+#         self.text = text
+#         self.children = children
+#         self.lparameters = []
         self.type = "formatted_text"
         
     def set_bold(self, string_in):
@@ -441,10 +437,12 @@ class FormattedText(object):
         set_format = getattr(self, "set_{0}".format(self.tag))
         args = []
         for child in self.children:
-            if not child:    
-                args.append(u"")
-            else:    
+            try:
                 args.append(out_to_string(child.substitute()))
+            except:
+                logging.warning(u"{0}".format(trb.format_exc()))
+                logging.warning(u"child: {0}, type: {1}: problema "
+                                "sostituzione".format(child, child.type))
         try:
             res = set_format(self.text.format(*args))
             logging.debug(u"formattedtext '{0}': fine sostituzione"

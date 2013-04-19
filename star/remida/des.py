@@ -25,9 +25,9 @@ import sys
 import logging
 import traceback as trb
 import des_engines as de
+import des_objects as do
 import utils as ut
 import decimal as dc
-logging.basicConfig(level=logging.DEBUG)
 
 BASEPATH = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), 
                                         os.path.pardir))
@@ -53,8 +53,6 @@ def convert_data(data):
 
 def convert_df(df):
     try:
-        print(convert_data(dict((k, v.values()[0]) 
-                                for k, v in df.to_dict().iteritems())))
         return convert_data(dict((k, v.values()[0]) 
                                  for k, v in df.to_dict().iteritems()))
     except TypeError:
@@ -66,6 +64,7 @@ class Des(object):
     classe per l'oggetto testo automatico
     '''
     def __init__(self, data):
+        logging.basicConfig(level=logging.INFO)
         try:
             engine_name = data.engine.lower()
         except:
@@ -91,7 +90,8 @@ class Des(object):
         engine_class = getattr(de, "{0}_engine".format(engine_name))
         self.engine = engine_class(main_string, portfolio_string, self.df)
         self.tree = self.engine.get_tree()
-    
+        do.propagate_local_parameters(self.tree, self.df, [])
+        
     def out(self):
         raise NotImplementedError
     
