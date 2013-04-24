@@ -1,6 +1,20 @@
+# -*- coding: utf-8 -*-
+
 import os
+import sys
 import numpy as np
 import pandas
+
+# star_path = path della directroy principale
+star_path = os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                         os.path.pardir,
+                                         os.path.pardir))
+if star_path in sys.path:
+    # rimuoviamo tutte le occorrenze di star_path
+    sys.path = [p for p in sys.path if p != star_path]
+# inseriamo star_path in seconda posizione, la prima dovrebbe essere riservata
+# alla cartella corrente in cui è poisizionato il file
+sys.path.insert(1, star_path)
 from star.share.bag import Bag
 from star.remida.remida import sre
 
@@ -19,15 +33,15 @@ TEMPLATE = '''
     \\SRE{bar}
   \\end{subfigure}
   ~
-  \\begin{subfigure}[cm]{0.5\\linewidth}    
+  \\begin{subfigure}[cm]{0.5\\linewidth}
       \\SRE{barh}
   \\end{subfigure}
   \\\\
-  \\begin{subfigure}[cm]{0.5\\linewidth}    
+  \\begin{subfigure}[cm]{0.5\\linewidth}
       \\SRE{plot}
   \\end{subfigure}
-  ~ 
-  \\begin{subfigure}[cm]{0.5\\linewidth}    
+  ~
+  \\begin{subfigure}[cm]{0.5\\linewidth}
       \\SRE{scatter}
   \\end{subfigure}
 \\end{figure}
@@ -41,7 +55,7 @@ if __name__ == '__main__':
               'label': 'AAA'},
         'b': {'type': 'bar',
               'label': 'BBB',
-              'color': 'b',},
+              'color': 'b'},
         'c': {'type': 'bar',
               'ax': 'sx',
               'label': "CCC",
@@ -75,14 +89,14 @@ if __name__ == '__main__':
         'c': {'type': 'plot',
               'ax': 'dx',
               'label': "CCC",
-              'color': 'g',}
+              'color': 'g'}
         }
 
     df = pandas.DataFrame({
         'a': np.arange(0, 11, 1),
         'b': np.arange(5, 16, 1),
         'c': np.arange(0, 5.5, 0.5),
-        'd': ['a','b','c', 'd', 'e', 'f', 'g', 'h', 'i','l', 'm']
+        'd': ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'l', 'm']
     })
 
     lm_sc = {
@@ -131,10 +145,5 @@ if __name__ == '__main__':
         fd.write(TEMPLATE)
     finally:
         fd.close()
-    # fd = open(os.path.join(base, 'config.cfg'), 'w')
-    # try:
-    #     fd.write('[paths]\n')
-    # finally:
-    #     fd.close()
-
+    
     sre(base)

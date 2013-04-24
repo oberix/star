@@ -18,7 +18,4 @@
 #
 ##############################################################################
 
-from star.share.stark import * 
-from star.share.bag import *
-from star.remida.table import *
-from star.remida.graph import *
+__version__ = "stable"

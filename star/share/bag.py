@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import os
+
 import logging
 import pandas
 import copy
@@ -15,6 +15,7 @@ STYPES = (
     'graph',
     'desc'
 )
+
 
 class Bag(GenericPickler):
     ''' This class associates raw data with printing meta-information.
@@ -56,7 +57,7 @@ class Bag(GenericPickler):
                'CRT_MVL': [7, '0.5r|', ' @v2|', ' Avere|'],
                }
 
-    '''   
+    '''
     
     def __init__(self, df, lm=None, cod=None, stype='tab',
                  title=None, footnote=None, 
@@ -154,18 +155,25 @@ class Bag(GenericPickler):
             class K(object):
                 def __init__(self, obj, *args):
                     self.obj = obj
+                    
                 def __lt__(self, other):
                     return cmp_or(self.obj, other.obj) < 0
+                
                 def __gt__(self, other):
                     return cmp_or(self.obj, other.obj) > 0
+                
                 def __eq__(self, other):
                     return cmp_or(self.obj, other.obj) == 0
+                
                 def __le__(self, other):
                     return cmp_or(self.obj, other.obj) <= 0
+                
                 def __ge__(self, other):
                     return cmp_or(self.obj, other.obj) >= 0
+                
                 def __ne__(self, other):
                     return cmp_or(self.obj, other.obj) != 0
+            
             return K
         
         def cmp_modifiers(x, y):
@@ -183,7 +191,7 @@ class Bag(GenericPickler):
                     logging.warning(
                         "'_OR_' column, check modifiers for row {0}\
                          e row {1}".format(x[0], y[0]))
-                    return 0                    
+                    return 0
         delta = 0
         blank_line = pandas.DataFrame([[""]*len(self.df.columns)],
                                       columns=self.df.columns)
@@ -199,8 +207,8 @@ class Bag(GenericPickler):
         for line, modifier in modlist:
             line += delta
             if line > len(self.df):
-                line = len(self.df)         
-            if modifier in ("@b", "@i"):       
+                line = len(self.df)
+            if modifier in ("@b", "@i"):
                 self.df = pandas.concat([self.df[:line], 
                                          blank_line, 
                                          self.df[line:]])

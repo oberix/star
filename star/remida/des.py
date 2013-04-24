@@ -20,41 +20,32 @@
 #
 ###############################################################################
 
-import os
-import sys
 import logging
+_logger = logging.getLogger(__name__)
+_logger.setLevel(logging.ERROR)
 import traceback as trb
 import des_engines as de
 import des_objects as do
 import utils as ut
-import decimal as dc
-
-BASEPATH = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), 
-                                        os.path.pardir))
-
-sys.path.append(BASEPATH)
-sys.path = list(set(sys.path))
 
 
 def convert_data(data):
     if isinstance(data, str):
         return unicode(data, "utf8")
+    elif isinstance(data, unicode):
+        return data
     elif isinstance(data, dict):
         return dict(convert_data((k, v)) for k, v in data.iteritems())
     elif isinstance(data, (list, tuple)):
         return type(data)([convert_data(e) for e in data])
     else:
-        try:
-            data = dc.Decimal(str(data))
-        except TypeError:
-            pass
         return data
-                           
+
 
 def convert_df(df):
     try:
-        return convert_data(dict((k, v.values()[0]) 
-                                 for k, v in df.to_dict().iteritems()))
+        return convert_data(dict((k, v.values()[0]) for k, v in
+                                 df.to_dict().iteritems()))
     except TypeError:
         return df
 
@@ -63,29 +54,29 @@ class Des(object):
     '''
     classe per l'oggetto testo automatico
     '''
-    def __init__(self, data):
-        logging.basicConfig(level=logging.INFO)
+    def __init__(self, data, **kwargs):
+        # aggiustiamo il livello dei messaggi di debug per des e tutti i suoi
+        # sotto moduli
+        do.set_debug_level(kwargs.get("debug", "ERROR"))
+        
         try:
             engine_name = data.engine.lower()
         except:
-            # FIXME: raise a warning
-            logging.debug(u"{0}".format(trb.format_exc()))
+            _logger.debug(u"{0}".format(trb.format_exc()))
             engine_name = "xml"
         
         main_string = unicode(data.main, "utf8")
         try:
             portfolio_string = unicode(data.portfolio, "utf8")
         except:
-            # FIXME: raise a warning
-            logging.debug(u"{0}".format(trb.format_exc()))
+            _logger.debug(u"{0}".format(trb.format_exc()))
             portfolio_string = ""
         
         try:
             self.df = convert_df(data.df.rename(columns=data.lm))
         except:
-            # FIXME: raise a warning
-            logging.debug(u"{0}".format(trb.format_exc()))
-            self.df = None    
+            _logger.warning(u"{0}".format(trb.format_exc()))
+            self.df = None
         
         engine_class = getattr(de, "{0}_engine".format(engine_name))
         self.engine = engine_class(main_string, portfolio_string, self.df)
@@ -97,8 +88,8 @@ class Des(object):
     
 
 class TexDes(Des):
-    def __init__(self, data):
-        Des.__init__(self, data)
+    def __init__(self, data, **kwargs):
+        Des.__init__(self, data, **kwargs)
         
     def out(self):
         res = self.tree.substitute()
@@ -113,15 +104,15 @@ class TexDes(Des):
     
 
 class HTMLDes(Des):
-    def __init__(self, data):
-        Des.__init__(self, data)           
+    def __init__(self, data, **kwargs):
+        Des.__init__(self, data, **kwargs)
     
     def out(self):
         res = []
         for paragraph in self.paragraphs:
             paragraph_id = paragraph["id"]
             paragraph_text = self.elab_text(paragraph["value"])
-            res.append(unicode("<div id='{0}' class='paragraph'>", 
+            res.append(unicode("<div id='{0}' class='paragraph'>",
                                "utf8").format(paragraph_id))
             res.append(paragraph_text)
             res.append(unicode("</div>", "utf8"))

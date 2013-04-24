@@ -1,7 +1,20 @@
 # -*- coding: utf-8 -*-
+
 import os
+import sys
 import numpy as np
 import pandas
+
+# star_path = path della directroy principale
+star_path = os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                         os.path.pardir,
+                                         os.path.pardir))
+if star_path in sys.path:
+    # rimuoviamo tutte le occorrenze di star_path
+    sys.path = [p for p in sys.path if p != star_path]
+# inseriamo star_path in seconda posizione, la prima dovrebbe essere riservata
+# alla cartella corrente in cui è poisizionato il file
+sys.path.insert(1, star_path)
 from star.share.bag import Bag
 from star.remida.remida import sre
 
@@ -54,4 +67,3 @@ if __name__ == '__main__':
     finally:
         fd.close()
     sre(base)
-

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 ##############################################################################
-#    
+#
 #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
 #
 #    This program is free software: you can redistribute it and/or modify
@@ -14,7 +14,7 @@
 #    GNU Affero General Public License for more details.
 #
 #    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
 import os
@@ -30,6 +30,7 @@ hconsole.setFormatter(fmt)
 logger = logging.getLogger("parallel_jobs")
 logger.setLevel(logging.INFO)
 logger.addHandler(hconsole)
+
 
 def do_jobs_efficiently(processes=None):
     if processes is None:

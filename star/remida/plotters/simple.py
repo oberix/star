@@ -1,22 +1,24 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from star.remida.plotters.base_plotter import BasePlotter
+from base_plotter import BasePlotter
+
 
 class Plot(BasePlotter):
-    ''' The simpler of Simples :) 
+    ''' The simpler of Simples :)
     Implement a line plot.
-    ''' 
+    '''
 
     def plot(self, ax, col):
         yvals = self._graph._df[col['key']]
         if col.get('ax') == 'dx':
             ax = ax.twinx()
-        ret = ax.plot(self._graph._lax, yvals, color=col.get('color', None), 
+        ret = ax.plot(self._graph._lax, yvals, color=col.get('color', None),
                       zorder=10)
         self._logger.debug('ret = %s', [l.get_zorder() for l in ret])
         self._graph._set_x_ax(ax)
         return ret
+
 
 class AbstractBar(BasePlotter):
     ''' Abstract class implementing those procedures that are commont both to
@@ -39,12 +41,12 @@ class AbstractBar(BasePlotter):
         bottom = None
         # set cumulative data start
         if col.get('cumulate'):
-            bottom = np.array([0.0]*len(self._graph._lax))
+            bottom = np.array([0.0] * len(self._graph._lax))
             for key in col['cumulate']:
                 bottom += self._graph._df[key]
 
         # compute margins
-        width = ((self._graph._lax.max() - self._graph._lax.min()) / 
+        width = ((self._graph._lax.max() - self._graph._lax.min()) /
                  len(self._graph._lax))
         margin = (0.2 * width)
         dim = width - margin
@@ -55,9 +57,10 @@ class AbstractBar(BasePlotter):
                          bottom=bottom, dim=dim, border=border)
         return ret
 
+
 class Bar(AbstractBar):
     ''' Simple Bar graph, it support cumulative data.
-    ''' 
+    '''
 
     def _plot(self, ax, col, **kwargs):
         yvals = self._graph._df[col['key']]
@@ -74,19 +77,20 @@ class Bar(AbstractBar):
         self._graph._set_x_ax(ax)
         return ret
 
+
 class Barh(AbstractBar):
     ''' Horizontal Bar graph, it support cumulative data.
-    ''' 
+    '''
 
     def _plot(self, ax, col, **kwargs):
         yvals = self._graph._df[col['key']]
         if col.get('ax') == 'dx':
             ax = ax.twinx()
-        ret = ax.barh(self._graph._lax, 
-                      self._graph._df[col['key']], 
-                      color=kwargs.get('color', None), 
+        ret = ax.barh(self._graph._lax,
+                      self._graph._df[col['key']],
+                      color=kwargs.get('color', None),
                       align=kwargs.get('align', None),
-                      left=kwargs.get('bottom', None), 
+                      left=kwargs.get('bottom', None),
                       height=kwargs.get('dim', None),
                       zorder=1)
         return ret

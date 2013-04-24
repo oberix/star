@@ -26,8 +26,9 @@ HTML_ESCAPE = [
     (re.compile("€"), "&euro;"),
     ]
 
+
 def unique_list(list_):
-    """ Remove all duplicate elements from a list inplace, keeping the order
+    """ Remove all duplicate elements from a list, keeping the order
     (unlike set()).
 
     @ param: list
@@ -39,6 +40,7 @@ def unique_list(list_):
         while i < (enum - 1):
             list_.remove(elem)
             i += 1
+
 
 def escape(string, patterns=None):
     ''' Escape string to work with LaTeX.

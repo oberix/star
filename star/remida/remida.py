@@ -6,20 +6,25 @@ import sys
 import subprocess
 import logging
 
-try:
-    from star.share.config import Config
-    import star.remida.template as template
-except ImportError:
-    sys.path.insert(0, os.path.abspath(os.path.join(
-        os.path.dirname(__file__),
-        os.path.pardir, os.path.pardir)))
-    from star.share.config import Config
-    import star.remida.template as template
-                    
+import template
+
+# star_path = path della directroy principale
+star_path = os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                         os.path.pardir,
+                                         os.path.pardir))
+if star_path in sys.path:
+    # rimuoviamo tutte le occorrenze di star_path
+    sys.path = [p for p in sys.path if p != star_path]
+# inseriamo star_path in seconda posizione, la prima dovrebbe essere riservata
+# alla cartella corrente in cui è poisizionato il file
+sys.path.insert(1, star_path)
+from star.share.config import Config
+
 
 __all__ = ['sre']
 
 _logger = None
+
 
 def _load_config(src_path, confpath=None):
     ''' Get configuration file.
@@ -38,6 +43,7 @@ def _load_config(src_path, confpath=None):
     config.parse()
     logging.debug(config)
     return config.options
+
 
 def _compile_tex(file_, template, dest, fds):
     ''' Compile LaTeX, calls texi2dvi via system(3)
@@ -86,6 +92,7 @@ def _compile_tex(file_, template, dest, fds):
     _logger.info("Done.")
     return ret
 
+
 def sre(src_path, config=None, **kwargs):
     ''' Main procedure to generate a report.
     Besically the procedure is splitted into these steps:
@@ -117,17 +124,17 @@ def sre(src_path, config=None, **kwargs):
         elif os.path.isfile(os.path.join(src_path, 'main.html')):
             templ_file = os.path.join(src_path, 'main.html')
         templ_path = src_path
-
+    
     # Identify type just from filename suffix
     if templ_file.endswith('.tex'):
-        templ = template.TexSreTemplate(os.path.join(templ_path, templ_file), 
+        templ = template.TexSreTemplate(os.path.join(templ_path, templ_file),
                                         config=config)
         report, fd_list = templ.report()
         if not isinstance(report, (str, unicode)):
             # Error, return errno
             return report
         return _compile_tex(templ_file.replace('.tex', '_out.tex'), templ_file,
-                            os.path.dirname(templ_file),fd_list)
+                            os.path.dirname(templ_file), fd_list)
     elif templ_file.endswith('.html'):
         for file_ in os.listdir(templ_path):
             if file_.endswith('.html'):
@@ -149,4 +156,3 @@ if __name__ == "__main__":
         logging.error("Specify a path containing report files")
         sys.exit(1)
     sys.exit(sre(sys.argv.pop(1)))
-

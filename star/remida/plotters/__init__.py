@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 ##############################################################################
-#    
+#
 #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
 #
 #    This program is free software: you can redistribute it and/or modify
@@ -14,12 +14,12 @@
 #    GNU Affero General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
 
 # Concrete Plotters
-from star.remida.plotters.scatter import Scatter as scatter
-from star.remida.plotters.simple import Plot as plot
-from star.remida.plotters.simple import Bar as bar
-from star.remida.plotters.simple import Barh as barh
+from scatter import Scatter as scatter
+from simple import Plot as plot
+from simple import Bar as bar
+from simple import Barh as barh

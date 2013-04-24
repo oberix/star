@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 ##############################################################################
-#    
+#
 #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
 #    Author: Marco Pattaro (<marco.pattaro@servabit.it>)
 #
@@ -15,7 +15,7 @@
 #    GNU Affero General Public License for more details.
 #
 #    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.     
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
 
@@ -23,7 +23,6 @@ import ConfigParser
 from optparse import OptionParser
 import logging
 import os
-import sys
 
 # Dirr path to configuration file(s)
 # CONFIG_PATH = os.path.abspath(
@@ -44,6 +43,7 @@ LOGLEVELS = {
 DEF_CONFIG = 'config.cfg'
 
 __all__ = ['Config']
+
 
 class Config(object):
     """ Generic class to handle configuration parameters, it provides common
@@ -72,7 +72,7 @@ class Config(object):
 
     def __repr__(self):
         """ Print options dictionary instead of object. """
-        return "options = %s"%(repr(self.options))
+        return "options = %s" % (repr(self.options))
 
     # non-public methods
 

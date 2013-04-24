@@ -6,7 +6,7 @@ class BasePlotter(object):
     ''' Generic class defining the interface of a Plotter.
 
     A Plotter is an abject capable of drawing a graph in an axis system inside
-    a figure's subplot. 
+    a figure's subplot.
 
     The Plotter is just a strategy class, a Graph instance must pass itself
     when initializing a Plotter to let it have easy acccess to any graph

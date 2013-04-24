@@ -5,7 +5,7 @@ from copy import copy
 from StringIO import StringIO
 import logging
 
-from star.remida import utils
+import utils
 
 __all__ = ['TexTable', 'HTMLTable']
 
@@ -361,7 +361,7 @@ class HTMLTable(Table):
                 des = self._headings[k]['des'].replace("|", "")
             out += (u"<th title='{0}'>{1}</th>"
                     "".format(utils.escape(title, utils.HTML_ESCAPE),
-                              utils.escape(des, utils.HTML_ESCAPE)))                                       
+                              utils.escape(des, utils.HTML_ESCAPE)))
         out += u"</thead>\n"
         return out
 
@@ -382,7 +382,7 @@ class HTMLTable(Table):
                 alignment_map = HTML_ALIGNMENT_MAP\
                         .get(heading.get('align', ''), '')
                 field = utils.escape(field, utils.HTML_ESCAPE)
-                out += (u"<td class='{0}'>{1}</td>".format(alignment_map, 
+                out += (u"<td class='{0}'>{1}</td>".format(alignment_map,
                                                            field))
             out += u"\n</tr>\n"
         out += u"</tbody>\n"

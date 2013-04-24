@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-################################################################################
+###############################################################################
 #
 #    Copyright (C) 2012 Servabit Srl (<infoaziendali@servabit.it>).
 #    Author: Luigi Curzi <tremst@gmail.com>
@@ -18,20 +18,17 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-################################################################################
-#import re
-#import sys
-#import logging
-#import traceback as trb
+###############################################################################
+
 import des_objects as dob
 from xml.etree.ElementTree import fromstring
 
 
 class xml_engine(object):
-    FORMAT_TAGS = {"b": "bold", "i": "italic", "u": "underline", "sub": "sub", 
-                   "sup": "sup", "br": "newline", "title": "title", 
-                   "upper": "uppercase",}
-    
+    FORMAT_TAGS = {"b": "bold", "i": "italic", "u": "underline", "sub": "sub",
+                   "sup": "sup", "br": "newline", "title": "title",
+                   "upper": "uppercase"}
+
     def __init__(self, main_string="", portfolio_string="", dataframe=None):
         self.main = fromstring(main_string.encode("utf8"))
         self.portfolio = fromstring(portfolio_string.encode("utf8"))
@@ -51,7 +48,7 @@ class xml_engine(object):
     
     def parse_placeholders(self, parent):
         return parent.findall("placeholder")
-    
+
     def parse_choices(self):
         e_chs = self.portfolio.findall("choice")
         
@@ -61,9 +58,7 @@ class xml_engine(object):
             if not id_:
                 # FIXME: raise a warning
                 continue
-            
             res[id_] = e_ch
-            
         return res
 
     def create_placeholder_obj(self, ph):
@@ -75,7 +70,6 @@ class xml_engine(object):
         if len(lpars_split) > 1:
             # FIXME: raise warning
             pass
-        
         parameter = lpars_split[0]
         return dob.Placeholder(parameter, self.dataframe)
             
@@ -86,7 +80,7 @@ class xml_engine(object):
         nodes = []
         for i, child in enumerate(ph.getchildren()):
             children_text.extend(["{{{0}}}".format(i), child.tail or ""])
-            if child.tag == "placeholder":     
+            if child.tag == "placeholder":
                 if child.get("t", "sub") == "sub":
                     obj = self.create_placeholder_obj(child)
                 else:
@@ -118,7 +112,7 @@ class xml_engine(object):
             pass
         
         e_text = e_texts[0]
-        res_text = self.create_token_obj(e_text) 
+        res_text = self.create_token_obj(e_text)
         
         return dob.Option(res_rules, res_text)
     
@@ -128,16 +122,14 @@ class xml_engine(object):
             t = self.FORMAT_TAGS[tag]
         except:
             t = "plain"
-        
         if tag == "br":
             return dob.FormattedText(t)
-        
         b_text = ph.text or ""
         children_text = []
         nodes = []
         for i, child in enumerate(ph.getchildren()):
             children_text.extend(["{{{0}}}".format(i), child.tail or ""])
-            if child.tag == "placeholder":     
+            if child.tag == "placeholder":
                 if child.get("t", "sub") == "sub":
                     obj = self.create_placeholder_obj(child)
                 else:
@@ -152,23 +144,19 @@ class xml_engine(object):
         id_ = ph.get("id", "")
         if not id_:
             return None
-        
         local_parameters = []
         lpars_tag = ph.get("p", "")
         if lpars_tag:
             local_parameters = lpars_tag.split(";")
-            
         choice = self.choices[id_]
         opts = choice.findall("option")
         if not opts:
             # FIXME: raise warning
             return None
-        
         options = []
         for opt in opts:
             option = self.create_option_obj(opt)
             options.append(option)
-        
         return dob.Choice(options, self.dataframe, local_parameters)
 
     def innerxml(self, ph):

@@ -19,58 +19,78 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ###############################################################################
+
 import des_filters as dfi
 import decimal as dc
 import re
 import logging
+_logger = logging.getLogger(__name__)
+_logger.setLevel(logging.ERROR)
 import traceback as trb
 import pyparsing as pp
 import math
 import sys
+
+
+def set_debug_level(level):
+    if level.upper() == "DEBUG":
+        _logger.setLevel(logging.DEBUG)
+    elif level.upper() == "INFO":
+        _logger.setLevel(logging.INFO)
+    elif level.upper() == "WARNING":
+        _logger.setLevel(logging.WARNING)
+    elif level.upper() == "ERROR":
+        _logger.setLevel(logging.ERROR)
+    elif level.upper() == "CRITICAL":
+        _logger.setLevel(logging.CRITICAL)
+    else:
+        _logger.setLevel(logging.ERROR)
+    dfi.set_debug_level(level)
+
  
 pattern_check_par = r"""
     p=("[^"]+"|'[^']+')
 """
-pattern_check_par = re.compile(pattern_check_par, re.IGNORECASE | 
-                               re.VERBOSE | re.MULTILINE | re.DOTALL | 
+pattern_check_par = re.compile(pattern_check_par, re.IGNORECASE |
+                               re.VERBOSE | re.MULTILINE | re.DOTALL |
                                re.UNICODE)
 
 
 def parse_parameter(string_in):
     par = pp.Forward()
     # parsing: argomento
-    arg = (par | 
-           pp.QuotedString("'", unquoteResults=False) | 
-           pp.QuotedString('"', unquoteResults=False) | 
+    arg = (par |
+           pp.QuotedString("'", unquoteResults=False) |
+           pp.QuotedString('"', unquoteResults=False) |
            pp.Word("-" + pp.nums, pp.nums))
     # parsing: argomenti
     args = arg + pp.ZeroOrMore(pp.Suppress(",") + arg)
     # parsing: filtro senza argomenti
     filter_wo = pp.Word("|", pp.alphanums + "_")
     # parsing: filtro con argomenti
-    filter_w = pp.Combine(pp.Word("|", pp.alphanums + "_") + 
+    filter_w = pp.Combine(pp.Word("|", pp.alphanums + "_") +
                                    pp.Literal(":")) + pp.Group(args)
-    # parsing: filtri in generale (con e senza argomenti)                               
-    filters = (filter_wo ^filter_w)#.setParseAction()
+    # parsing: filtri in generale (con e senza argomenti)
+    filters = (filter_wo ^filter_w)  # @IgnorePep8
     
     # parsing: variabili da df
-    s_par = (pp.Group(pp.Suppress("{{") + 
+    s_par = (pp.Group(pp.Suppress("{{") +
                       pp.Word(pp.alphas, pp.alphanums + "_ ")\
-                        .setParseAction(lambda s,l,t: "{{" + t[0] + "}}") + 
+                        .setParseAction(lambda s, l, t: "{{" + t[0] + "}}") +
                       pp.ZeroOrMore(filters) + pp.Suppress("}}")))
     # parsing: variabili "locali"
     l_par = (pp.Group(pp.Suppress("{") + pp.Word(pp.nums)\
-                        .setParseAction(lambda s,l,t: "{" + t[0] + "}") + 
-                      pp.ZeroOrMore(filters) + 
+                        .setParseAction(lambda s, l, t: "{" + t[0] + "}") +
+                      pp.ZeroOrMore(filters) +
                       pp.Suppress("}")))
                      
-    par << (s_par ^l_par)
+    par << (s_par ^l_par)  # @IgnorePep8
     expr = par + pp.ZeroOrMore(filters)
     try:
         string_in = unicode(string_in, "utf8")
     except TypeError:
         pass
-    try: 
+    try:
         parsed_list = expr.parseString(string_in).asList()
     except:
         parsed_list = [string_in]
@@ -87,9 +107,9 @@ def evaluate_test_values(string_in, df=None, lp=[]):
         value_min_limit = 0
         if rule_vmin.startswith("["):
             value_min_limit = 1
-        value_min = rule_vmin[1:].strip()        
+        value_min = rule_vmin[1:].strip()
         if value_min == "inf":
-            value_min = - sys.maxint -1
+            value_min = - sys.maxint - 1
         else:
             m = pattern_check_par.match(value_min)
             if m:
@@ -105,7 +125,7 @@ def evaluate_test_values(string_in, df=None, lp=[]):
             m = pattern_check_par.match(value_max)
             if m:
                 value_max_parsed = parse_parameter(m.groups()[0][1:-1])
-                value_max = evaluate_parameter(value_max_parsed, df, lp)        
+                value_max = evaluate_parameter(value_max_parsed, df, lp)
         res = ((value_min, value_min_limit), (value_max, value_max_limit))
     elif len(rule_vs_split) == 1:
         rule_v = rule_vs_split[0]
@@ -120,7 +140,7 @@ def evaluate_test_values(string_in, df=None, lp=[]):
             m = pattern_check_par.match(value)
             if m:
                 value_parsed = parse_parameter(m.group()[0][1:-1])
-                value = evaluate_parameter(value_parsed, df, lp)             
+                value = evaluate_parameter(value_parsed, df, lp)
         res = ((value, limit),)
     return res
 
@@ -131,7 +151,7 @@ def evaluate_parameter(p_parsed, df=None, lp=[]):
         p_parsed = [p_parsed]
     while p_parsed:
         e = p_parsed.pop(0)
-        if isinstance(e, (list,tuple)):
+        if isinstance(e, (list, tuple)):
             res = evaluate_parameter(e, df, lp)
         elif e.startswith("|"):
             if e.endswith(":"):
@@ -173,15 +193,15 @@ def evaluate_parameter(p_parsed, df=None, lp=[]):
 def propagate_local_parameters(obj, df, lparameters):
     if obj.type == "choice":
         try:
-            lparameters = [evaluate_parameter(lp, df, lparameters) 
+            lparameters = [evaluate_parameter(lp, df, lparameters)
                            for lp in obj.lparameters]
         except:
-            logging.warning(u"choice '{0}': problema determinazione "
+            _logger.warning(u"choice '{0}': problema determinazione "
                             "'lparameters'".format(obj))
             lparameters = []
         obj.lparameters = lparameters
     else:
-        obj.lparameters = lparameters     
+        obj.lparameters = lparameters
     for child in obj.children:
         try:
             propagate_local_parameters(child, df, obj.lparameters)
@@ -191,14 +211,15 @@ def propagate_local_parameters(obj, df, lparameters):
 
 def out_to_string(out):
     if not isinstance(out, (list, tuple)):
-        return unicode(out, "utf8") if not isinstance(out, unicode) else out
+        return (unicode(str(out), "utf8") if not isinstance(out, unicode) else
+                out)
     e_last = out[-1]
     e_lst = out[:-1]
-    out_str = u", ".join([unicode(str(e), "utf8") 
+    out_str = u", ".join([unicode(str(e), "utf8")
                         if not isinstance(e, unicode) else e for e in e_lst])
     if out_str and len(out) > 1:
         out_str += u" e "
-    out_str += u"{0}".format(unicode(str(e_last), "utf8") 
+    out_str += u"{0}".format(unicode(str(e_last), "utf8")
                              if not isinstance(e_last, unicode) else e_last)
     return out_str
 
@@ -217,14 +238,14 @@ class Token(object):
             try:
                 args.append(out_to_string(child.substitute()))
             except:
-                logging.warning(u"{0}".format(trb.format_exc()))
-                logging.warning(u"child: {0}, type: {1}: problema "
+                _logger.warning(u"{0}".format(trb.format_exc()))
+                _logger.warning(u"child: {0}, type: {1}: problema "
                                 "sostituzione".format(child, child.type))
         try:
             return self.text.format(*args)
         except:
             # FIXME: raise a warning
-            logging.debug(u"{0}".format(trb.format_exc()))
+            _logger.debug(u"{0}".format(trb.format_exc()))
             return self.text
 
 
@@ -236,23 +257,23 @@ class Rule(object):
         self.type = "rule"
         
     def check(self, df):
-        logging.debug(u"rule '{0}': inizio check ".format(self))
+        _logger.debug(u"rule '{0}': inizio check ".format(self))
         # FIXME: gestire nodi parent e children
         lparameters = self.lparameters
-        logging.debug(u"rule '{0}': parametro='{1}' / parametri locali='{2}'"
+        _logger.debug(u"rule '{0}': parametro='{1}' / parametri locali='{2}'"
                       "".format(self, self.parameter, lparameters))
         
         parameter_parsed = parse_parameter(self.parameter)
         try:
             parameter = evaluate_parameter(parameter_parsed, df, lparameters)
         except:
-            logging.warning(u"rule '{0}': problema determinazione 'parameter'"
+            _logger.warning(u"rule '{0}': problema determinazione 'parameter'"
                             "".format(self))
             parameter = u""
         try:
             test_values = evaluate_test_values(self.values, df, lparameters)
         except:
-            logging.warning(u"rule '{0}': problema determinazione "
+            _logger.warning(u"rule '{0}': problema determinazione "
                             "'test_values'".format(self))
             test_values = u""
         if len(test_values) == 2:
@@ -265,27 +286,27 @@ class Rule(object):
                 value_max = dc.Decimal(str(value_max))
                 parameter = dc.Decimal(str(parameter))
                 if math.isnan(parameter):
-                    return False                
+                    return False
             except:
                 value_min = str(value_min)
                 value_max = str(value_max)
                 parameter = str(parameter)
             limits = (value_min_limit, value_max_limit)
-            logging.debug(u"rule '{0}': parametro='{1}' / vmin='{2}' / "
+            _logger.debug(u"rule '{0}': parametro='{1}' / vmin='{2}' / "
                           "vmax='{3}' / criteri='{4}"
-                          "".format(self, parameter, value_min, value_max, 
+                          "".format(self, parameter, value_min, value_max,
                                     limits))
-            if limits == (0,0) and value_min < parameter < value_max:
-                logging.debug(u"rule '{0}': verificata".format(self))
+            if limits == (0, 0) and value_min < parameter < value_max:
+                _logger.debug(u"rule '{0}': verificata".format(self))
                 return True
-            elif limits == (1,0) and value_min <= parameter < value_max:
-                logging.debug(u"rule '{0}': verificata".format(self))
+            elif limits == (1, 0) and value_min <= parameter < value_max:
+                _logger.debug(u"rule '{0}': verificata".format(self))
                 return True
-            elif limits == (0,1) and value_min < parameter <= value_max:
-                logging.debug(u"rule '{0}': verificata".format(self))
+            elif limits == (0, 1) and value_min < parameter <= value_max:
+                _logger.debug(u"rule '{0}': verificata".format(self))
                 return True
-            elif limits == (1,1) and value_min <= parameter <= value_max:
-                logging.debug(u"rule '{0}': verificata".format(self))
+            elif limits == (1, 1) and value_min <= parameter <= value_max:
+                _logger.debug(u"rule '{0}': verificata".format(self))
                 return True
         elif len(test_values) == 1:
             value = test_values[0][0]
@@ -296,19 +317,19 @@ class Rule(object):
                     return False
             except:
                 value = str(value)
-                parameter = str(parameter)    
+                parameter = str(parameter)
             limit = test_values[0][1]
-            logging.debug(u"rule '{0}': parametro='{1}' / valore='{2}' / "
+            _logger.debug(u"rule '{0}': parametro='{1}' / valore='{2}' / "
                           "criterio='{3}"
                           "".format(self, parameter, value, limit))
             if limit == 1 and value == parameter:
-                logging.debug(u"rule '{0}': verificata".format(self))
+                _logger.debug(u"rule '{0}': verificata".format(self))
                 return True
             if limit == 0 and value != parameter:
-                logging.debug(u"rule '{0}': verificata".format(self))
+                _logger.debug(u"rule '{0}': verificata".format(self))
                 return True
             
-        logging.debug(u"rule '{0}': non verificata".format(self))
+        _logger.debug(u"rule '{0}': non verificata".format(self))
         return False
     
     
@@ -322,12 +343,12 @@ class Option(object):
         self.type = "option"
     
     def check(self, df):
-        logging.debug(u"option '{0}': inizio check".format(self))
+        _logger.debug(u"option '{0}': inizio check".format(self))
         for rule in self.rules:
             if not rule.check(df):
-                logging.debug(u"option '{0}': non verificata".format(self))
-                return False  
-        logging.debug(u"option '{0}': verificata".format(self))
+                _logger.debug(u"option '{0}': non verificata".format(self))
+                return False
+        _logger.debug(u"option '{0}': verificata".format(self))
         return True
 
     def substitute(self):
@@ -343,13 +364,13 @@ class Choice(object):
         self.type = "choice"
         
     def substitute(self):
-        logging.debug(u"choice '{0}': inizio sostituzione".format(self))
+        _logger.debug(u"choice '{0}': inizio sostituzione".format(self))
         res = ""
         for opt in self.options:
             if opt.check(self.dataframe):
                 res = opt.substitute()
                 break
-        logging.debug(u"choice '{0}': fine sostituzione".format(self))
+        _logger.debug(u"choice '{0}': fine sostituzione".format(self))
         return res
 
     
@@ -361,35 +382,35 @@ class Placeholder(object):
         self.type = "placeholder"
         
     def substitute(self):
-        logging.debug(u"placeholder '{0}': inizio sostituzione".format(self))
+        _logger.debug(u"placeholder '{0}': inizio sostituzione".format(self))
         lparameters = self.lparameters
         parameter_parsed = parse_parameter(self.parameter)
         try:
-            arg = evaluate_parameter(parameter_parsed, self.dataframe, 
+            arg = evaluate_parameter(parameter_parsed, self.dataframe,
                                      lparameters)
         except:
-            logging.warning(u"placeholder '{0}': problema determinazione 'arg'"
-                            "".format(self))            
+            _logger.warning(u"placeholder '{0}': problema determinazione 'arg'"
+                            "".format(self))
             arg = u""
-        if arg and type(arg) is list or type(arg) is tuple:
+        if isinstance(arg, (list, tuple)):
             last = arg[-1]
             arg_lst = arg[:-1]
-            arg_str = u", ".join([unicode(str(a), "utf8") 
-                                  if not type(a) is unicode else a 
+            arg_str = u", ".join([unicode(str(a), "utf8")
+                                  if not type(a) is unicode else a
                                   for a in arg_lst])
             if arg_str and len(arg) > 1:
                 arg_str += u" e "
-            arg_str += u"{0}".format(unicode(str(last), "utf8") 
-                                     if not type(last) is unicode 
+            arg_str += u"{0}".format(unicode(str(last), "utf8")
+                                     if not type(last) is unicode
                                      else last)
             arg = arg_str
         res = u"{0}".format(arg)
-        logging.debug(u"placeholder '{0}': fine sostituzione".format(self))
+        _logger.debug(u"placeholder '{0}': fine sostituzione".format(self))
         return res
 
 
 class FormattedText(Token):
-    TAGS = ("bold", "italic", "underline", "sub", "sup", "newline", "title", 
+    TAGS = ("bold", "italic", "underline", "sub", "sup", "newline", "title",
             "uppercase", "plain")
     
     def __init__(self, tag="plain", text="", children=[]):
@@ -398,11 +419,6 @@ class FormattedText(Token):
             # FIXME: raise a warning
             tag = "plain"
         self.tag = tag
-#         if not type(text) is unicode:
-#             text = unicode(text, "utf8")
-#         self.text = text
-#         self.children = children
-#         self.lparameters = []
         self.type = "formatted_text"
         
     def set_bold(self, string_in):
@@ -433,24 +449,24 @@ class FormattedText(Token):
         return string_in
     
     def substitute(self):
-        logging.debug(u"formattedtext '{0}': inizio sostituzione".format(self))
+        _logger.debug(u"formattedtext '{0}': inizio sostituzione".format(self))
         set_format = getattr(self, "set_{0}".format(self.tag))
         args = []
         for child in self.children:
             try:
                 args.append(out_to_string(child.substitute()))
             except:
-                logging.warning(u"{0}".format(trb.format_exc()))
-                logging.warning(u"child: {0}, type: {1}: problema "
+                _logger.warning(u"{0}".format(trb.format_exc()))
+                _logger.warning(u"child: {0}, type: {1}: problema "
                                 "sostituzione".format(child, child.type))
         try:
             res = set_format(self.text.format(*args))
-            logging.debug(u"formattedtext '{0}': fine sostituzione"
+            _logger.debug(u"formattedtext '{0}': fine sostituzione"
                           "".format(self))
         except:
             # FIXME: raise a warning
-            logging.debug(u"{0}".format(trb.format_exc()))
+            _logger.debug(u"{0}".format(trb.format_exc()))
             res = set_format(self.text)
-            logging.debug(u"formattedtext '{0}': fine sostituzione"
+            _logger.debug(u"formattedtext '{0}': fine sostituzione"
                           "".format(self))
         return res

@@ -25,7 +25,7 @@ import string
 import pandas
 import numpy as np
 
-from star.share.generic_pickler import GenericPickler
+from generic_pickler import GenericPickler
 
 __all__ = ['Stark']
 

@@ -10,8 +10,10 @@ from tempfile import NamedTemporaryFile
 import base64
 import cStringIO
 
-import star.remida.plotters as plotters
-from star.remida import utils
+
+import plotters
+import utils
+
 
 __all__ = ['TexGraph', 'HTMLGraph']
 
@@ -112,10 +114,11 @@ class Graph(object):
         elif len(handles) < 5:
             ncol = 2
         # Estimate new hight needed for the legend
+        fheight = figure.get_figheight()
         dheight = ((len(handles) / ncol) + 1) * self._fontsize * 0.01
-        dheight_perc = dheight / figure.get_figheight()
+        dheight_perc = dheight / fheight
         # Scale figure and adjust subplot
-        figure.set_figheight(figure.get_figheight() + dheight)
+        figure.set_figheight(fheight + dheight)
         figure.subplots_adjust(top=(0.9 - dheight_perc))
         # Make legend
         leg = figure.legend(handles, labels, ncol=ncol, loc='upper left',
@@ -193,7 +196,9 @@ class Graph(object):
         lines = []
         labels = []
         for idx, col in enumerate(self._y_meta):
+            print(col)
             try:
+                print(col['type'])
                 line = self._plotters[col['type']].plot(ax, col)
             except KeyError, err:
                 if err.args[0].startswith("Unhandled graph type"):

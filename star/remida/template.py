@@ -6,11 +6,23 @@ import codecs
 import os
 import string
 import logging
+_logger = logging.getLogger(__name__)
 
+from table import TexTable, HTMLTable
+from graph import TexGraph, HTMLGraph
+from des import TexDes, HTMLDes
+
+# star_path = path della directroy principale
+star_path = os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                         os.path.pardir,
+                                         os.path.pardir))
+if star_path in sys.path:
+    # rimuoviamo tutte le occorrenze di star_path
+    sys.path = [p for p in sys.path if p != star_path]
+# inseriamo star_path in seconda posizione, la prima dovrebbe essere riservata
+# alla cartella corrente in cui è poisizionato il file
+sys.path.insert(1, star_path)
 from star.share.bag import Bag
-from star.remida.table import TexTable, HTMLTable
-from star.remida.graph import TexGraph, HTMLGraph
-from star.remida.des import TexDes, HTMLDes
 
 __all__ = ['HTMLSreTemplate', 'TexSreTemplate']
 
@@ -19,38 +31,35 @@ class AbstractSreTemplate(string.Template):
     ''' Abstract Class for Sre template parsing
     '''
 
-    comment = "#.*" # just an example with Python comments.
-    _suffix = None # Template file suffix
-    _suffix_out = None # Output file suffix
+    comment = "#.*"  # just an example with Python comments.
+    _suffix = None  # Template file suffix
+    _suffix_out = None  # Output file suffix
 
     def __init__(self, templ_path, config=None):
+        #self._src_path = os.path.abspath(os.getcwd())
         self._src_path = os.path.dirname(os.path.abspath(templ_path))
-        self._logger = logging.getLogger(type(self).__name__)
+#         _logger = logging.getLogger(type(self).__name__)
         if config is None:
             config = {
                 'template': templ_path,
                 'bags': self._src_path,
                 'dest_path': self._src_path,
             }
-        self._fds = list() # list of opened file descriptors
+        self._config = config
+        self._fds = list()  # list of opened file descriptors
         # load template
-        try: 
+        try:
             self._templ_path = config["template"]
         except KeyError:
             self._templ_path = templ_path
-        self._load_template(self._templ_path)
+        templ = self._load_template(self._templ_path)
+        string.Template.__init__(self, templ)
         # load Bags
         try:
             self._bag_path = config['bags']
         except KeyError:
             self._bag_path = self._src_path
         self.bags = self._load_bags(self._bag_path)
-        print(self.bags)
-        for b in self.bags:
-            print("-----")
-            print(b)
-            print(self.bags[b])
-            print(type(self.bags[b]))
         # other paths
         try:
             self._dest_path = config['dest_path']
@@ -60,18 +69,19 @@ class AbstractSreTemplate(string.Template):
     def _load_template(self, path):
         ''' Read template from file and generate a TexSreTemplate object.
         @ param path: path to the template file
-        @ return: AbstractSreTemplare instance
+        @ return: AbstractSreTemplate instance
 
         '''
-        self._logger.info("Loading template.")
+        _logger.info("Loading template.")
         fd = codecs.open(path, mode='r', encoding='utf-8')
         try:
             templ = fd.read()
             # Remove comments
-            templ = re.sub(re.compile(self.comment), str(), templ)
-            super(AbstractSreTemplate, self).__init__(templ)
+            #templ = re.sub(re.compile(self.comment), str(), templ)
+            return re.sub(re.compile(self.comment), str(), templ)
+            #AbstractSreTemplate.__init__(self, templ)
         except IOError, err:
-            self._logger.error(err)
+            _logger.error(err)
             sys.exit(err.errno)
         finally:
             fd.close()
@@ -91,46 +101,48 @@ class AbstractSreTemplate(string.Template):
         # to single Pickle attributes.
         ph_list = [ph[2] for ph in self.pattern.findall(self.template)]
         try:
-            ph_list.remove(str()) # Remove placeholder command definition.
+            ph_list.remove(str())  # Remove placeholder command definition.
         except ValueError:
             pass
         # In case of multiple instance of a placeholder, evaluate only once.
         ph_list = list(set(ph_list))
-        self._logger.info("Reading pickles...")
-        bags = dict() # Pickle file's cache (never load twice the same file!)
+        _logger.info("Reading pickles...")
+        bags = dict()  # Pickle file's cache (never load twice the same file!)
         for ph in ph_list:
             ph_parts = ph.split('.')
             base = ph_parts[0]
             if not bags.get(base, False):
                 # Load and add to cache
-                self._logger.debug('Now loading: %s', os.path.join(
+                _logger.debug('Now loading: %s', os.path.join(
                         path, '.'.join([base, 'pickle'])))
                 try:
-                    bags[base] = Bag.load(os.path.join(path, '.'.join(
-                                [base, 'pickle'])))
+                    bags[base] = Bag.load(\
+                          os.path.join(path, '.'.join([base, 'pickle'])))
                 except IOError, err:
-                    self._logger.warning('%s; skipping...', err)
+                    _logger.warning('%s; skipping...', err)
                     continue
             # Generate string to substitute to the placeholder
             if bags[base].stype == 'tab':
                 ret[base] = self._make_table(bags[base], **kwargs).out()
             elif bags[base].stype == 'ltab':
-                ret[base] = self._make_table(bags[base], tab_type='ltab', **kwargs).out()
+                ret[base] = self._make_table(bags[base], tab_type='ltab',
+                                             **kwargs).out()
             elif bags[base].stype == 'bodytab':
-                ret[base] = self._make_table(bags[base], tab_type='bodytab', **kwargs).out()
+                ret[base] = self._make_table(bags[base], tab_type='bodytab',
+                                             **kwargs).out()
             elif bags[base].stype == 'graph':
                 ret[base], fd = self._make_graph(bags[base], **kwargs).out()
                 self._fds.append(fd)
             elif bags[base].stype == 'desc':
                 ret[base] = self._make_des(bags[base], **kwargs).out()
-            else: # TODO: handle other types
-                self._logger.debug('bags = %s', bags)
-                self._logger.warning(
+            else:  # TODO: handle other types
+                _logger.debug('bags = %s', bags)
+                _logger.warning(
                     "Unhandled bag stype '%s' found in %s, skipping...",
                     bags[base].stype, base)
                 continue
-            if len(ph_parts) > 1 and \
-                    hasattr(bags[base], '.'.join(ph_parts[1:])):
+            if (len(ph_parts) > 1 and
+                hasattr(bags[base], '.'.join(ph_parts[1:]))):
                 # extract attribute
                 # TODO: apply translation
                 ret[ph] = bags[base].__getattribute__('.'.join(ph_parts[1:]))
@@ -166,7 +178,8 @@ class AbstractSreTemplate(string.Template):
     def report(self, **kwargs):
         ''' Make placeholders substitution and store the result in a new file.
 
-        @ return: path to the new file, list of file descriptors of temporary files.
+        @ return: path to the new file, list of file descriptors of temporary
+            files.
 
         '''
         if not os.path.exists(os.path.dirname(self._dest_path)):
@@ -180,7 +193,7 @@ class AbstractSreTemplate(string.Template):
         try:
             fd.write(templ_out)
         except IOError, err:
-            self._logger.error(err)
+            _logger.error(err)
             return err.errno
         finally:
             fd.close()
@@ -213,6 +226,9 @@ class TexSreTemplate(AbstractSreTemplate):
         re.compile("\\import{.+}", re.MULTILINE | re.UNICODE),
         re.compile("\\input{.+}", re.MULTILINE | re.UNICODE),
     ]
+ 
+    def __init__(self, templ_path, config=None):
+        AbstractSreTemplate.__init__(self, templ_path, config)
 
     def _substitute_includes(self):
         ''' Change input and includes LaTeX statements inside a template to
@@ -232,7 +248,8 @@ class TexSreTemplate(AbstractSreTemplate):
                 repl = ''.join(['_'.join(repl), '}'])
                 self.template = self.template.replace(match, repl)
                 # Make a list of the input files to use as templates
-                input_file = u'.'.join([match.split('}')[0].split('{')[-1], u'tex'])
+                input_file = u'.'.join([match.split('}')[0].split('{')[-1],
+                                        u'tex'])
                 input_files.append(os.path.join(
                     os.path.dirname(self._templ_path),
                     input_file
@@ -251,16 +268,13 @@ class TexSreTemplate(AbstractSreTemplate):
     def report(self, **kwargs):
         input_files = self._substitute_includes()
         for file_ in input_files:
-            # FIXME: this is redundant with __init__
-            config = {
-                'template': file_,
-                'bags': self._bag_path,
-                'dest_path': self._dest_path,
-            }
-            filename, fds = TexSreTemplate(file_, 
-                                           config=config).report(**kwargs)
+            config = self._config.copy()
+            config['template'] = file_
+            filename, fds = TexSreTemplate(file_, config=config)\
+                .report(**kwargs)
             self._fds.extend(fds)
-        return super(TexSreTemplate, self).report(**kwargs)
+        return AbstractSreTemplate.report(self, **kwargs)
+
 
 class HTMLSreTemplate(AbstractSreTemplate):
     ''' A custom template class to match the SRE placeholders.
@@ -293,4 +307,3 @@ class HTMLSreTemplate(AbstractSreTemplate):
 
     def _make_des(self, data, **kwargs):
         return  HTMLDes(data, **kwargs)
-    
